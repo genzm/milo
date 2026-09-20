@@ -1,0 +1,31 @@
+# 君とボク。
+
+
+
+> あらゆる現実を、自分の方に捻じ曲げたのだ。
+
+---
+
+# 式を変える。図が応える。
+
+減衰率は **{{wave.gamma}}**。係数を動かすと、同じモデルから図を描き直します。
+
+::equation{model="wave"}
+
+::plot{model="wave" from="0" to="10"}
+
+::slider{param="wave.gamma" label="減衰率 γ" min="0" max="1" step="0.01"}
+::slider{param="wave.omega" label="角振動数 ω" min="0.5" max="7" step="0.1"}
+
+式をクリックすると、元のモデルを編集できます。
+
+---
+
+# 動きを、連れていく。
+
+GIFも、画像も、ひとつのHTMLの中へ。  
+「素材」から画像を差し替えると、そのまま文書に埋め込まれます。
+
+::image{asset="asset-loop" alt="粒子の動きを描いたループアニメーション" caption="EMBEDDED GIF · オフラインでも再生できます"}
+
+説明用の数式も書けます。たとえば $E = \frac{1}{2}mv^2$。
