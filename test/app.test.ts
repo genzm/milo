@@ -117,9 +117,9 @@ async function launch(html = initial, file = createFile(html)) {
 test('standalone app boots and all three slides render without network dependencies', async () => {
   const app = await launch();
   try {
-    assert.equal(app.query('#slide-content h1').textContent, '説明から、実験へ。');
-    assert.ok(app.query('.chart-line').getAttribute('d').length > 1000);
+    assert.equal(app.query('#slide-content h1').textContent, '君とボク。');
     app.click('[data-index="1"]');
+    assert.ok(app.query('.chart-line').getAttribute('d').length > 1000);
     assert.ok(app.query('.katex'));
     assert.equal(app.query('.live-value')?.textContent, '0.2');
     assert.equal(app.query('input[aria-label="gamma"]').value, '0.2');
@@ -131,6 +131,32 @@ test('standalone app boots and all three slides render without network dependenc
     assert.equal(app.query('#insert-block'), null);
     assert.equal(app.query('#undo'), null);
     assert.equal(app.query('#redo'), null);
+    assert.deepEqual(app.errors, []);
+  } finally {
+    await app.close();
+  }
+});
+
+test('display math interrupts prose inside a multiline text directive without blank lines', async () => {
+  const app = await launch();
+  try {
+    const editor = app.code();
+    editor.dispatch({
+      changes: {
+        from: 0,
+        to: editor.state.doc.length,
+        insert: '::text{\n++Radon-Nikodymの定理++\n任意の...\n$$\nx+A\n$$\n\n$$y+B$$\n\n$$$$\n}\n',
+      },
+    });
+    await until(
+      () =>
+        app.query('#slide-content .text-block')?.querySelectorAll('.katex-display').length === 2,
+      'Display math did not interrupt text directive prose',
+    );
+    const block = app.query('#slide-content .text-block');
+    assert.equal(block.querySelector('u')?.textContent, 'Radon-Nikodymの定理');
+    assert.match(block.textContent, /任意の\.\.\./);
+    assert.match(block.textContent, /\$\$\$\$/);
     assert.deepEqual(app.errors, []);
   } finally {
     await app.close();

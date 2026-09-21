@@ -1,6 +1,7 @@
 # milo
 
-contentsにあるmarkdownファイルからスライドのHTMLファイル`milo.html`をビルドします。生成後の使用には外部CDNやサーバーへの接続は不要です。
+contentsにあるmarkdownファイルからスライドのHTMLファイル`milo.html`をビルドします。
+生成後の使用には外部CDNやサーバーへの接続は不要です。
 
 ## 使い方
 

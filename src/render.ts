@@ -20,6 +20,57 @@ interface ParsedDirective extends Directive {
   error?: string;
 }
 
+function lineText(state: any, line: number) {
+  return state.src.slice(state.bMarks[line] + state.tShift[line], state.eMarks[line]);
+}
+
+function mathBlock(state: any, line: number, end: number, silent: boolean) {
+  if (state.sCount[line] - state.blkIndent >= 4) return false;
+  const first = lineText(state, line).trimEnd();
+  if (!first.startsWith('$$')) return false;
+
+  let body = '',
+    next = line + 1;
+  if (
+    first.length > 4 &&
+    first[2] !== '$' &&
+    first.endsWith('$$') &&
+    first[first.length - 3] !== '$'
+  ) {
+    body = first.slice(2, -2);
+  } else if (first === '$$') {
+    const lines: string[] = [];
+    let found = false;
+    while (next < end) {
+      const text = lineText(state, next);
+      if (state.sCount[next] - state.blkIndent < 4 && text.trim() === '$$') {
+        found = true;
+        next++;
+        break;
+      }
+      lines.push(text);
+      next++;
+    }
+    if (!found) return false;
+    body = lines.join('\n');
+  } else return false;
+
+  if (!body.trim()) return false;
+  if (silent) return true;
+  const token = state.push('math_block', '', 0);
+  token.content = body;
+  token.markup = '$$';
+  token.map = [line, next];
+  state.line = next;
+  return true;
+}
+
+function isEscaped(source: string, at: number) {
+  let slashes = 0;
+  for (let i = at - 1; i >= 0 && source[i] === '\\'; i--) slashes++;
+  return slashes % 2 === 1;
+}
+
 function args(raw: string): Record<string, string> {
   const a: Record<string, string> = {};
   const leftovers = raw.replace(/([\w-]+)\s*=\s*"([^"\r\n]*)"/g, (_, k, v) => ((a[k] = v), ''));
@@ -85,35 +136,9 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   );
   md.renderer.rules.milo_directive = (tokens, index) =>
     `<div class="live-block" data-live="${tokens[index].meta!.index}"></div>\n`;
-  md.block.ruler.before(
-    'fence',
-    'math_block',
-    (s: any, line: number, end: number, silent: boolean) => {
-      const first = s.src.slice(s.bMarks[line] + s.tShift[line], s.eMarks[line]);
-      if (!first.startsWith('$$')) return false;
-      let body = first.slice(2),
-        next = line + 1;
-      if (body.endsWith('$$') && body.length >= 2) body = body.slice(0, -2);
-      else {
-        let found = false;
-        while (next < end) {
-          const text = s.src.slice(s.bMarks[next] + s.tShift[next], s.eMarks[next]);
-          next++;
-          if (text.trim() === '$$') {
-            found = true;
-            break;
-          }
-          body += '\n' + text;
-        }
-        if (!found) return false;
-      }
-      if (silent) return true;
-      const token = s.push('math_block', '', 0);
-      token.content = body;
-      s.line = next;
-      return true;
-    },
-  );
+  md.block.ruler.before('fence', 'math_block', mathBlock, {
+    alt: ['paragraph', 'reference', 'blockquote', 'list'],
+  });
   md.renderer.rules.math_block = (tokens, index) =>
     '<div class="math-prose">' +
     katex.renderToString(tokens[index].content, {
@@ -123,13 +148,17 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
     }) +
     '</div>';
   md.inline.ruler.after('escape', 'math_inline', (s: any, silent: boolean) => {
-    if (s.src[s.pos] !== '$' || s.src[s.pos + 1] === '$') return false;
+    if (s.src[s.pos] !== '$' || s.src[s.pos - 1] === '$' || s.src[s.pos + 1] === '$') return false;
     let end = s.pos + 1;
-    while ((end = s.src.indexOf('$', end)) !== -1 && s.src[end - 1] === '\\') end++;
-    if (end === -1 || s.src.slice(s.pos + 1, end).includes('\n')) return false;
+    while ((end = s.src.indexOf('$', end)) !== -1) {
+      if (s.src[end - 1] !== '$' && s.src[end + 1] !== '$' && !isEscaped(s.src, end)) break;
+      end++;
+    }
+    const content = end === -1 ? '' : s.src.slice(s.pos + 1, end);
+    if (end === -1 || !content.trim() || content.includes('\n')) return false;
     if (!silent) {
       const token = s.push('math_inline', '', 0);
-      token.content = s.src.slice(s.pos + 1, end);
+      token.content = content;
     }
     s.pos = end + 1;
     return true;
