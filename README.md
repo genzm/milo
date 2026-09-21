@@ -12,13 +12,12 @@ npm ci
 npx milo talk.md
 ```
 
-原稿は1つの Markdown で書けます。先頭の frontmatter にタイトルを、`milo:model` フェンスに数式モデルを、`![](./assets/photo.png)` に画像を置きます。
+原稿は1つの Markdown で書けます。先頭の frontmatter にタイトルを、各スライド先頭の `<!-- milo: layout=cover -->` にレイアウトを、`milo:model` フェンスに数式モデルを、`![](./assets/photo.png)` に画像を置きます。
 
 ````markdown
 ---
 title: 小さな実験室
 description: 数式と図の実験
-layouts: [cover, lab, media]
 ---
 
 ```milo:model wave
@@ -29,15 +28,21 @@ layouts: [cover, lab, media]
 }
 ```
 
+<!-- milo: layout=cover -->
+
 # 表紙
 
 ---
+
+<!-- milo: layout=lab -->
 
 減衰率は **{{wave.gamma}}**。
 
 ::plot{model="wave" from="0" to="10"}
 
 ---
+
+<!-- milo: layout=media -->
 
 ![図](./assets/flow.gif)
 ````

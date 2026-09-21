@@ -1,7 +1,6 @@
 ---
 title: 小さな実験室
 description: 原稿・数式・動く図・編集道具を内蔵する、自己編集可能な単一HTML。
-layouts: [cover, lab, media]
 ---
 
 ```milo:model wave
@@ -16,6 +15,8 @@ layouts: [cover, lab, media]
 }
 ```
 
+<!-- milo: layout=cover -->
+
 # 君とボク。
 
 
@@ -23,6 +24,8 @@ layouts: [cover, lab, media]
 > あらゆる現実を、自分の方に捻じ曲げたのだ。
 
 ---
+
+<!-- milo: layout=lab -->
 
 # 式を変える。図が応える。
 
@@ -38,6 +41,8 @@ layouts: [cover, lab, media]
 式をクリックすると、元のモデルを編集できます。
 
 ---
+
+<!-- milo: layout=media -->
 
 # 動きを、連れていく。
 

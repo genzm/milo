@@ -369,7 +369,8 @@ test('built artifact contains one kernel and all dependencies; a model edit leav
   assert.equal((styles.match(/\.presenting \.slide\s*\{/g) ?? []).length, 1);
   assert.equal(styles.includes('.presenting .slide h1'), false);
   assert.equal(html.includes('id="third-party-notices"'), false);
-  assert.match(s.get('slide-01').text, /^# 君とボク。/);
+  assert.match(s.get('slide-01').text, /<!-- milo: layout=cover -->/);
+  assert.match(s.get('slide-01').text, /# 君とボク。/);
   assert.ok(s.get('slide-02').text.includes('{{wave.gamma}}'));
   assert.ok(s.get('slide-03').text.includes('./assets/flow.gif'));
   assert.equal(json(s.get('manifest').text).title, '小さな実験室');

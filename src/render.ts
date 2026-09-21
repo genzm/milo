@@ -80,15 +80,20 @@ function args(raw: string): Record<string, string> {
   return a;
 }
 
+function stripMiloComments(source: string) {
+  return source.replace(/^[ \t]*<!--\s*milo:[\s\S]*?-->[ \t]*(?:\r?\n|$)/gm, '');
+}
+
 export function renderSlide(root: HTMLElement, source: string, ctx: RenderContext): Rendered {
   const updates: (() => void)[] = [],
     disposals: (() => void)[] = [];
   const directives: ParsedDirective[] = [];
-  const footerMarker = /(^|\r?\n)::footer(?:\{\})?[ \t]*(?:\r?\n|$)/m.exec(source);
+  const display = stripMiloComments(source);
+  const footerMarker = /(^|\r?\n)::footer(?:\{\})?[ \t]*(?:\r?\n|$)/m.exec(display);
   const bodySource = footerMarker
-      ? source.slice(0, footerMarker.index + footerMarker[1].length)
-      : source,
-    footerSource = footerMarker ? source.slice(footerMarker.index + footerMarker[0].length) : '';
+      ? display.slice(0, footerMarker.index + footerMarker[1].length)
+      : display,
+    footerSource = footerMarker ? display.slice(footerMarker.index + footerMarker[0].length) : '';
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
   md.block.ruler.before(
     'fence',

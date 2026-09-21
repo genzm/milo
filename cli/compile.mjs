@@ -296,15 +296,35 @@ async function loadReferencedAssets(dir, refs) {
   return blocks;
 }
 
-function layoutMap(layouts, slideIds) {
-  if (layouts == null || layouts === '') return {};
-  if (Array.isArray(layouts)) {
-    return Object.fromEntries(
-      slideIds.map((id, index) => [id, layouts[index]]).filter(([, v]) => v),
-    );
+function parseMiloAttrs(raw) {
+  const attrs = {};
+  const leftover = raw
+    .trim()
+    .replace(/([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+))/g, (_, key, dq, sq, bare) => {
+      attrs[key] = dq ?? sq ?? bare;
+      return '';
+    });
+  if (leftover.trim()) throw new Error(`milo コメントを解釈できません: ${raw.trim()}`);
+  return attrs;
+}
+
+const LAYOUTS = new Set(['cover', 'section', 'lab', 'media', 'essay']);
+
+export function slideLayout(text) {
+  const match = /^\s*<!--\s*milo:\s*([\s\S]*?)\s*-->/.exec(text);
+  if (!match) return undefined;
+  const layout = parseMiloAttrs(match[1]).layout;
+  if (!layout) return undefined;
+  if (!LAYOUTS.has(layout)) {
+    throw new Error(`未対応のレイアウトです: ${layout}`);
   }
-  if (typeof layouts === 'object') return layouts;
-  throw new Error('layouts は配列かオブジェクトにしてください。');
+  return layout;
+}
+
+function layoutsFromSlides(slides) {
+  return Object.fromEntries(
+    slides.map((s) => [s.id, slideLayout(s.text)]).filter(([, layout]) => layout),
+  );
 }
 
 export async function loadDeck(inputPath) {
@@ -323,10 +343,7 @@ export async function loadDeck(inputPath) {
     typeof meta.title === 'string' && meta.title.trim()
       ? meta.title.trim()
       : slideTexts[0].match(/^#\s+(.+)$/m)?.[1]?.trim() || basename(dir);
-  const layouts = layoutMap(
-    meta.layouts,
-    slides.map((s) => s.id),
-  );
+  const layouts = layoutsFromSlides(slides);
   const manifest = {
     id: 'manifest',
     kind: 'manifest',

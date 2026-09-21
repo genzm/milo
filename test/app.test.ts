@@ -118,6 +118,7 @@ test('standalone app boots and all three slides render without network dependenc
   const app = await launch();
   try {
     assert.equal(app.query('#slide-content h1').textContent, '君とボク。');
+    assert.ok(app.query('#slide').className.includes('layout-cover'));
     app.click('[data-index="1"]');
     assert.ok(app.query('.chart-line').getAttribute('d').length > 1000);
     assert.ok(app.query('.katex'));
