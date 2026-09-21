@@ -4,8 +4,11 @@
   "private": true,
   "type": "module",
   "description": "A source-preserving, self-editing, single-file research slide deck.",
+  "bin": {
+    "milo": "cli/milo.mjs"
+  },
   "scripts": {
-    "build": "node build.mjs",
+    "build": "node cli/milo.mjs content -o dist/milo.html --notices",
     "test": "node --import tsx --test test/*.test.ts",
     "check": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,mjs,css}\"",
