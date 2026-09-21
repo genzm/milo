@@ -59,3 +59,35 @@ Hello
   assert.equal(asset?.id, 'asset-flow');
   assert.equal(asset?.name, 'assets/flow.gif');
 });
+
+test('a thematic break inside a fence is not a slide separator', () => {
+  const talk = parseTalkMarkdown(`# Slide
+
+\`\`\`txt
+foo
+---
+bar
+\`\`\`
+
+---
+
+# Next
+`);
+  assert.equal(talk.slides.length, 2);
+  assert.match(talk.slides[0], /```txt\nfoo\n---\nbar\n```/);
+  assert.match(talk.slides[1], /^# Next\n/);
+});
+
+test('YAML frontmatter keeps quoted titles and multiline descriptions', () => {
+  const talk = parseTalkMarkdown(`---
+title: "Foo: Bar"
+description: |
+  複数行の
+  description
+---
+
+# One
+`);
+  assert.equal(talk.meta.title, 'Foo: Bar');
+  assert.equal(talk.meta.description, '複数行の\ndescription\n');
+});

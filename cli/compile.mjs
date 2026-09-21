@@ -4,6 +4,9 @@ import { createRequire } from 'node:module';
 import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseJSONC } from 'jsonc-parser';
+import { parseTalkMarkdown } from './document.mjs';
+
+export { parseTalkMarkdown } from './document.mjs';
 
 export const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
@@ -94,138 +97,6 @@ export async function resolveDeck(inputPath) {
 
 export function defaultOutPath(slidesFile) {
   return join(dirname(slidesFile), `${basename(slidesFile, extname(slidesFile))}.html`);
-}
-
-function unquote(value) {
-  const s = value.trim();
-  if (
-    (s.startsWith('"') && s.endsWith('"') && s.length >= 2) ||
-    (s.startsWith("'") && s.endsWith("'") && s.length >= 2)
-  ) {
-    return s.slice(1, -1);
-  }
-  return s;
-}
-
-function parseInlineArray(value) {
-  const inner = value.trim().slice(1, -1).trim();
-  if (!inner) return [];
-  return inner.split(',').map((part) => unquote(part));
-}
-
-export function parseSimpleYaml(raw) {
-  const result = {};
-  let pending = null;
-  let mode = null;
-  for (const line of raw.split('\n')) {
-    if (!line.trim() || /^\s*#/.test(line)) continue;
-    const listItem = /^(\s+)-\s+(.*)$/.exec(line);
-    if (listItem && pending && (!mode || mode === 'list')) {
-      if (!mode) {
-        mode = 'list';
-        result[pending] = [];
-      }
-      result[pending].push(unquote(listItem[2]));
-      continue;
-    }
-    const nested = /^(\s+)([^:\s][^:]*):\s*(.*)$/.exec(line);
-    if (nested && pending && nested[1].length > 0 && (!mode || mode === 'map')) {
-      if (!mode) {
-        mode = 'map';
-        result[pending] = {};
-      }
-      if (mode !== 'map') throw new Error(`frontmatter の ${pending} を解釈できません。`);
-      result[pending][nested[2].trim()] = unquote(nested[3]);
-      continue;
-    }
-    const kv = /^([^:\s][^:]*):\s*(.*)$/.exec(line);
-    if (!kv) throw new Error(`frontmatter を解釈できません: ${line.trim()}`);
-    pending = kv[1].trim();
-    mode = null;
-    const value = kv[2];
-    if (value === '') continue;
-    if (value.startsWith('[') && value.endsWith(']')) result[pending] = parseInlineArray(value);
-    else result[pending] = unquote(value);
-    pending = null;
-  }
-  return result;
-}
-
-export function splitFrontmatter(markdown) {
-  const src = markdown.replace(/\r\n?/g, '\n');
-  if (!src.startsWith('---\n')) return { meta: {}, body: src };
-  const close = src.indexOf('\n---', 3);
-  if (close === -1) return { meta: {}, body: src };
-  const after = src.slice(close + 4);
-  if (after.length && !after.startsWith('\n') && after !== '') return { meta: {}, body: src };
-  return {
-    meta: parseSimpleYaml(src.slice(4, close)),
-    body: after.replace(/^\n/, ''),
-  };
-}
-
-function splitSlides(markdown) {
-  const texts = markdown
-    .replace(/\r\n?/g, '\n')
-    .split(/^---$/m)
-    .map((text) => text.replace(/^\n+|\n+$/g, '') + '\n');
-  if (texts.some((text) => !text.trim())) throw new Error('空のスライドがあります。');
-  return texts;
-}
-
-export function extractModelFences(markdown) {
-  const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
-  const models = [];
-  const out = [];
-  const seen = new Set();
-  for (let i = 0; i < lines.length; i++) {
-    const open = /^```milo:model[ \t]+([A-Za-z][\w-]*)[ \t]*$/.exec(lines[i]);
-    if (!open) {
-      out.push(lines[i]);
-      continue;
-    }
-    const name = open[1];
-    const body = [];
-    i++;
-    while (i < lines.length && !/^```[ \t]*$/.test(lines[i])) {
-      body.push(lines[i]);
-      i++;
-    }
-    if (i >= lines.length) throw new Error(`milo:model ${name} のコードフェンスが閉じていません。`);
-    const id = prefixedId(name, 'model');
-    if (seen.has(id)) throw new Error(`モデル ID が重複しています: ${name}`);
-    seen.add(id);
-    const text = body.join('\n').replace(/^\n+|\n+$/g, '') + '\n';
-    parseJSONCFile(text, `model ${name}`);
-    models.push({ id, kind: 'model', name: `${name}.jsonc`, text });
-  }
-  return { models, body: out.join('\n') };
-}
-
-export function parseTalkMarkdown(markdown) {
-  const { meta, body: afterMeta } = splitFrontmatter(markdown);
-  const { models, body } = extractModelFences(afterMeta);
-  return { meta, models, slides: splitSlides(body) };
-}
-
-function withoutFences(markdown) {
-  return markdown.replace(/^```[\s\S]*?^```[ \t]*$/gm, '');
-}
-
-function collectImageRefs(markdown) {
-  const refs = new Set();
-  const source = withoutFences(markdown);
-  for (const match of source.matchAll(/!\[[^\]]*]\(\s*<([^>\s]+)>\s*(?:"[^"]*")?\s*\)/g)) {
-    refs.add(match[1]);
-  }
-  for (const match of source.matchAll(/!\[[^\]]*]\(\s*([^)\s<]+)(?:\s+"[^"]*")?\s*\)/g)) {
-    refs.add(match[1]);
-  }
-  for (const match of source.matchAll(/::image\{([^}]*)\}/g)) {
-    const asset = /asset\s*=\s*"([^"]*)"/.exec(match[1]);
-    if (asset) refs.add(asset[1]);
-  }
-  return [...refs];
 }
 
 function isRemoteRef(ref) {
@@ -353,7 +224,7 @@ export async function loadDeck(inputPath) {
 
   const modelIds = new Set(talk.models.map((m) => m.id));
   const fileModels = await loadModelsDir(dir, modelIds);
-  const assets = await loadReferencedAssets(dir, collectImageRefs(slideTexts.join('\n')));
+  const assets = await loadReferencedAssets(dir, talk.imageRefs);
   return {
     dir,
     slidesFile,
