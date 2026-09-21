@@ -98,16 +98,16 @@ test('blocks can be added/removed and snapshots restored without DOM serializati
 test('new sources stay inside their readable kind section when group markers exist', () => {
   const html = readFileSync('dist/milo.html', 'utf8'),
     s = SourceStore.fromHTML(html);
-  s.add({ id: 'slide-new', kind: 'slide', name: 'new.md', text: '# New' }, 'slide-wave');
+  s.add({ id: 'slide-new', kind: 'slide', name: 'new.md', text: '# New' }, 'slide-02');
   s.add({ id: 'model-new', kind: 'model', name: 'new.jsonc', text: '{}' });
   assert.deepEqual(
     s.list('slide').map((b) => b.id),
-    ['slide-cover', 'slide-new', 'slide-wave', 'slide-motion'],
+    ['slide-01', 'slide-new', 'slide-02', 'slide-03'],
   );
-  s.moveBefore('slide-motion', 'slide-wave');
+  s.moveBefore('slide-03', 'slide-02');
   assert.deepEqual(
     s.list('slide').map((b) => b.id),
-    ['slide-cover', 'slide-new', 'slide-motion', 'slide-wave'],
+    ['slide-01', 'slide-new', 'slide-03', 'slide-02'],
   );
   assert.ok(s.html!.indexOf('id="slide-new"') < s.html!.lastIndexOf('<!-- END MILO SLIDES -->'));
   assert.ok(s.html!.indexOf('id="model-new"') > s.html!.lastIndexOf('<!-- END MILO SLIDES -->'));
@@ -134,17 +134,17 @@ test('binding replays the physical slide order edited before a file handle is co
   boot.html = null;
   boot.blocks = boot.blocks.map(({ id, kind, name, text }) => ({ id, kind, name, text }));
   const draft = new SourceStore(boot);
-  draft.moveBefore('slide-motion', 'slide-wave');
+  draft.moveBefore('slide-03', 'slide-02');
   draft.attach(SourceStore.fromHTML(html), boot);
   assert.deepEqual(
     draft.list('slide').map((b) => b.id),
-    ['slide-cover', 'slide-motion', 'slide-wave'],
+    ['slide-01', 'slide-03', 'slide-02'],
   );
   assert.deepEqual(
     SourceStore.fromHTML(draft.html!)
       .list('slide')
       .map((b) => b.id),
-    ['slide-cover', 'slide-motion', 'slide-wave'],
+    ['slide-01', 'slide-03', 'slide-02'],
   );
 });
 test('malformed JSONC stays editable but cannot drive a semantic patch', () => {
@@ -369,17 +369,15 @@ test('built artifact contains one kernel and all dependencies; a model edit leav
   assert.equal((styles.match(/\.presenting \.slide\s*\{/g) ?? []).length, 1);
   assert.equal(styles.includes('.presenting .slide h1'), false);
   assert.equal(html.includes('id="third-party-notices"'), false);
-  const slideTexts = readFileSync('content/slides.md', 'utf8')
-    .replace(/\r\n?/g, '\n')
-    .split(/^---$/m)
-    .map((text) => text.replace(/^\n+|\n+$/g, '') + '\n');
-  assert.deepEqual(
-    s.list('slide').map((block) => block.text),
-    slideTexts,
-  );
+  assert.match(s.get('slide-01').text, /^# 君とボク。/);
+  assert.ok(s.get('slide-02').text.includes('{{wave.gamma}}'));
+  assert.ok(s.get('slide-03').text.includes('./assets/flow.gif'));
+  assert.equal(json(s.get('manifest').text).title, '小さな実験室');
+  assert.equal(s.get('model-wave').name, 'wave.jsonc');
+  assert.equal(s.list('asset')[0]?.name, 'assets/flow.gif');
   assert.equal(Object.hasOwn(json(s.get('manifest').text), 'slides'), false);
   assert.ok(html.indexOf('MILO TOOLBOX') < html.indexOf('MILO DOCUMENT'));
-  assert.ok(html.indexOf('id="milo-runtime"') < html.indexOf('id="slide-cover"'));
+  assert.ok(html.indexOf('id="milo-runtime"') < html.indexOf('id="slide-01"'));
   assert.ok(html.indexOf('id="milo-launcher"') > html.indexOf('<!-- END MILO DOCUMENT -->'));
   assert.equal(html.includes('component-phase'), false);
   assert.equal(html.includes('部品を起動中'), false);

@@ -6,6 +6,7 @@ import {
   esc,
   fmt,
   model,
+  resolveAssetRef,
   showError,
   type Directive,
   type RenderContext,
@@ -136,6 +137,13 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   );
   md.renderer.rules.milo_directive = (tokens, index) =>
     `<div class="live-block" data-live="${tokens[index].meta!.index}"></div>\n`;
+  const fence = md.renderer.rules.fence;
+  md.renderer.rules.fence = (tokens, index, options, env, self) => {
+    if (/^milo:model\b/.test(tokens[index].info.trim())) return '';
+    return fence
+      ? fence(tokens, index, options, env, self)
+      : self.renderToken(tokens, index, options);
+  };
   md.block.ruler.before('fence', 'math_block', mathBlock, {
     alt: ['paragraph', 'reference', 'blockquote', 'list'],
   });
@@ -192,11 +200,13 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   md.renderer.rules.image = (tokens, index) => {
     const token = tokens[index],
       src = String(token.attrGet('src') || ''),
-      alt = token.content;
-    if (!src.startsWith('asset:'))
-      return '<span class="inline-error">画像は asset:ID で埋め込み素材を参照してください。</span>';
+      alt = token.content,
+      title = token.attrGet('title');
     try {
-      return `<img class="embedded-image" src="${esc(assetURL(ctx.store.get(src.slice(6)).text))}" alt="${esc(alt)}">`;
+      const id = resolveAssetRef(ctx.store, src);
+      const img = `<img class="embedded-image" src="${esc(assetURL(ctx.store.get(id).text))}" alt="${esc(alt)}">`;
+      if (!title) return img;
+      return `<span class="image-block">${img}<p class="image-caption">${esc(title)}</p></span>`;
     } catch (e: any) {
       return `<span class="inline-error">${esc(e.message)}</span>`;
     }

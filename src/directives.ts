@@ -23,6 +23,28 @@ export function assetURL(text: string): string {
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) throw new Error('画像データが不正です。');
   return `data:${match[1]};base64,${base64}`;
 }
+function normAssetPath(value: string) {
+  return value.replace(/\\/g, '/').replace(/^\.\//, '');
+}
+export function resolveAssetRef(store: SourceStore, ref: string): string {
+  const raw = ref.startsWith('asset:') ? ref.slice(6) : ref;
+  if (!raw) throw new Error('画像の参照が空です。');
+  if (store.blocks.has(raw)) return raw;
+  const prefixed = raw.startsWith('asset-') ? raw : `asset-${raw}`;
+  if (store.blocks.has(prefixed)) return prefixed;
+  const n = normAssetPath(raw),
+    base = n.split('/').pop() || n;
+  let found = '';
+  for (const b of store.list('asset')) {
+    const name = normAssetPath(b.name);
+    if (name === n || name.endsWith('/' + n) || name === base || name.split('/').pop() === base) {
+      if (found && found !== b.id) throw new Error(`画像の参照が複数に一致します: ${ref}`);
+      found = b.id;
+    }
+  }
+  if (found) return found;
+  throw new Error(`埋め込み画像が見つかりません: ${ref}`);
+}
 
 export interface RenderContext {
   store: SourceStore;
@@ -273,8 +295,7 @@ const sliderRenderer: DirectiveRenderer = {
 
 const imageRenderer: DirectiveRenderer = {
   mount(el, d, ctx) {
-    const id = d.attrs.asset;
-    if (!id) throw new Error('asset を指定してください。');
+    const id = resolveAssetRef(ctx.store, d.attrs.asset || '');
     const img = document.createElement('img');
     img.src = assetURL(ctx.store.get(id).text);
     img.alt = d.attrs.alt || ctx.store.get(id).name;

@@ -1,6 +1,6 @@
 # milo
 
-Markdown からスライドの HTML ファイルをビルドします。
+Markdown からスライドの HTML をビルドします。
 生成後の使用には外部 CDN やサーバーへの接続は不要です。
 
 ## 使い方
@@ -9,11 +9,40 @@ Node.js (v22以降) をインストールして以下を実行します。
 
 ```sh
 npm ci
-npx milo <スライドのパス>
+npx milo talk.md
 ```
 
-`<スライドのパス>` は `slides.md`、別の Markdown、またはそれらを含むディレクトリです。
-同じ場所の `deck.jsonc`・`models/`・`assets/` があれば取り込みます。
+原稿は1つの Markdown で書けます。先頭の frontmatter にタイトルを、`milo:model` フェンスに数式モデルを、`![](./assets/photo.png)` に画像を置きます。
+
+````markdown
+---
+title: 小さな実験室
+description: 数式と図の実験
+layouts: [cover, lab, media]
+---
+
+```milo:model wave
+{
+  "input": "t",
+  "parameters": { "gamma": 0.2, "omega": 3.0 },
+  "expression": "exp(-gamma * t) * cos(omega * t)"
+}
+```
+
+# 表紙
+
+---
+
+減衰率は **{{wave.gamma}}**。
+
+::plot{model="wave" from="0" to="10"}
+
+---
+
+![図](./assets/flow.gif)
+````
+
+`<パス>` は `.md` ファイルか、`slides.md` を含むディレクトリです。同じ場所の `models/` に置いた JSONC も追加で取り込みます。
 
 ```sh
 npx milo content -o dist/milo.html

@@ -245,7 +245,12 @@ function updateNav() {
   $('slides').innerHTML = manifest.slides
     .map((id, i) => {
       const text = store.get(id).text,
-        kind = text.includes('::image') ? 'image' : text.includes('::plot') ? 'plot' : 'text',
+        kind =
+          /!\[[^\]]*]\([^)]+\)/.test(text) || text.includes('::image')
+            ? 'image'
+            : text.includes('::plot')
+              ? 'plot'
+              : 'text',
         layout = manifest.layouts?.[id] || 'lab';
       const art =
         kind === 'plot'
@@ -435,7 +440,7 @@ function refreshInspector() {
     $('insert-asset').onclick = () => {
       const id = currentId();
       mutate(() =>
-        store.setText(id, store.get(id).text + `\n\n::image{asset="${b.id}" alt="画像"}\n`),
+        store.setText(id, store.get(id).text + `\n\n![画像](${b.name || 'asset:' + b.id})\n`),
       );
       toast('現在のスライドに追加しました。');
     };

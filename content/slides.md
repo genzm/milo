@@ -1,3 +1,21 @@
+---
+title: 小さな実験室
+description: 原稿・数式・動く図・編集道具を内蔵する、自己編集可能な単一HTML。
+layouts: [cover, lab, media]
+---
+
+```milo:model wave
+{
+  "input": "t",
+  "parameters": {
+    "A": 1.0,
+    "gamma": 0.2,
+    "omega": 3.0
+  },
+  "expression": "A * exp(-gamma * t) * cos(omega * t)"
+}
+```
+
 # 君とボク。
 
 
@@ -26,6 +44,6 @@
 GIFも、画像も、ひとつのHTMLの中へ。  
 「素材」から画像を差し替えると、そのまま文書に埋め込まれます。
 
-::image{asset="asset-loop" alt="粒子の動きを描いたループアニメーション" caption="EMBEDDED GIF · オフラインでも再生できます"}
+![粒子の動きを描いたループアニメーション](./assets/flow.gif "EMBEDDED GIF · オフラインでも再生できます")
 
 説明用の数式も書けます。たとえば $E = \frac{1}{2}mv^2$。

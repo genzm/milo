@@ -1,7 +1,7 @@
 import { build } from 'esbuild';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { basename, dirname, extname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseJSONC } from 'jsonc-parser';
 
@@ -96,6 +96,74 @@ export function defaultOutPath(slidesFile) {
   return join(dirname(slidesFile), `${basename(slidesFile, extname(slidesFile))}.html`);
 }
 
+function unquote(value) {
+  const s = value.trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"') && s.length >= 2) ||
+    (s.startsWith("'") && s.endsWith("'") && s.length >= 2)
+  ) {
+    return s.slice(1, -1);
+  }
+  return s;
+}
+
+function parseInlineArray(value) {
+  const inner = value.trim().slice(1, -1).trim();
+  if (!inner) return [];
+  return inner.split(',').map((part) => unquote(part));
+}
+
+export function parseSimpleYaml(raw) {
+  const result = {};
+  let pending = null;
+  let mode = null;
+  for (const line of raw.split('\n')) {
+    if (!line.trim() || /^\s*#/.test(line)) continue;
+    const listItem = /^(\s+)-\s+(.*)$/.exec(line);
+    if (listItem && pending && (!mode || mode === 'list')) {
+      if (!mode) {
+        mode = 'list';
+        result[pending] = [];
+      }
+      result[pending].push(unquote(listItem[2]));
+      continue;
+    }
+    const nested = /^(\s+)([^:\s][^:]*):\s*(.*)$/.exec(line);
+    if (nested && pending && nested[1].length > 0 && (!mode || mode === 'map')) {
+      if (!mode) {
+        mode = 'map';
+        result[pending] = {};
+      }
+      if (mode !== 'map') throw new Error(`frontmatter の ${pending} を解釈できません。`);
+      result[pending][nested[2].trim()] = unquote(nested[3]);
+      continue;
+    }
+    const kv = /^([^:\s][^:]*):\s*(.*)$/.exec(line);
+    if (!kv) throw new Error(`frontmatter を解釈できません: ${line.trim()}`);
+    pending = kv[1].trim();
+    mode = null;
+    const value = kv[2];
+    if (value === '') continue;
+    if (value.startsWith('[') && value.endsWith(']')) result[pending] = parseInlineArray(value);
+    else result[pending] = unquote(value);
+    pending = null;
+  }
+  return result;
+}
+
+export function splitFrontmatter(markdown) {
+  const src = markdown.replace(/\r\n?/g, '\n');
+  if (!src.startsWith('---\n')) return { meta: {}, body: src };
+  const close = src.indexOf('\n---', 3);
+  if (close === -1) return { meta: {}, body: src };
+  const after = src.slice(close + 4);
+  if (after.length && !after.startsWith('\n') && after !== '') return { meta: {}, body: src };
+  return {
+    meta: parseSimpleYaml(src.slice(4, close)),
+    body: after.replace(/^\n/, ''),
+  };
+}
+
 function splitSlides(markdown) {
   const texts = markdown
     .replace(/\r\n?/g, '\n')
@@ -105,7 +173,75 @@ function splitSlides(markdown) {
   return texts;
 }
 
-async function loadModels(dir) {
+export function extractModelFences(markdown) {
+  const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+  const models = [];
+  const out = [];
+  const seen = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const open = /^```milo:model[ \t]+([A-Za-z][\w-]*)[ \t]*$/.exec(lines[i]);
+    if (!open) {
+      out.push(lines[i]);
+      continue;
+    }
+    const name = open[1];
+    const body = [];
+    i++;
+    while (i < lines.length && !/^```[ \t]*$/.test(lines[i])) {
+      body.push(lines[i]);
+      i++;
+    }
+    if (i >= lines.length) throw new Error(`milo:model ${name} のコードフェンスが閉じていません。`);
+    const id = prefixedId(name, 'model');
+    if (seen.has(id)) throw new Error(`モデル ID が重複しています: ${name}`);
+    seen.add(id);
+    const text = body.join('\n').replace(/^\n+|\n+$/g, '') + '\n';
+    parseJSONCFile(text, `model ${name}`);
+    models.push({ id, kind: 'model', name: `${name}.jsonc`, text });
+  }
+  return { models, body: out.join('\n') };
+}
+
+export function parseTalkMarkdown(markdown) {
+  const { meta, body: afterMeta } = splitFrontmatter(markdown);
+  const { models, body } = extractModelFences(afterMeta);
+  return { meta, models, slides: splitSlides(body) };
+}
+
+function withoutFences(markdown) {
+  return markdown.replace(/^```[\s\S]*?^```[ \t]*$/gm, '');
+}
+
+function collectImageRefs(markdown) {
+  const refs = new Set();
+  const source = withoutFences(markdown);
+  for (const match of source.matchAll(/!\[[^\]]*]\(\s*<([^>\s]+)>\s*(?:"[^"]*")?\s*\)/g)) {
+    refs.add(match[1]);
+  }
+  for (const match of source.matchAll(/!\[[^\]]*]\(\s*([^)\s<]+)(?:\s+"[^"]*")?\s*\)/g)) {
+    refs.add(match[1]);
+  }
+  for (const match of source.matchAll(/::image\{([^}]*)\}/g)) {
+    const asset = /asset\s*=\s*"([^"]*)"/.exec(match[1]);
+    if (asset) refs.add(asset[1]);
+  }
+  return [...refs];
+}
+
+function isRemoteRef(ref) {
+  return /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(ref) && !ref.startsWith('asset:');
+}
+
+function resolveInside(root, relPath) {
+  const abs = resolve(root, relPath);
+  const rel = relative(root, abs);
+  if (!rel || rel.split(sep).includes('..')) {
+    throw new Error(`画像パスが文書の外を指しています: ${relPath}`);
+  }
+  return abs;
+}
+
+async function loadModelsDir(dir, existingIds) {
   const root = join(dir, 'models');
   let names;
   try {
@@ -118,8 +254,10 @@ async function loadModels(dir) {
   for (const name of names) {
     const text = await readFile(join(root, name), 'utf8');
     parseJSONCFile(text, name);
-    const stem = basename(name, extname(name));
-    blocks.push({ id: prefixedId(stem, 'model'), kind: 'model', name, text });
+    const id = prefixedId(basename(name, extname(name)), 'model');
+    if (existingIds.has(id)) continue;
+    existingIds.add(id);
+    blocks.push({ id, kind: 'model', name, text });
   }
   return blocks;
 }
@@ -132,79 +270,86 @@ function wrapAsset(mime, body) {
   return `mime: ${mime}\n\n${base64.match(/.{1,76}/g).join('\n')}`;
 }
 
-async function loadAssets(dir, assetIds = {}) {
-  const root = join(dir, 'assets');
-  let names;
-  try {
-    names = (await readdir(root)).filter((name) => IMAGE_MIME[extname(name).toLowerCase()]).sort();
-  } catch (e) {
-    if (e.code === 'ENOENT') return [];
-    throw e;
-  }
+async function loadReferencedAssets(dir, refs) {
   const blocks = [];
-  for (const name of names) {
-    const ext = extname(name).toLowerCase();
+  const used = new Set();
+  const byPath = new Map();
+  for (const ref of refs) {
+    if (!ref || ref.startsWith('asset:') || isRemoteRef(ref)) continue;
+    const abs = resolveInside(dir, ref);
+    if (byPath.has(abs)) continue;
+    const ext = extname(abs).toLowerCase();
     const mime = IMAGE_MIME[ext];
-    const bytes = await readFile(join(root, name));
+    if (!mime) throw new Error(`未対応の画像です: ${ref}`);
+    const stem = basename(abs, ext);
+    let id = prefixedId(stem, 'asset');
+    let n = 2;
+    while (used.has(id)) id = prefixedId(`${stem}-${n++}`, 'asset');
+    used.add(id);
+    byPath.set(abs, id);
+    const bytes = await readFile(abs);
     const text =
       mime === 'image/svg+xml' ? wrapAsset(mime, bytes.toString('utf8')) : wrapAsset(mime, bytes);
-    const id = assetIds[name]
-      ? blockId(assetIds[name], name)
-      : prefixedId(basename(name, ext), 'asset');
+    const name = relative(dir, abs).split(sep).join('/');
     blocks.push({ id, kind: 'asset', name, text });
   }
   return blocks;
 }
 
-export async function loadDeck(inputPath) {
-  const { dir, slidesFile } = await resolveDeck(inputPath);
-  const deckText =
-    (await readIfExists(join(dir, 'deck.jsonc'))) ?? (await readIfExists(join(dir, 'deck.json')));
-  const deck = deckText ? parseJSONCFile(deckText, 'deck.jsonc') : {};
-  if (deck && typeof deck !== 'object')
-    throw new Error('deck.jsonc はオブジェクトにしてください。');
-
-  const slideTexts = splitSlides(await readFile(slidesFile, 'utf8'));
-  const slideIds = Array.isArray(deck.slideIds) ? deck.slideIds : null;
-  if (slideIds && slideIds.length !== slideTexts.length) {
-    throw new Error(
-      `slideIds の数（${slideIds.length}）がスライド数（${slideTexts.length}）と一致しません。`,
+function layoutMap(layouts, slideIds) {
+  if (layouts == null || layouts === '') return {};
+  if (Array.isArray(layouts)) {
+    return Object.fromEntries(
+      slideIds.map((id, index) => [id, layouts[index]]).filter(([, v]) => v),
     );
   }
-  const slides = slideTexts.map((text, index) => {
-    const id = slideIds
-      ? blockId(slideIds[index], `slideIds[${index}]`)
-      : `slide-${String(index + 1).padStart(2, '0')}`;
-    return { id, kind: 'slide', name: `${basename(slidesFile)}#${index + 1}`, text };
-  });
+  if (typeof layouts === 'object') return layouts;
+  throw new Error('layouts は配列かオブジェクトにしてください。');
+}
+
+export async function loadDeck(inputPath) {
+  const { dir, slidesFile } = await resolveDeck(inputPath);
+  const talk = parseTalkMarkdown(await readFile(slidesFile, 'utf8'));
+  const meta = talk.meta && typeof talk.meta === 'object' ? talk.meta : {};
+  const slideTexts = talk.slides;
+  const slides = slideTexts.map((text, index) => ({
+    id: `slide-${String(index + 1).padStart(2, '0')}`,
+    kind: 'slide',
+    name: `${basename(slidesFile)}#${index + 1}`,
+    text,
+  }));
 
   const title =
-    typeof deck.title === 'string' && deck.title.trim()
-      ? deck.title.trim()
+    typeof meta.title === 'string' && meta.title.trim()
+      ? meta.title.trim()
       : slideTexts[0].match(/^#\s+(.+)$/m)?.[1]?.trim() || basename(dir);
-  const layouts = deck.layouts && typeof deck.layouts === 'object' ? deck.layouts : {};
+  const layouts = layoutMap(
+    meta.layouts,
+    slides.map((s) => s.id),
+  );
   const manifest = {
     id: 'manifest',
     kind: 'manifest',
-    name: 'deck.jsonc',
+    name: 'manifest.jsonc',
     text: JSON.stringify({ title, layouts }, null, 2) + '\n',
   };
 
-  const models = await loadModels(dir);
-  const assets = await loadAssets(
-    dir,
-    deck.assetIds && typeof deck.assetIds === 'object' ? deck.assetIds : {},
-  );
+  const modelIds = new Set(talk.models.map((m) => m.id));
+  const fileModels = await loadModelsDir(dir, modelIds);
+  const assets = await loadReferencedAssets(dir, collectImageRefs(slideTexts.join('\n')));
   return {
     dir,
     slidesFile,
     title,
     description:
-      typeof deck.description === 'string'
-        ? deck.description
+      typeof meta.description === 'string' && meta.description.trim()
+        ? meta.description.trim()
         : '原稿・数式・動く図・編集道具を内蔵する、自己編集可能な単一HTML。',
-    documentId: typeof deck.documentId === 'string' ? deck.documentId : 'milo',
-    blocks: [manifest, ...slides, ...models, ...assets],
+    documentId:
+      typeof meta.documentId === 'string' && meta.documentId.trim()
+        ? meta.documentId.trim()
+        : 'milo',
+    blocks: [manifest, ...slides, ...talk.models, ...fileModels, ...assets],
   };
 }
 

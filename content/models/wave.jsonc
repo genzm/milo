@@ -1,9 +1,0 @@
-{
-  "input": "t",
-  "parameters": {
-    "A": 1.0,
-    "gamma": 0.2,
-    "omega": 3.0
-  },
-  "expression": "A * exp(-gamma * t) * cos(omega * t)"
-}

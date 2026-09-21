@@ -225,7 +225,7 @@ test('Cmd+S suppresses browser save, connects when needed, and flushes from the 
       'Cmd+S did not flush',
     );
     assert.equal(
-      SourceStore.fromHTML(app.file.disk).get('slide-cover').text,
+      SourceStore.fromHTML(app.file.disk).get('slide-01').text,
       '# Cmd+S で保存\n\n本文',
     );
     assert.deepEqual(app.errors, []);
@@ -268,7 +268,7 @@ test('presentation slider edits update the source and code-editor transactions u
       () => app.query('#save-label').textContent === '保存済み',
       'Source edit did not save',
     );
-    assert.ok(SourceStore.fromHTML(app.file.disk).get('slide-wave').text.includes('</script>'));
+    assert.ok(SourceStore.fromHTML(app.file.disk).get('slide-02').text.includes('</script>'));
     assert.deepEqual(app.errors, []);
   } finally {
     await app.close();
@@ -307,7 +307,7 @@ test('adding, reordering and deleting slides preserves a reopenable deck', async
     const store = SourceStore.fromHTML(app.file.disk),
       ids = store.list('slide').map((b) => b.id);
     assert.equal(ids.length, 3);
-    assert.deepEqual(ids, ['slide-cover', 'slide-wave', 'slide-motion']);
+    assert.deepEqual(ids, ['slide-01', 'slide-02', 'slide-03']);
     assert.equal(Object.hasOwn(json(store.get('manifest').text), 'slides'), false);
     assert.ok(ids.every((id) => store.blocks.has(id)));
     assert.deepEqual(app.errors, []);
