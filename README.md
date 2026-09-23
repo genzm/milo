@@ -63,3 +63,64 @@ npx milo content -o dist/milo.html
 
 `Cmd+S` / `Ctrl+S` はブラウザの「ページを保存」ではなく、miloの即時保存として動きます。
 未接続なら保存先の接続を開始します。
+
+## Canvas
+
+`:::canvas` はMarkdownで書いたHTML要素を配置し、その背面にSVGの矢印を描きます。単純な流れは、Markdownのまとまりを `-->` で区切るだけで作れます。
+
+```markdown
+:::canvas{layout="flow" direction="right"}
+
+### 入力
+
+通常の **Markdown** を書けます。
+
+-->
+
+### 処理
+
+- 箇条書き
+- 数式 $x^2$
+
+-->
+
+### 出力
+
+画像やmiloディレクティブも利用できます。
+
+:::
+```
+
+接続が分岐する図では、nodeにIDを付けてedgeを指定します。
+
+```markdown
+:::canvas{layout="flow" direction="down" route="elbow"}
+
+:::node{#source tone="accent"}
+
+### Source
+
+入力データ
+:::
+
+:::node{#left shape="round"}
+
+### A
+
+:::
+
+:::node{#right shape="round"}
+
+### B
+
+:::
+
+::edge{from="source" to="left" label="yes"}
+::edge{from="source" to="right" label="no" dashed="true"}
+
+:::
+```
+
+`layout="free"` ではnodeの `x`、`y`、`width`、`height`、または `frame="x,y,width,height"` を指定します。座標系の既定値は横1000、縦420です。`flow` でも `dx` / `dy` で自動配置後の位置を調整でき、`pinned="true" x="..." y="..."` で特定のnodeだけを固定できます。
+
+nodeの `shape` は `card`、`round`、`ellipse`、`diamond`、`plain`、edgeの `route` は `curve`、`straight`、`elbow` に対応しています。

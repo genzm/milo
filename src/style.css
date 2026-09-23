@@ -691,6 +691,132 @@ input[type='range'] {
     margin: 7px 0;
   }
 }
+.milo-canvas {
+  position: relative;
+  width: 100%;
+  margin: 1.45cqw 0;
+  overflow: hidden;
+  isolation: isolate;
+
+  .canvas-connections,
+  .canvas-content {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .canvas-connections {
+    z-index: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .canvas-content {
+    z-index: 1;
+  }
+  .canvas-node {
+    --canvas-node-bg: var(--white);
+    position: absolute;
+    box-sizing: border-box;
+    padding: 1.18cqw 1.36cqw;
+    border: 1px solid #ddcdd1;
+    background: var(--canvas-node-bg);
+    color: var(--slide-ink);
+    overflow: hidden;
+
+    > :first-child {
+      margin-top: 0;
+    }
+    > :last-child {
+      margin-bottom: 0;
+    }
+    :is(h1, h2, h3, h4, h5, h6) {
+      margin-top: 0;
+      margin-bottom: 0.55cqw;
+      color: inherit;
+      font-size: clamp(12px, 1.25cqw, 20px);
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+    }
+    :is(p, ul, ol, blockquote) {
+      margin-top: 0.4cqw;
+      margin-bottom: 0;
+      color: inherit;
+      font-size: clamp(9px, 0.86cqw, 14px);
+      line-height: 1.5;
+    }
+    ul,
+    ol {
+      padding-left: 1.45cqw;
+    }
+    blockquote {
+      padding-left: 0.73cqw;
+    }
+    .equation-block,
+    .text-block,
+    .plot-block,
+    .image-block {
+      margin: 0.55cqw 0;
+    }
+  }
+  .canvas-shape-round {
+    border-radius: 1.45cqw;
+  }
+  .canvas-shape-ellipse {
+    border-radius: 50%;
+    padding-right: 2cqw;
+    padding-left: 2cqw;
+    text-align: center;
+  }
+  .canvas-shape-diamond {
+    border: 0;
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    padding: 2cqw 2.7cqw;
+  }
+  .canvas-shape-plain {
+    border-color: transparent;
+    background: transparent;
+  }
+  .canvas-tone-accent {
+    --canvas-node-bg: var(--accent-pale);
+    border-color: var(--accent);
+  }
+  .canvas-tone-muted {
+    --canvas-node-bg: #f8f5f6;
+    border-color: #e7dfe1;
+    color: var(--slide-muted);
+  }
+  .canvas-tone-dark {
+    --canvas-node-bg: #1d1a1b;
+    border-color: #1d1a1b;
+    color: var(--white);
+  }
+  .canvas-edge {
+    fill: none;
+    stroke: #2d2628;
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+  .canvas-edge-accent {
+    stroke: var(--accent);
+  }
+  .canvas-edge-muted {
+    stroke: #a9999e;
+  }
+  .canvas-edge.is-dashed {
+    stroke-dasharray: 7 6;
+  }
+  .canvas-arrow-head {
+    fill: context-stroke;
+  }
+  .canvas-edge-label {
+    fill: var(--slide-muted);
+    paint-order: stroke;
+    stroke: var(--white);
+    stroke-width: 5px;
+    stroke-linejoin: round;
+    font: 12px var(--mono);
+  }
+}
 .block-error {
   border: 1px solid #ebc2ac !important;
   background: #fff5ed !important;

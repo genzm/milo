@@ -78,6 +78,28 @@ bar
   assert.match(talk.slides[1], /^# Next\n/);
 });
 
+test('a thematic break inside a canvas node is not a slide separator', () => {
+  const talk = parseTalkMarkdown(`# Slide
+
+:::canvas
+:::node{#before}
+### Before
+
+---
+
+After the rule
+:::
+:::
+
+---
+
+# Next
+`);
+  assert.equal(talk.slides.length, 2);
+  assert.match(talk.slides[0], /After the rule/);
+  assert.match(talk.slides[1], /^# Next/);
+});
+
 test('YAML frontmatter keeps quoted titles and multiline descriptions', () => {
   const talk = parseTalkMarkdown(`---
 title: "Foo: Bar"

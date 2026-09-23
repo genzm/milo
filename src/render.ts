@@ -1,5 +1,6 @@
 import MarkdownIt from 'markdown-it';
 import katex from 'katex';
+import { mountCanvas } from './canvas';
 import {
   assetURL,
   directiveRenderer,
@@ -86,8 +87,10 @@ function stripMiloComments(source: string) {
 
 export function renderSlide(root: HTMLElement, source: string, ctx: RenderContext): Rendered {
   const updates: (() => void)[] = [],
+    layoutUpdates: (() => void)[] = [],
     disposals: (() => void)[] = [];
   const directives: ParsedDirective[] = [];
+  const canvases: { source: string; options: string; error?: string }[] = [];
   const display = stripMiloComments(source);
   const footerMarker = /(^|\r?\n)::footer(?:\{\})?[ \t]*(?:\r?\n|$)/m.exec(display);
   const bodySource = footerMarker
@@ -95,6 +98,49 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
       : display,
     footerSource = footerMarker ? display.slice(footerMarker.index + footerMarker[0].length) : '';
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
+  md.block.ruler.before(
+    'fence',
+    'milo-canvas',
+    (s: any, line: number, end: number, silent: boolean) => {
+      if (s.sCount[line] - s.blkIndent >= 4) return false;
+      const opening = /^:::canvas(?:\{([\s\S]*)\})?\s*$/.exec(lineText(s, line).trim());
+      if (!opening) return false;
+      let depth = 1,
+        cursor = line + 1;
+      for (; cursor < end; cursor++) {
+        const text = lineText(s, cursor).trim();
+        if (/^:::(?:canvas|node)(?:\{|\s|$)/.test(text)) depth++;
+        else if (text === ':::' && --depth === 0) break;
+      }
+      if (cursor >= end) {
+        if (silent) return true;
+        const token = s.push('milo_canvas', '', 0);
+        token.meta = {
+          index:
+            canvases.push({
+              source: '',
+              options: opening[1] || '',
+              error: 'canvasを閉じる ::: がありません。',
+            }) - 1,
+        };
+        token.map = [line, end];
+        s.line = end;
+        return true;
+      }
+      if (silent) return true;
+      const start = s.bMarks[line + 1],
+        finish = s.bMarks[cursor];
+      const token = s.push('milo_canvas', '', 0);
+      token.meta = {
+        index: canvases.push({ source: s.src.slice(start, finish), options: opening[1] || '' }) - 1,
+      };
+      token.map = [line, cursor + 1];
+      s.line = cursor + 1;
+      return true;
+    },
+  );
+  md.renderer.rules.milo_canvas = (tokens, index) =>
+    `<div class="milo-canvas" data-canvas="${tokens[index].meta!.index}"></div>\n`;
   md.block.ruler.before(
     'fence',
     'milo-directive',
@@ -239,6 +285,18 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
     );
   }
 
+  for (const element of root.querySelectorAll<HTMLElement>('[data-canvas]')) {
+    const canvas = canvases[Number(element.dataset.canvas)];
+    try {
+      if (canvas.error) throw new Error(canvas.error);
+      const mounted = mountCanvas(element, canvas.source, canvas.options, renderContext);
+      if (mounted.update) layoutUpdates.push(mounted.update);
+      if (mounted.dispose) disposals.push(mounted.dispose);
+    } catch (e) {
+      showError(element, e);
+    }
+  }
+
   for (const element of root.querySelectorAll<HTMLElement>('[data-live]')) {
     const directive = directives[Number(element.dataset.live)];
     try {
@@ -261,7 +319,10 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
         label.textContent = '?';
       }
     });
-  const update = () => updates.forEach((run) => run());
+  const update = () => {
+    updates.forEach((run) => run());
+    layoutUpdates.forEach((run) => run());
+  };
   update();
   return { update, dispose: () => disposals.forEach((run) => run()) };
 }

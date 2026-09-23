@@ -97,6 +97,32 @@ function makeSlides(lines, separators, modelRanges) {
   return slides;
 }
 
+function canvasRanges(lines) {
+  const ranges = [];
+  for (let start = 0; start < lines.length; start++) {
+    if (!/^:::canvas(?:\{|\s|$)/.test(lines[start].trim())) continue;
+    let depth = 1;
+    for (let end = start + 1; end < lines.length; end++) {
+      const text = lines[end].trim();
+      if (/^:::(?:canvas|node)(?:\{|\s|$)/.test(text)) depth++;
+      else if (text === ':::' && --depth === 0) {
+        ranges.push([start, end + 1]);
+        start = end;
+        break;
+      }
+      if (end === lines.length - 1) {
+        ranges.push([start, lines.length]);
+        start = end;
+      }
+    }
+  }
+  return ranges;
+}
+
+function insideRanges(line, ranges) {
+  return ranges.some(([start, end]) => line >= start && line < end);
+}
+
 export function parseTalkMarkdown(source) {
   const { meta, body } = splitFrontmatter(source);
   const lines = body.split('\n');
@@ -106,6 +132,7 @@ export function parseTalkMarkdown(source) {
   const models = [];
   const seen = new Set();
   const imageRefs = new Set();
+  const canvases = canvasRanges(lines);
 
   visit(tokens, (token) => {
     collectImageRef(token, imageRefs);
@@ -114,7 +141,8 @@ export function parseTalkMarkdown(source) {
       token.type === 'hr' &&
       token.level === 0 &&
       token.map &&
-      lines[token.map[0]]?.trim() === '---'
+      lines[token.map[0]]?.trim() === '---' &&
+      !insideRanges(token.map[0], canvases)
     ) {
       separators.push(token.map[0]);
       return;
