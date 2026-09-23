@@ -92,6 +92,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   const directives: ParsedDirective[] = [];
   const canvases: { source: string; options: string; error?: string }[] = [];
   const boxes: { source: string; options: string; error?: string }[] = [];
+  const columns: { sources: string[]; error?: string }[] = [];
   const footers: { source: string; error?: string }[] = [];
   const display = stripMiloComments(source);
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
@@ -148,6 +149,71 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   );
   md.renderer.rules.milo_box = (tokens, index) =>
     `<div class="box-block" data-box="${tokens[index].meta!.index}"></div>\n`;
+  md.block.ruler.before(
+    'fence',
+    'milo-columns',
+    (s: any, line: number, end: number, silent: boolean) => {
+      if (s.sCount[line] - s.blkIndent >= 4 || lineText(s, line).trim() !== '@columns')
+        return false;
+      let cursor = line + 1,
+        depth = 1,
+        fence = '',
+        columnStart = -1,
+        error = '';
+      const sources: string[] = [];
+      for (; cursor < end; cursor++) {
+        const text = lineText(s, cursor).trim();
+        if (fence) {
+          if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
+          continue;
+        }
+        const openingFence = /^(?:`{3,}|~{3,})/.exec(text);
+        if (openingFence) {
+          fence = openingFence[0];
+          continue;
+        }
+        if (text === '@columns') {
+          depth++;
+          continue;
+        }
+        if (text === '@endcolumns') {
+          if (--depth === 0) {
+            if (columnStart >= 0) error = 'columnを閉じる @endcolumn がありません。';
+            break;
+          }
+          continue;
+        }
+        if (depth !== 1) continue;
+        if (text === '@column') {
+          if (columnStart >= 0) {
+            error = 'columnを閉じる @endcolumn がありません。';
+            break;
+          }
+          columnStart = cursor + 1;
+        } else if (text === '@endcolumn') {
+          if (columnStart < 0) {
+            error = '@endcolumn に対応する @column がありません。';
+            break;
+          }
+          sources.push(s.src.slice(s.bMarks[columnStart], s.bMarks[cursor]));
+          columnStart = -1;
+        } else if (columnStart < 0 && text) {
+          error = '@columns の内容は @column で囲んでください。';
+          break;
+        }
+      }
+      if (silent) return true;
+      if (!error && cursor >= end) error = 'columnsを閉じる @endcolumns がありません。';
+      if (!error && sources.length < 2) error = 'columnsには2つ以上の @column が必要です。';
+      const token = s.push('milo_columns', '', 0);
+      token.meta = { index: columns.push({ sources, error: error || undefined }) - 1 };
+      token.map = [line, cursor < end ? cursor + 1 : end];
+      s.line = cursor < end ? cursor + 1 : end;
+      return true;
+    },
+  );
+  md.renderer.rules.milo_columns = (tokens, index) =>
+    `<div class="columns-block" data-columns="${tokens[index].meta!.index}"></div>\n`;
   md.block.ruler.before(
     'fence',
     'milo-footer',
@@ -367,6 +433,21 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   let structuralBlocks = true;
   while (structuralBlocks) {
     structuralBlocks = false;
+    for (const element of root.querySelectorAll<HTMLElement>(
+      '[data-columns]:not([data-mounted])',
+    )) {
+      structuralBlocks = true;
+      element.dataset.mounted = 'true';
+      const group = columns[Number(element.dataset.columns)];
+      if (group.error) {
+        showError(element, new Error(group.error));
+        continue;
+      }
+      element.style.setProperty('--column-count', String(group.sources.length));
+      element.innerHTML = group.sources
+        .map((column) => `<section class="column-block">${md.render(column)}</section>`)
+        .join('');
+    }
     for (const element of root.querySelectorAll<HTMLElement>('[data-canvas]:not([data-mounted])')) {
       structuralBlocks = true;
       element.dataset.mounted = 'true';

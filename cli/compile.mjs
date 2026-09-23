@@ -192,12 +192,6 @@ export function slideLayout(text) {
   return layout;
 }
 
-function layoutsFromSlides(slides) {
-  return Object.fromEntries(
-    slides.map((s) => [s.id, slideLayout(s.text)]).filter(([, layout]) => layout),
-  );
-}
-
 export async function loadDeck(inputPath) {
   const { dir, slidesFile } = await resolveDeck(inputPath);
   const talk = parseTalkMarkdown(await readFile(slidesFile, 'utf8'));
@@ -214,12 +208,12 @@ export async function loadDeck(inputPath) {
     typeof meta.title === 'string' && meta.title.trim()
       ? meta.title.trim()
       : slideTexts[0].match(/^#\s+(.+)$/m)?.[1]?.trim() || basename(dir);
-  const layouts = layoutsFromSlides(slides);
+  for (const slide of slides) slideLayout(slide.text);
   const manifest = {
     id: 'manifest',
     kind: 'manifest',
     name: 'manifest.jsonc',
-    text: JSON.stringify({ title, layouts }, null, 2) + '\n',
+    text: JSON.stringify({ title }, null, 2) + '\n',
   };
 
   const modelIds = new Set(talk.models.map((m) => m.id));

@@ -1538,6 +1538,32 @@ dialog {
   li > p {
     margin: 0;
   }
+  .columns-block {
+    display: grid;
+    grid-template-columns: repeat(var(--column-count), minmax(0, 1fr));
+    align-items: stretch;
+    margin: 2.4% 0;
+  }
+  .column-block {
+    min-width: 0;
+    padding: 0 1.64cqw;
+
+    &:first-child {
+      padding-left: 0;
+    }
+    &:last-child {
+      padding-right: 0;
+    }
+    & + & {
+      border-left: 0.12cqw solid #dddbe2;
+    }
+    > :first-child {
+      margin-top: 0;
+    }
+    > :last-child {
+      margin-bottom: 0;
+    }
+  }
   blockquote {
     border-left: 0.45cqw solid var(--accent);
     padding: 0 0 0 1.64cqw;

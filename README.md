@@ -64,6 +64,32 @@ npx milo content -o dist/milo.html
 `Cmd+S` / `Ctrl+S` はブラウザの「ページを保存」ではなく、miloの即時保存として動きます。
 未接続なら保存先の接続を開始します。
 
+## Columns
+
+`@columns` は2つ以上のMarkdown領域を等幅で横に並べます。列数は `@column` の数から自動的に決まります。
+
+```markdown
+@columns
+@column
+
+### 左側
+
+通常のMarkdownを書けます。
+
+@endcolumn
+@column
+
+### 右側
+
+- 箇条書き
+- 数式 $x^2$
+
+@endcolumn
+@endcolumns
+```
+
+3列以上も同じように `@column` を追加します。列間には共通の縦線が表示されます。
+
 ## Box
 
 `@box` は通常のMarkdownを囲んで、スライド内の独立したボックスとして表示します。

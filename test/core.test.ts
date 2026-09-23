@@ -377,6 +377,7 @@ test('built artifact contains one kernel and all dependencies; a model edit leav
   assert.ok(s.get('slide-03').text.includes('{{wave.gamma}}'));
   assert.ok(s.get('slide-04').text.includes('./assets/flow.gif'));
   assert.equal(json(s.get('manifest').text).title, '小さな実験室');
+  assert.equal(Object.hasOwn(json(s.get('manifest').text), 'layouts'), false);
   assert.equal(s.get('model-wave').name, 'wave.jsonc');
   assert.equal(s.list('asset')[0]?.name, 'assets/flow.gif');
   assert.equal(Object.hasOwn(json(s.get('manifest').text), 'slides'), false);

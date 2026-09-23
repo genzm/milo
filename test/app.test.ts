@@ -34,10 +34,7 @@ function appFixture(html: string) {
     'model-wave',
     '{\n  "input": "t",\n  "parameters": {\n    "A": 1.0,\n    "gamma": 0.2,\n    "omega": 3.0\n  },\n  "expression": "A * exp(-gamma * t) * cos(omega * t)"\n}\n',
   );
-  store.setText(
-    'manifest',
-    '{\n  "title": "Fixture",\n  "layouts": {\n    "slide-01": "cover",\n    "slide-02": "lab",\n    "slide-03": "media"\n  }\n}\n',
-  );
+  store.setText('manifest', '{\n  "title": "Fixture"\n}\n');
   return store.html!;
 }
 const initial = appFixture(readFileSync('dist/milo.html', 'utf8'));
@@ -163,6 +160,41 @@ test('standalone app boots and all three slides render without network dependenc
     assert.equal(app.query('#insert-block'), null);
     assert.equal(app.query('#undo'), null);
     assert.equal(app.query('#redo'), null);
+    assert.deepEqual(app.errors, []);
+  } finally {
+    await app.close();
+  }
+});
+
+test('layout control edits the hidden slide metadata as the single source of truth', async () => {
+  const app = await launch();
+  try {
+    const editor = app.code(),
+      select = app.query('#layout-select');
+    assert.equal(select.value, 'cover');
+    assert.ok(editor.state.doc.toString().startsWith('<!-- milo: layout=cover -->'));
+    assert.ok(!app.query('.cm-content').textContent.includes('milo: layout'));
+
+    select.value = 'media';
+    select.dispatchEvent(new app.w.Event('change', { bubbles: true }));
+    await until(
+      () => app.query('#slide').className.includes('layout-media'),
+      'Layout did not change',
+    );
+    assert.ok(editor.state.doc.toString().startsWith('<!-- milo: layout=media -->'));
+    assert.equal(json(SourceStore.fromHTML(app.file.disk).get('manifest').text).layouts, undefined);
+
+    const metadata = editor.state.doc.toString(),
+      layoutAt = metadata.indexOf('media');
+    assert.ok(layoutAt >= 0);
+    editor.dispatch({
+      changes: { from: layoutAt, to: layoutAt + 'media'.length, insert: 'section' },
+    });
+    await until(
+      () => app.query('#slide').className.includes('layout-section'),
+      'Metadata edit did not change layout',
+    );
+    assert.equal(app.query('#layout-select').value, 'section');
     assert.deepEqual(app.errors, []);
   } finally {
     await app.close();

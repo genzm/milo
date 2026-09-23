@@ -27,6 +27,38 @@ description: 原稿・数式・動く図・編集道具を内蔵する、自己�
 
 # HTML-in-Canvas
 
+@columns
+@column
+
+### 左側
+
+通常のMarkdownを書けます。通常のMarkdownを書けます。
+通常のMarkdownを書けます。
+通常のMarkdownを書けます。
+通常のMarkdownを書けます。
+通常のMarkdownを書けます。
+通常のMarkdownを書けます。
+通常のMarkdownを書けます。
+通常のMarkdownを書けます。
+通常のMarkdownを書けます。
+通常のMarkdownを書けます。
+通常のMarkdownを書けます。
+通常のMarkdownを書けます。
+
+
+@endcolumn
+@column
+
+### 右側
+
+- 箇条書き
+- 数式 $x^2$
+
+@endcolumn
+@endcolumns
+
+
+
 @canvas direction=right route=curve
 
 @node markdown tone=accent

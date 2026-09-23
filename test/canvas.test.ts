@@ -191,3 +191,74 @@ test('footer uses a paired @footer block and ignores markers in code fences', ()
     window.close();
   }
 });
+
+test('columns render two or more Markdown columns with nested structural content', () => {
+  const window = new Window({ settings: { disableComputedStyleRendering: true } });
+  const originalDocument = globalThis.document;
+  Object.assign(globalThis, { document: window.document });
+  const context = {
+    store: new SourceStore({ html: null, blocks: [] }),
+    present: () => false,
+    parameters: () => ({}),
+    setParameter: () => {},
+    inspect: () => {},
+  };
+  try {
+    const root = window.document.createElement('div');
+    renderSlide(
+      root as unknown as HTMLElement,
+      `# 比較
+
+@columns
+@column
+## 左
+
+通常の **Markdown**。
+@endcolumn
+@column
+## 中央
+
+@box tone=muted
+ボックスも配置できます。
+@endbox
+@endcolumn
+@column
+## 右
+
+- 項目A
+- 項目B
+@endcolumn
+@endcolumns`,
+      context,
+    );
+    const group = root.querySelector('.columns-block') as unknown as HTMLElement | null;
+    assert.equal(group?.style.getPropertyValue('--column-count'), '3');
+    assert.equal(root.querySelectorAll('.column-block').length, 3);
+    assert.equal(root.querySelector('.column-block strong')?.textContent, 'Markdown');
+    assert.equal(
+      root.querySelector('.column-block .box-block')?.textContent.trim(),
+      'ボックスも配置できます。',
+    );
+    assert.equal(root.querySelectorAll('.column-block li').length, 2);
+
+    const fenced = window.document.createElement('div');
+    renderSlide(
+      fenced as unknown as HTMLElement,
+      '@columns\n@column\n```md\n@endcolumn\n```\n左\n@endcolumn\n@column\n右\n@endcolumn\n@endcolumns',
+      context,
+    );
+    assert.equal(fenced.querySelectorAll('.column-block').length, 2);
+    assert.match(fenced.querySelector('code')?.textContent || '', /@endcolumn/);
+
+    const broken = window.document.createElement('div');
+    renderSlide(
+      broken as unknown as HTMLElement,
+      '@columns\n@column\nひとつだけ\n@endcolumn\n@endcolumns',
+      context,
+    );
+    assert.match(broken.querySelector('.block-error')?.textContent || '', /2つ以上/);
+  } finally {
+    Object.assign(globalThis, { document: originalDocument });
+    window.close();
+  }
+});

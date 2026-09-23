@@ -1,6 +1,6 @@
 import { basicSetup } from 'codemirror';
-import { EditorState } from '@codemirror/state';
-import { EditorView, keymap } from '@codemirror/view';
+import { EditorState, StateField, type Text } from '@codemirror/state';
+import { Decoration, EditorView, keymap, type DecorationSet } from '@codemirror/view';
 import { indentWithTab } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
 // Components are currently disabled; restore this import with their editor UI.
@@ -15,8 +15,52 @@ import { cacheGet, cacheSet } from './cache';
 interface Manifest {
   title: string;
   slides: string[];
-  layouts?: Record<string, string>;
 }
+const LAYOUTS = ['cover', 'section', 'lab', 'media', 'essay'] as const;
+type SlideLayout = (typeof LAYOUTS)[number];
+const MILO_COMMENT = /^(\s*<!--\s*milo:\s*)([\s\S]*?)(\s*-->)/;
+
+function slideLayout(text: string): SlideLayout {
+  const raw = MILO_COMMENT.exec(text)?.[2] || '',
+    match = /(?:^|\s)layout\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+))/.exec(raw),
+    value = match?.[1] ?? match?.[2] ?? match?.[3] ?? 'lab';
+  if (!LAYOUTS.includes(value as SlideLayout)) throw new Error(`未対応のレイアウトです: ${value}`);
+  return value as SlideLayout;
+}
+
+function setSlideLayout(text: string, layout: SlideLayout) {
+  const comment = MILO_COMMENT.exec(text);
+  if (!comment) {
+    const eol = text.includes('\r\n') ? '\r\n' : '\n';
+    return `<!-- milo: layout=${layout} -->${eol}${eol}${text}`;
+  }
+  const raw = comment[2],
+    next = /\blayout\s*=\s*(?:"[^"]*"|'[^']*'|[^\s]+)/.test(raw)
+      ? raw.replace(
+          /(\blayout\s*=\s*)(?:"([^"]*)"|'([^']*)'|([^\s]+))/,
+          (_, prefix: string, double: string | undefined, single: string | undefined) =>
+            prefix +
+            (double !== undefined ? `"${layout}"` : single !== undefined ? `'${layout}'` : layout),
+        )
+      : `${raw.trimEnd()}${raw.trim() ? ' ' : ''}layout=${layout}`;
+  return (
+    text.slice(0, comment.index) + comment[1] + next + comment[3] + text.slice(comment[0].length)
+  );
+}
+
+function hiddenSlideMetadata(doc: Text): DecorationSet {
+  const match = /^(?:\s*<!--\s*milo:[\s\S]*?-->[ \t]*(?:\r?\n)?)/.exec(doc.toString());
+  return match
+    ? Decoration.set([Decoration.replace({}).range(0, match[0].length)])
+    : Decoration.none;
+}
+
+const hiddenSlideMetadataField = StateField.define<DecorationSet>({
+  create: (state) => hiddenSlideMetadata(state.doc),
+  update: (decorations, transaction) =>
+    transaction.docChanged ? hiddenSlideMetadata(transaction.newDoc) : decorations,
+  provide: (field) => EditorView.decorations.from(field),
+});
 const SLIDE_WIDTH = 1600;
 const SLIDE_HEIGHT = (SLIDE_WIDTH * 9) / 16;
 document.documentElement.style.setProperty('--slide-width', `${SLIDE_WIDTH}px`);
@@ -58,7 +102,6 @@ let activeTab: Kind = 'slide',
 let manifest: Manifest = {
   title: 'milo',
   slides: store.list('slide').map((b) => b.id),
-  layouts: {},
 };
 let manifestError = '';
 const docId = document.querySelector('meta[name="milo-id"]')?.getAttribute('content') || 'milo';
@@ -139,7 +182,8 @@ function readManifest() {
       slides = store.list('slide').map((b) => b.id);
     if (!m || typeof m.title !== 'string' || !slides.length)
       throw new Error('title と1枚以上のスライドを指定してください。');
-    manifest = { title: m.title, slides, layouts: m.layouts };
+    for (const id of slides) slideLayout(store.get(id).text);
+    manifest = { title: m.title, slides };
     manifestError = '';
     current = Math.max(0, Math.min(current, slides.length - 1));
   } catch (e: any) {
@@ -153,6 +197,13 @@ function currentId() {
 }
 function titleOf(id: string) {
   return store.blocks.get(id)?.text.match(/^#\s+(.+)$/m)?.[1] || store.blocks.get(id)?.name || id;
+}
+function layoutOf(id: string) {
+  try {
+    return slideLayout(store.get(id).text);
+  } catch {
+    return 'lab';
+  }
 }
 function sourceChanged() {
   return (
@@ -252,7 +303,7 @@ function updateNav() {
             : text.includes('::plot')
               ? 'plot'
               : 'text',
-        layout = manifest.layouts?.[id] || 'lab';
+        layout = layoutOf(id);
       const art =
         kind === 'plot'
           ? '<svg viewBox="0 0 140 36"><path d="M0 18H140M0 32V3" class="thumb-axis"/><path d="M0 4C10 4 10 34 20 30S30 9 40 11 50 26 60 25 70 13 80 15 90 23 100 22 110 16 120 17 130 20 140 19"/></svg>'
@@ -271,6 +322,9 @@ function updateNav() {
   $<HTMLButtonElement>('move-up').disabled = current <= 0;
   $<HTMLButtonElement>('move-down').disabled = current >= manifest.slides.length - 1;
   $<HTMLButtonElement>('remove-slide').disabled = manifest.slides.length <= 1;
+  const layoutSelect = document.getElementById('layout-select') as HTMLSelectElement | null;
+  if (layoutSelect && activeTab === 'slide' && store.blocks.has(activeBlock))
+    layoutSelect.value = layoutOf(activeBlock);
   const changed =
     store.list().filter((b) => opening.blocks.find((o) => o.id === b.id)?.text !== b.text).length +
     opening.blocks.filter((b) => !store.blocks.has(b.id)).length;
@@ -288,11 +342,7 @@ function refreshSlide() {
   readManifest();
   const id = currentId();
   if (!id) return;
-  $('slide').className =
-    'slide layout-' +
-    (['cover', 'section', 'lab', 'media', 'essay'].includes(manifest.layouts?.[id] || '')
-      ? manifest.layouts![id]
-      : 'lab');
+  $('slide').className = 'slide layout-' + layoutOf(id);
   $('slide-series').textContent =
     current === 0
       ? ''
@@ -422,11 +472,13 @@ function refreshInspector() {
   const b = store.get(activeBlock);
   if (activeTab === 'slide') {
     extra.innerHTML = `<div class="layout-control"><label>レイアウト <select id="layout-select"><option value="cover">表紙</option><option value="section">章扉</option><option value="lab">実験</option><option value="media">メディア</option><option value="essay">文章</option></select></label></div>`;
-    $<HTMLSelectElement>('layout-select').value = manifest.layouts?.[b.id] || 'lab';
+    $<HTMLSelectElement>('layout-select').value = layoutOf(b.id);
     $('layout-select').onchange = (e) =>
-      mutate(() =>
-        store.setJSON('manifest', ['layouts', b.id], (e.target as HTMLSelectElement).value),
-      );
+      mutate(() => {
+        const layout = (e.target as HTMLSelectElement).value as SlideLayout;
+        if (!LAYOUTS.includes(layout)) return;
+        store.setText(b.id, setSlideLayout(store.get(b.id).text, layout));
+      });
   }
   if (activeTab === 'asset') {
     let src = '';
@@ -464,6 +516,7 @@ function refreshInspector() {
       lang,
       keymap.of([indentWithTab]),
       EditorView.lineWrapping,
+      ...(activeTab === 'slide' ? [hiddenSlideMetadataField] : []),
       EditorState.lineSeparator.of(b.text.includes('\r\n') ? '\r\n' : '\n'),
       EditorView.contentAttributes.of({ 'aria-label': b.name + ' のソース' }),
       EditorView.updateListener.of((update) => {
@@ -523,14 +576,11 @@ function addSlide(duplicate = false) {
         id,
         kind: 'slide',
         name: id + '.md',
-        text: duplicate ? store.get(old).text : '# 新しい問い\n\nここから、考えを続ける。\n',
+        text: duplicate
+          ? store.get(old).text
+          : '<!-- milo: layout=essay -->\n\n# 新しい問い\n\nここから、考えを続ける。\n',
       },
       before,
-    );
-    store.setJSON(
-      'manifest',
-      ['layouts', id],
-      duplicate ? manifest.layouts?.[old] || 'lab' : 'essay',
     );
   }, 'structure');
   current = manifest.slides.indexOf(id);
@@ -553,10 +603,7 @@ function removeSlide() {
   if (manifest.slides.length <= 1) return;
   if (!confirm('このスライドを削除しますか？この操作は取り消せません。')) return;
   const id = currentId();
-  mutate(() => {
-    store.setJSON('manifest', ['layouts', id], undefined);
-    store.remove(id);
-  }, 'structure');
+  mutate(() => store.remove(id), 'structure');
   activeBlock = currentId();
   go(current);
 }
