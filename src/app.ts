@@ -17,6 +17,10 @@ interface Manifest {
   slides: string[];
   layouts?: Record<string, string>;
 }
+const SLIDE_WIDTH = 1600;
+const SLIDE_HEIGHT = (SLIDE_WIDTH * 9) / 16;
+document.documentElement.style.setProperty('--slide-width', `${SLIDE_WIDTH}px`);
+document.documentElement.style.setProperty('--slide-height', `${SLIDE_HEIGHT}px`);
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const paths: Record<string, string> = {
   play: 'm8 5 11 7-11 7Z',
@@ -178,7 +182,7 @@ app.innerHTML = `
 <div class="workspace">
   <aside class="sidebar" aria-label="スライド一覧"><div class="sidebar-heading"><span id="slide-count"></span></div><nav id="slides"></nav><div class="slide-operations"><button id="move-up" class="icon-button" title="前へ移動" aria-label="スライドを前へ移動">${icon('up')}</button><button id="move-down" class="icon-button" title="後ろへ移動" aria-label="スライドを後ろへ移動">${icon('down')}</button><button id="duplicate" class="icon-button" title="複製" aria-label="スライドを複製">${icon('copy')}</button><button id="remove-slide" class="icon-button" title="削除" aria-label="スライドを削除">${icon('trash')}</button></div><button id="add-slide" class="add-slide">${icon('plus')}スライドを追加</button></aside>
   <main class="main-stage"><div class="stage-topline"><div class="stage-tools"><button id="diff" class="text-button">変更を見る <span id="change-count"></span></button></div></div>
-    <div class="stage-scroll"><article class="slide" id="slide"><div class="slide-top"><span class="slide-series" id="slide-series"></span></div><div id="slide-content" class="slide-content"></div></article></div>
+    <div class="stage-scroll" id="stage-scroll"><div class="slide-viewport" id="slide-viewport"><article class="slide" id="slide"><div class="slide-top"><span class="slide-series" id="slide-series"></span></div><div id="slide-content" class="slide-content"></div></article></div></div>
     <div class="stage-bottom"><nav class="pagination" aria-label="ページ送り"><button id="previous" class="icon-button" aria-label="前のスライド">${icon('left')}</button><span id="page-number"></span><button id="next" class="icon-button" aria-label="次のスライド">${icon('right')}</button></nav></div>
   </main>
   <aside class="inspector" aria-label="原稿とモデルの編集"><div class="inspector-tabs" role="tablist"><button data-tab="slide" role="tab">原稿</button><button data-tab="model" role="tab">モデル</button><!-- Components disabled: <button data-tab="component" role="tab">部品</button> --><button data-tab="asset" role="tab">素材</button><button data-tab="manifest" role="tab">設定</button></div>
@@ -487,7 +491,24 @@ function setPresent(value: boolean) {
   document.body.classList.toggle('presenting', value);
   $('present').innerHTML =
     icon(value ? 'code' : 'play') + `<span>${value ? '編集に戻る' : '発表する'}</span>`;
-  refreshSlide();
+  scaleSlide();
+  requestAnimationFrame(scaleSlide);
+}
+
+function scaleSlide() {
+  const stage = $('stage-scroll'),
+    viewport = $('slide-viewport'),
+    slide = $('slide'),
+    availableWidth = stage.clientWidth,
+    availableHeight = stage.clientHeight;
+  if (availableWidth <= 0) return;
+  const fitWidth = availableWidth / SLIDE_WIDTH,
+    fitHeight = availableHeight > 0 ? availableHeight / SLIDE_HEIGHT : fitWidth,
+    scale = Math.max(0.05, Math.min(present ? Infinity : 1, fitWidth, fitHeight));
+  viewport.style.width = `${SLIDE_WIDTH * scale}px`;
+  viewport.style.height = `${SLIDE_HEIGHT * scale}px`;
+  slide.style.transform = `scale(${scale})`;
+  slide.dataset.scale = String(scale);
 }
 function unique(prefix: string) {
   return prefix + '-' + crypto.randomUUID().slice(0, 8);
@@ -904,5 +925,10 @@ updateNav();
 activeBlock = currentId();
 refreshInspector();
 refreshSlide();
+const slideResizeObserver =
+  typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scaleSlide);
+slideResizeObserver?.observe($('stage-scroll'));
+window.addEventListener('resize', scaleSlide);
+scaleSlide();
 updateSave();
 void restoreLocal();

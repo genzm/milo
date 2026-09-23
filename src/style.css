@@ -502,6 +502,12 @@ svg {
   padding: 2px 3px 20px;
   scrollbar-width: thin;
 }
+.slide-viewport {
+  position: relative;
+  flex: none;
+  width: var(--slide-width);
+  height: var(--slide-height);
+}
 /* 3-B. 中央ステージ下部 — ページ送り */
 .stage-bottom {
   display: flex;
@@ -597,6 +603,9 @@ svg {
     max-height: 28.18cqw;
     touch-action: pan-y;
   }
+}
+.slide-content:has(.slider-block) .plot-block > svg {
+  max-height: 16cqw;
 }
 .chart-grid {
   stroke: #eee3e6;
@@ -1361,9 +1370,8 @@ dialog {
   --slide-pale: #fff3f6;
   --slide-muted: #8b747a;
   container-type: inline-size;
-  width: 100%;
-  max-width: 1100px;
-  aspect-ratio: 16/9;
+  width: var(--slide-width);
+  height: var(--slide-height);
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -1374,6 +1382,7 @@ dialog {
   border-radius: 0;
   box-shadow: 0 9px 30px #00000012;
   overflow: hidden;
+  transform-origin: top left;
   padding: 4.7% 5.15% 3.5%;
   font-family: 'LINE Seed JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
   .slide-top {
@@ -1837,10 +1846,8 @@ dialog {
   overflow: hidden;
 }
 .presenting .slide {
-  width: min(100vw, calc(100dvh * 16 / 9));
-  max-width: none;
   flex: none;
-  border: 0;
+  border-color: transparent;
   box-shadow: none;
 }
 .presenting .equation-block {
@@ -1873,7 +1880,14 @@ dialog {
     border: 0;
     box-shadow: none;
     width: 100%;
+    height: auto;
+    aspect-ratio: 16/9;
     max-width: none;
+    transform: none !important;
+  }
+  .slide-viewport {
+    width: 100% !important;
+    height: auto !important;
   }
   .slide-content {
     break-inside: avoid;

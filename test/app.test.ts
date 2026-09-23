@@ -21,7 +21,7 @@ function appFixture(html: string) {
     {
       id: 'slide-02',
       name: 'fixture.md#2',
-      text: `<!-- milo: layout=lab -->\n\n# Lean Analytics\n\n減衰率は **{{wave.gamma}}**。\n\n::equation{model="wave"}\n\n::plot{model="wave" from="0" to="10"}\n\n::slider{param="wave.gamma" label="減衰率 γ" min="0" max="1" step="0.01"}\n`,
+      text: `<!-- milo: layout=lab -->\n\n# Lean Analytics\n\n減衰率は **{{wave.gamma}}**。\n\n::equation{model="wave"}\n\n::plot{model="wave" from="0" to="10"}\n\n::slider{param="wave.gamma" label="減衰率 γ" min="0" max="1" step="0.01"}\n::slider{param="wave.omega" label="角振動数 ω" min="0.5" max="7" step="0.1"}\n`,
     },
     {
       id: 'slide-03',
@@ -163,6 +163,39 @@ test('standalone app boots and all three slides render without network dependenc
     assert.equal(app.query('#insert-block'), null);
     assert.equal(app.query('#undo'), null);
     assert.equal(app.query('#redo'), null);
+    assert.deepEqual(app.errors, []);
+  } finally {
+    await app.close();
+  }
+});
+
+test('editor and presentation keep one logical slide layout and only change scale', async () => {
+  const app = await launch();
+  try {
+    const stage = app.query('#stage-scroll');
+    let width = 800,
+      height = 600;
+    Object.defineProperties(stage, {
+      clientWidth: { configurable: true, get: () => width },
+      clientHeight: { configurable: true, get: () => height },
+    });
+    assert.equal(app.w.document.documentElement.style.getPropertyValue('--slide-width'), '1600px');
+    assert.equal(app.w.document.documentElement.style.getPropertyValue('--slide-height'), '900px');
+    app.w.dispatchEvent(new app.w.Event('resize'));
+    assert.equal(app.query('#slide').dataset.scale, '0.5');
+    assert.equal(app.query('#slide-viewport').style.width, '800px');
+    app.click('[data-index="1"]');
+    assert.equal(app.w.document.querySelectorAll('.slider-block').length, 2);
+    const content = app.query('#slide-content').innerHTML;
+
+    width = 3200;
+    height = 1800;
+    app.click('#present');
+    assert.equal(app.query('#slide').dataset.scale, '2');
+    assert.equal(app.query('#slide-viewport').style.width, '3200px');
+    assert.equal(app.w.document.querySelectorAll('.slider-block').length, 2);
+    assert.equal(app.query('#slide-content').innerHTML, content);
+    assert.ok(app.query('body').classList.contains('presenting'));
     assert.deepEqual(app.errors, []);
   } finally {
     await app.close();

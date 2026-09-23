@@ -462,8 +462,7 @@ export function mountCanvas(
       item.style.width = `${(width / scene.options.width) * 100}%`;
       item.style.minHeight = '';
     });
-    const bounds = element.getBoundingClientRect();
-    const ratio = bounds.width ? scene.options.width / bounds.width : 1;
+    const ratio = element.clientWidth ? scene.options.width / element.clientWidth : 1;
     const measured = elements.map((item, i) => {
       if (scene.nodes[i].height !== undefined) return scene.nodes[i].height!;
       const height = item.scrollHeight * ratio;
