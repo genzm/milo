@@ -35,4 +35,4 @@ temp/
 
 # Locally generated deck
 dist/
-content/*.html
+*.html
