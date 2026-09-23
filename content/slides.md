@@ -22,37 +22,38 @@ description: 原稿・数式・動く図・編集道具を内蔵する、自己�
 > あらゆる現実を、自分の方に捻じ曲げたのだ。
 
 ---
+
 <!-- milo: layout=lab -->
 
 # HTML-in-Canvas
 
-:::canvas{layout="flow" direction="right" height="340" route="curve"}
+@canvas layout=flow direction=right height=340 route=curve
 
-:::node{#markdown tone="accent"}
+@node markdown tone=accent
+
 ### Markdown
 
 文章、**強調**、数式 $x^2$ を、そのままHTMLとして描画します。
-:::
 
 -->
 
-:::node{#layout shape="round"}
+@node layout shape=round
+
 ### Canvas
 
 - flowで自動配置
 - freeで座標指定
 - SVGで接続
-:::
 
 -->
 
-:::node{#slide tone="dark"}
+@node slide tone=dark
+
 ### Slide
 
 Markdownの見た目を保ったまま、ひとつの図になります。
-:::
 
-:::
+@endcanvas
 
 ---
 
@@ -80,6 +81,6 @@ Markdownの見た目を保ったまま、ひとつの図になります。
 GIFも、画像も、ひとつのHTMLの中へ。  
 「素材」から画像を差し替えると、そのまま文書に埋め込まれます。
 
-![粒子の動きを描いたループアニメーション](./assets/flow.gif "EMBEDDED GIF · オフラインでも再生できます")
+![粒子の動きを描いたループアニメーション](./assets/flow.gif 'EMBEDDED GIF · オフラインでも再生できます')
 
 説明用の数式も書けます。たとえば $E = \frac{1}{2}mv^2$。

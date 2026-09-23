@@ -103,14 +103,22 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
     'milo-canvas',
     (s: any, line: number, end: number, silent: boolean) => {
       if (s.sCount[line] - s.blkIndent >= 4) return false;
-      const opening = /^:::canvas(?:\{([\s\S]*)\})?\s*$/.exec(lineText(s, line).trim());
+      const opening = /^@canvas(?:\s+([\s\S]*))?\s*$/.exec(lineText(s, line).trim());
       if (!opening) return false;
-      let depth = 1,
-        cursor = line + 1;
+      let cursor = line + 1,
+        fence = '';
       for (; cursor < end; cursor++) {
         const text = lineText(s, cursor).trim();
-        if (/^:::(?:canvas|node)(?:\{|\s|$)/.test(text)) depth++;
-        else if (text === ':::' && --depth === 0) break;
+        if (fence) {
+          if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
+          continue;
+        }
+        const openingFence = /^(?:`{3,}|~{3,})/.exec(text);
+        if (openingFence) {
+          fence = openingFence[0];
+          continue;
+        }
+        if (text === '@endcanvas') break;
       }
       if (cursor >= end) {
         if (silent) return true;
@@ -120,7 +128,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
             canvases.push({
               source: '',
               options: opening[1] || '',
-              error: 'canvasを閉じる ::: がありません。',
+              error: 'canvasを閉じる @endcanvas がありません。',
             }) - 1,
         };
         token.map = [line, end];

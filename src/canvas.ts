@@ -89,11 +89,6 @@ export function canvasAttributes(source: string): Record<string, string> {
   return attributes;
 }
 
-function marker(line: string, name: string) {
-  const match = new RegExp(`^::${name}(?:\\{([\\s\\S]*)\\})?\\s*$`).exec(line.trim());
-  return match ? canvasAttributes(match[1] || '') : null;
-}
-
 function nodeFrom(attrs: Record<string, string>, markdown: string, index: number): CanvasNode {
   const frame = attrs.frame?.split(',').map((part) => finite(part.trim()));
   if (frame && (frame.length !== 4 || frame.some((value) => value === undefined)))
@@ -133,7 +128,7 @@ function edgeFrom(attrs: Record<string, string>): CanvasEdge {
   };
 }
 
-/** Parse the contents of a :::canvas block without parsing its Markdown node bodies. */
+/** Parse the contents of an @canvas block without parsing its Markdown node bodies. */
 export function parseCanvas(source: string, rawOptions = ''): CanvasScene {
   const attrs = canvasAttributes(rawOptions);
   const options: CanvasOptions = {
@@ -152,7 +147,8 @@ export function parseCanvas(source: string, rawOptions = ''): CanvasScene {
   const edges: CanvasEdge[] = [];
   const loose: string[] = [];
   const pendingSequential: number[] = [];
-  let current: { attrs: Record<string, string>; body: string[] } | null = null;
+  let current: { attrs: Record<string, string>; body: string[] } | null = null,
+    markdownFence = '';
 
   const addNode = (nodeAttrs: Record<string, string>, body: string[]) => {
     const node = nodeFrom(nodeAttrs, body.join('\n'), nodes.length);
@@ -173,51 +169,62 @@ export function parseCanvas(source: string, rawOptions = ''): CanvasScene {
     if (loose.some((line) => line.trim())) addNode({}, loose.splice(0));
     else loose.length = 0;
   };
+  const flushCurrent = () => {
+    if (!current) return;
+    addNode(current.attrs, current.body);
+    current = null;
+  };
+  const appendMarkdown = (line: string) => {
+    if (current) current.body.push(line);
+    else loose.push(line);
+  };
 
   for (const line of lines) {
-    if (current) {
-      if (line.trim() === ':::') {
-        addNode(current.attrs, current.body);
-        current = null;
-      } else current.body.push(line);
+    const text = line.trim();
+    if (markdownFence) {
+      appendMarkdown(line);
+      if (new RegExp(`^${markdownFence[0]}{${markdownFence.length},}\\s*$`).test(text))
+        markdownFence = '';
       continue;
     }
-    const node = /^:::node(?:\{([\s\S]*)\})?\s*$/.exec(line.trim());
+    const openingFence = /^(?:`{3,}|~{3,})/.exec(text);
+    if (openingFence) {
+      markdownFence = openingFence[0];
+      appendMarkdown(line);
+      continue;
+    }
+    const node = /^@node\s+([A-Za-z][\w-]*)(?:\s+([\s\S]*))?\s*$/.exec(text);
     if (node) {
+      flushCurrent();
       flushLoose();
-      current = { attrs: canvasAttributes(node[1] || ''), body: [] };
+      current = { attrs: { ...canvasAttributes(node[2] || ''), id: node[1] }, body: [] };
       continue;
     }
-    const edge = marker(line, 'edge');
-    if (edge) {
-      flushLoose();
-      edges.push(edgeFrom(edge));
-      continue;
-    }
-    const shorthand = /^([A-Za-z][\w-]*)\s*(-+>|=+>)\s*([A-Za-z][\w-]*)(?:\s*:\s*(.+))?$/.exec(
-      line.trim(),
+    const edge = /^@edge\s+([A-Za-z][\w-]*)\s*-->\s*([A-Za-z][\w-]*)(?:\s+([\s\S]*))?\s*$/.exec(
+      text,
     );
-    if (shorthand) {
+    if (edge) {
+      flushCurrent();
       flushLoose();
       edges.push(
         edgeFrom({
-          from: shorthand[1],
-          to: shorthand[3],
-          label: shorthand[4] || '',
-          route: shorthand[2].startsWith('=') ? 'straight' : options.route,
+          ...canvasAttributes(edge[3] || ''),
+          from: edge[1],
+          to: edge[2],
         }),
       );
       continue;
     }
-    if (/^(?:-->|==>)$/.test(line.trim())) {
+    if (text === '-->') {
+      flushCurrent();
       flushLoose();
       if (!nodes.length) throw new Error('矢印の前にnodeまたはMarkdownを書いてください。');
       pendingSequential.push(nodes.length - 1);
       continue;
     }
-    loose.push(line);
+    appendMarkdown(line);
   }
-  if (current) throw new Error('nodeを閉じる ::: がありません。');
+  flushCurrent();
   flushLoose();
   if (pendingSequential.length) throw new Error('矢印の後に接続先のnodeがありません。');
   if (!nodes.length) throw new Error('canvasにMarkdownまたはnodeがありません。');

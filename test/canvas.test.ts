@@ -7,8 +7,8 @@ import { SourceStore } from '../src/source.ts';
 
 test('canvas parses Markdown nodes and sequential arrows', () => {
   const scene = parseCanvas(
-    `:::node{#problem tone="accent"}\n### 問題\n\n普通の **Markdown**。\n:::\n\n-->\n\n:::node{#solution shape="round"}\n### 解決\n\n- 項目A\n- 項目B\n:::\n`,
-    'layout="flow" direction="right" route="elbow"',
+    `@node problem tone=accent\n### 問題\n\n普通の **Markdown**。\n\n-->\n\n@node solution shape=round\n### 解決\n\n- 項目A\n- 項目B\n`,
+    'layout=flow direction=right route=elbow',
   );
   assert.equal(scene.nodes.length, 2);
   assert.equal(scene.nodes[0].id, 'problem');
@@ -28,17 +28,14 @@ test('canvas accepts loose Markdown as nodes around arrow shorthand', () => {
 });
 
 test('flow, free and hybrid node placement share one frame model', () => {
-  const flow = parseCanvas(
-    ':::node{#a}\nA\n:::\n::edge{from="a" to="b"}\n:::node{#b dx="12" dy="5"}\nB\n:::',
-    'direction="down"',
-  );
+  const flow = parseCanvas('@node a\nA\n@node b dx=12 dy=5\nB\n@edge a --> b', 'direction=down');
   const frames = layoutCanvas(flow, [80, 90]);
   assert.ok(frames[1].y > frames[0].y);
   assert.equal(frames[1].height, 90);
 
   const free = parseCanvas(
-    ':::node{#a frame="10,20,210,100"}\nA\n:::\n:::node{#b x="300" y="40" pinned}\nB\n:::',
-    'layout="free"',
+    '@node a frame=10,20,210,100\nA\n@node b x=300 y=40 pinned\nB',
+    'layout=free',
   );
   assert.deepEqual(layoutCanvas(free)[0], { x: 10, y: 20, width: 210, height: 100 });
   assert.equal(layoutCanvas(free)[1].x, 300);
@@ -46,9 +43,21 @@ test('flow, free and hybrid node placement share one frame model', () => {
 
 test('canvas reports structural and reference errors', () => {
   assert.throws(() => parseCanvas('-->\ntext'), /前にnode/);
-  assert.throws(() => parseCanvas(':::node{#a}\nA'), /閉じる/);
-  assert.throws(() => parseCanvas(':::node{#a}\nA\n:::\n::edge{from="a" to="missing"}'), /接続先/);
-  assert.throws(() => parseCanvas(':::node{#a}\nA\n:::\n:::node{#a}\nB\n:::'), /重複/);
+  assert.throws(() => parseCanvas('@node a\nA\n@edge a --> missing'), /接続先/);
+  assert.throws(() => parseCanvas('@node a\nA\n@node a\nB'), /重複/);
+});
+
+test('canvas control words inside fenced code stay Markdown', () => {
+  const scene = parseCanvas('@node example\n```text\n@node not-a-node\n@endcanvas\n```');
+  assert.equal(scene.nodes.length, 1);
+  assert.match(scene.nodes[0].markdown, /@node not-a-node/);
+});
+
+test('a single arrow remains ordinary node content', () => {
+  const scene = parseCanvas('@node example\n入力 -> 出力\n\n->\n');
+  assert.equal(scene.nodes.length, 1);
+  assert.match(scene.nodes[0].markdown, /入力 -> 出力/);
+  assert.match(scene.nodes[0].markdown, /^->$/m);
 });
 
 test('slide renderer mounts Markdown as HTML over an SVG connection layer', () => {
@@ -63,7 +72,7 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
     const root = window.document.createElement('div');
     const rendered = renderSlide(
       root as unknown as HTMLElement,
-      `# Canvas\n\n:::canvas{layout="flow" direction="right"}\n:::node{#input tone="accent"}\n### 入力\n\n通常の **Markdown** と $x^2$。\n:::\n\n-->\n\n:::node{#output shape="round"}\n### 出力\n\n::text{text="既存ディレクティブ"}\n:::\n:::\n`,
+      `# Canvas\n\n@canvas layout=flow direction=right\n@node input tone=accent\n### 入力\n\n通常の **Markdown** と $x^2$。\n\n-->\n\n@node output shape=round\n### 出力\n\n::text{text="既存ディレクティブ"}\n@endcanvas\n`,
       {
         store: new SourceStore({ html: null, blocks: [] }),
         present: () => false,
@@ -81,7 +90,7 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
     rendered.dispose();
 
     const broken = window.document.createElement('div');
-    renderSlide(broken as unknown as HTMLElement, ':::canvas\n### 閉じていない', {
+    renderSlide(broken as unknown as HTMLElement, '@canvas\n### 閉じていない', {
       store: new SourceStore({ html: null, blocks: [] }),
       present: () => false,
       parameters: () => ({}),
@@ -89,6 +98,16 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
       inspect: () => {},
     });
     assert.match(broken.querySelector('.block-error')?.textContent || '', /閉じる/);
+
+    const legacy = window.document.createElement('div');
+    renderSlide(legacy as unknown as HTMLElement, ':::canvas\nold\n:::', {
+      store: new SourceStore({ html: null, blocks: [] }),
+      present: () => false,
+      parameters: () => ({}),
+      setParameter: () => {},
+      inspect: () => {},
+    });
+    assert.equal(legacy.querySelector('.milo-canvas'), null);
   } finally {
     Object.assign(globalThis, {
       document: originalDocument,

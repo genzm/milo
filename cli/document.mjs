@@ -99,13 +99,32 @@ function makeSlides(lines, separators, modelRanges) {
 
 function canvasRanges(lines) {
   const ranges = [];
+  let outerFence = '';
   for (let start = 0; start < lines.length; start++) {
-    if (!/^:::canvas(?:\{|\s|$)/.test(lines[start].trim())) continue;
-    let depth = 1;
+    const line = lines[start].trim();
+    if (outerFence) {
+      if (new RegExp(`^${outerFence[0]}{${outerFence.length},}\\s*$`).test(line)) outerFence = '';
+      continue;
+    }
+    const outerOpening = /^(?:`{3,}|~{3,})/.exec(line);
+    if (outerOpening) {
+      outerFence = outerOpening[0];
+      continue;
+    }
+    if (!/^@canvas(?:\s|$)/.test(line)) continue;
+    let innerFence = '';
     for (let end = start + 1; end < lines.length; end++) {
       const text = lines[end].trim();
-      if (/^:::(?:canvas|node)(?:\{|\s|$)/.test(text)) depth++;
-      else if (text === ':::' && --depth === 0) {
+      if (innerFence) {
+        if (new RegExp(`^${innerFence[0]}{${innerFence.length},}\\s*$`).test(text)) innerFence = '';
+        continue;
+      }
+      const innerOpening = /^(?:`{3,}|~{3,})/.exec(text);
+      if (innerOpening) {
+        innerFence = innerOpening[0];
+        continue;
+      }
+      if (text === '@endcanvas') {
         ranges.push([start, end + 1]);
         start = end;
         break;

@@ -81,15 +81,14 @@ bar
 test('a thematic break inside a canvas node is not a slide separator', () => {
   const talk = parseTalkMarkdown(`# Slide
 
-:::canvas
-:::node{#before}
+@canvas
+@node before
 ### Before
 
 ---
 
 After the rule
-:::
-:::
+@endcanvas
 
 ---
 
