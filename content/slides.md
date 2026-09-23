@@ -116,3 +116,30 @@ GIFも、画像も、ひとつのHTMLの中へ。
 ![粒子の動きを描いたループアニメーション](./assets/flow.gif 'EMBEDDED GIF · オフラインでも再生できます')
 
 説明用の数式も書けます。たとえば $E = \frac{1}{2}mv^2$。
+
+---
+
+<!-- milo: layout=lab -->
+
+# Emphasis & Tasks
+
+@columns
+@column
+
+通常の **黒字強調** と ==アクセント強調== を使い分けられます。
+
+@impact
+73%
+@endimpact
+
+@endcolumn
+@column
+
+### 次に進めること
+
+- 通常の項目
+- [ ] 仮説を確認する
+- [x] データを集める
+
+@endcolumn
+@endcolumns

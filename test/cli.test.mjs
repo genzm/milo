@@ -47,7 +47,7 @@ Hello
   assert.equal(deck.title, '小さな実験室');
   assert.deepEqual(
     deck.blocks.filter((b) => b.kind === 'slide').map((b) => b.id),
-    ['slide-01', 'slide-02', 'slide-03', 'slide-04'],
+    ['slide-01', 'slide-02', 'slide-03', 'slide-04', 'slide-05'],
   );
   assert.deepEqual(json(deck.blocks.find((b) => b.id === 'manifest').text), {
     title: '小さな実験室',

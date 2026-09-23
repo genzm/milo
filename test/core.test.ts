@@ -359,8 +359,8 @@ test('a failed post-write verification never advances the baseline until a retry
 test('built artifact contains one kernel and all dependencies; a model edit leaves it byte-identical', () => {
   const html = readFileSync('dist/milo.html', 'utf8'),
     s = SourceStore.fromHTML(html);
-  assert.equal(s.list().length, 7);
-  assert.equal(s.list('slide').length, 4);
+  assert.equal(s.list().length, 8);
+  assert.equal(s.list('slide').length, 5);
   assert.equal(s.list('component').length, 0);
   assert.equal(/<script[^>]+\bsrc\s*=/i.test(html), false);
   assert.equal(/<link[^>]+rel="stylesheet"/i.test(html), false);
@@ -376,6 +376,8 @@ test('built artifact contains one kernel and all dependencies; a model edit leav
   assert.ok(s.get('slide-02').text.includes('@canvas'));
   assert.ok(s.get('slide-03').text.includes('{{wave.gamma}}'));
   assert.ok(s.get('slide-04').text.includes('./assets/flow.gif'));
+  assert.ok(s.get('slide-05').text.includes('@impact'));
+  assert.ok(s.get('slide-05').text.includes('- [ ]'));
   assert.equal(json(s.get('manifest').text).title, '小さな実験室');
   assert.equal(Object.hasOwn(json(s.get('manifest').text), 'layouts'), false);
   assert.equal(s.get('model-wave').name, 'wave.jsonc');
