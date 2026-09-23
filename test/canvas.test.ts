@@ -72,7 +72,7 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
     const root = window.document.createElement('div');
     const rendered = renderSlide(
       root as unknown as HTMLElement,
-      `# Canvas\n\n@canvas layout=flow direction=right\n@node input tone=accent\n### 入力\n\n通常の **Markdown** と $x^2$。\n\n-->\n\n@node output shape=round\n### 出力\n\n::text{text="既存ディレクティブ"}\n@endcanvas\n`,
+      `# Canvas\n\n@canvas layout=flow direction=right\n@node input tone=accent\n### 入力\n\n通常の **Markdown** と $x^2$。\n\n-->\n\n@node output shape=round\n### 出力\n\n@box\n既存のボックス\n@endbox\n@endcanvas\n`,
       {
         store: new SourceStore({ html: null, blocks: [] }),
         present: () => false,
@@ -84,7 +84,10 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
     assert.equal(root.querySelectorAll('.canvas-node').length, 2);
     assert.equal(root.querySelector('[data-canvas-node="input"] strong')?.textContent, 'Markdown');
     assert.ok(root.querySelector('[data-canvas-node="input"] .katex'));
-    assert.equal(root.querySelector('.canvas-node .text-block')?.textContent, '既存ディレクティブ');
+    assert.equal(
+      root.querySelector('.canvas-node .box-block')?.textContent.trim(),
+      '既存のボックス',
+    );
     assert.match(root.querySelector('.canvas-edge')?.getAttribute('d') || '', /^M /);
     assert.match(root.querySelector('.canvas-edge')?.getAttribute('marker-end') || '', /^url\(#/);
     rendered.dispose();
@@ -108,6 +111,31 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
       inspect: () => {},
     });
     assert.equal(legacy.querySelector('.milo-canvas'), null);
+
+    const boxes = window.document.createElement('div');
+    renderSlide(
+      boxes as unknown as HTMLElement,
+      '@box tone=dark\n### 外側\n\n@box tone=muted\n内側\n@endbox\n@endbox',
+      {
+        store: new SourceStore({ html: null, blocks: [] }),
+        present: () => false,
+        parameters: () => ({}),
+        setParameter: () => {},
+        inspect: () => {},
+      },
+    );
+    assert.equal(boxes.querySelectorAll('.box-block').length, 2);
+    assert.ok(boxes.querySelector('.box-tone-dark .box-tone-muted'));
+
+    const brokenBox = window.document.createElement('div');
+    renderSlide(brokenBox as unknown as HTMLElement, '@box\n閉じていない', {
+      store: new SourceStore({ html: null, blocks: [] }),
+      present: () => false,
+      parameters: () => ({}),
+      setParameter: () => {},
+      inspect: () => {},
+    });
+    assert.match(brokenBox.querySelector('.block-error')?.textContent || '', /@endbox/);
   } finally {
     Object.assign(globalThis, {
       document: originalDocument,

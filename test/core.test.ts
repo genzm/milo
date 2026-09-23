@@ -97,17 +97,18 @@ test('blocks can be added/removed and snapshots restored without DOM serializati
 });
 test('new sources stay inside their readable kind section when group markers exist', () => {
   const html = readFileSync('dist/milo.html', 'utf8'),
-    s = SourceStore.fromHTML(html);
+    s = SourceStore.fromHTML(html),
+    original = s.list('slide').map((b) => b.id);
   s.add({ id: 'slide-new', kind: 'slide', name: 'new.md', text: '# New' }, 'slide-02');
   s.add({ id: 'model-new', kind: 'model', name: 'new.jsonc', text: '{}' });
   assert.deepEqual(
     s.list('slide').map((b) => b.id),
-    ['slide-01', 'slide-new', 'slide-02', 'slide-03'],
+    [original[0], 'slide-new', ...original.slice(1)],
   );
   s.moveBefore('slide-03', 'slide-02');
   assert.deepEqual(
     s.list('slide').map((b) => b.id),
-    ['slide-01', 'slide-new', 'slide-03', 'slide-02'],
+    [original[0], 'slide-new', 'slide-03', 'slide-02', ...original.slice(3)],
   );
   assert.ok(s.html!.indexOf('id="slide-new"') < s.html!.lastIndexOf('<!-- END MILO SLIDES -->'));
   assert.ok(s.html!.indexOf('id="model-new"') > s.html!.lastIndexOf('<!-- END MILO SLIDES -->'));
@@ -130,6 +131,7 @@ test('binding preserves the selected raw file, replays drafts, and rejects a mis
 test('binding replays the physical slide order edited before a file handle is connected', () => {
   const html = readFileSync('dist/milo.html', 'utf8'),
     disk = SourceStore.fromHTML(html),
+    original = disk.list('slide').map((b) => b.id),
     boot = disk.snapshot();
   boot.html = null;
   boot.blocks = boot.blocks.map(({ id, kind, name, text }) => ({ id, kind, name, text }));
@@ -138,13 +140,13 @@ test('binding replays the physical slide order edited before a file handle is co
   draft.attach(SourceStore.fromHTML(html), boot);
   assert.deepEqual(
     draft.list('slide').map((b) => b.id),
-    ['slide-01', 'slide-03', 'slide-02'],
+    [original[0], 'slide-03', 'slide-02', ...original.slice(3)],
   );
   assert.deepEqual(
     SourceStore.fromHTML(draft.html!)
       .list('slide')
       .map((b) => b.id),
-    ['slide-01', 'slide-03', 'slide-02'],
+    [original[0], 'slide-03', 'slide-02', ...original.slice(3)],
   );
 });
 test('malformed JSONC stays editable but cannot drive a semantic patch', () => {
@@ -357,8 +359,8 @@ test('a failed post-write verification never advances the baseline until a retry
 test('built artifact contains one kernel and all dependencies; a model edit leaves it byte-identical', () => {
   const html = readFileSync('dist/milo.html', 'utf8'),
     s = SourceStore.fromHTML(html);
-  assert.equal(s.list().length, 6);
-  assert.equal(s.list('slide').length, 3);
+  assert.equal(s.list().length, 7);
+  assert.equal(s.list('slide').length, 4);
   assert.equal(s.list('component').length, 0);
   assert.equal(/<script[^>]+\bsrc\s*=/i.test(html), false);
   assert.equal(/<link[^>]+rel="stylesheet"/i.test(html), false);
@@ -371,8 +373,9 @@ test('built artifact contains one kernel and all dependencies; a model edit leav
   assert.equal(html.includes('id="third-party-notices"'), false);
   assert.match(s.get('slide-01').text, /<!-- milo: layout=cover -->/);
   assert.match(s.get('slide-01').text, /# 君とボク。/);
-  assert.ok(s.get('slide-02').text.includes('{{wave.gamma}}'));
-  assert.ok(s.get('slide-03').text.includes('./assets/flow.gif'));
+  assert.ok(s.get('slide-02').text.includes('@canvas'));
+  assert.ok(s.get('slide-03').text.includes('{{wave.gamma}}'));
+  assert.ok(s.get('slide-04').text.includes('./assets/flow.gif'));
   assert.equal(json(s.get('manifest').text).title, '小さな実験室');
   assert.equal(s.get('model-wave').name, 'wave.jsonc');
   assert.equal(s.list('asset')[0]?.name, 'assets/flow.gif');

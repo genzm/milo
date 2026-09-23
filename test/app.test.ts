@@ -9,7 +9,38 @@ import { EditorView } from '@codemirror/view';
 import { SourceStore, json } from '../src/source.ts';
 
 // DOM-based integration, not an actual Chromium or native file-picker test.
-const initial = readFileSync('dist/milo.html', 'utf8');
+function appFixture(html: string) {
+  const store = SourceStore.fromHTML(html);
+  for (const slide of store.list('slide')) store.remove(slide.id);
+  const slides = [
+    {
+      id: 'slide-01',
+      name: 'fixture.md#1',
+      text: '<!-- milo: layout=cover -->\n\n# 君とボク。\n\n> テスト用の表紙。\n',
+    },
+    {
+      id: 'slide-02',
+      name: 'fixture.md#2',
+      text: `<!-- milo: layout=lab -->\n\n# Lean Analytics\n\n減衰率は **{{wave.gamma}}**。\n\n::equation{model="wave"}\n\n::plot{model="wave" from="0" to="10"}\n\n::slider{param="wave.gamma" label="減衰率 γ" min="0" max="1" step="0.01"}\n`,
+    },
+    {
+      id: 'slide-03',
+      name: 'fixture.md#3',
+      text: '<!-- milo: layout=media -->\n\n# Media\n\n![loop](./assets/flow.gif)\n\n$E=mc^2$\n',
+    },
+  ];
+  for (const slide of slides) store.add({ ...slide, kind: 'slide' });
+  store.setText(
+    'model-wave',
+    '{\n  "input": "t",\n  "parameters": {\n    "A": 1.0,\n    "gamma": 0.2,\n    "omega": 3.0\n  },\n  "expression": "A * exp(-gamma * t) * cos(omega * t)"\n}\n',
+  );
+  store.setText(
+    'manifest',
+    '{\n  "title": "Fixture",\n  "layouts": {\n    "slide-01": "cover",\n    "slide-02": "lab",\n    "slide-03": "media"\n  }\n}\n',
+  );
+  return store.html!;
+}
+const initial = appFixture(readFileSync('dist/milo.html', 'utf8'));
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function until(fn: () => boolean, message: string, ms = 3000) {
   const started = Date.now();
@@ -138,7 +169,7 @@ test('standalone app boots and all three slides render without network dependenc
   }
 });
 
-test('display math interrupts prose inside a multiline text directive without blank lines', async () => {
+test('display math interrupts prose inside a box without blank lines', async () => {
   const app = await launch();
   try {
     const editor = app.code();
@@ -146,15 +177,15 @@ test('display math interrupts prose inside a multiline text directive without bl
       changes: {
         from: 0,
         to: editor.state.doc.length,
-        insert: '::text{\n++Radon-Nikodymの定理++\n任意の...\n$$\nx+A\n$$\n\n$$y+B$$\n\n$$$$\n}\n',
+        insert:
+          '@box\n++Radon-Nikodymの定理++\n任意の...\n$$\nx+A\n$$\n\n$$y+B$$\n\n$$$$\n@endbox\n',
       },
     });
     await until(
-      () =>
-        app.query('#slide-content .text-block')?.querySelectorAll('.katex-display').length === 2,
+      () => app.query('#slide-content .box-block')?.querySelectorAll('.katex-display').length === 2,
       'Display math did not interrupt text directive prose',
     );
-    const block = app.query('#slide-content .text-block');
+    const block = app.query('#slide-content .box-block');
     assert.equal(block.querySelector('u')?.textContent, 'Radon-Nikodymの定理');
     assert.match(block.textContent, /任意の\.\.\./);
     assert.match(block.textContent, /\$\$\$\$/);

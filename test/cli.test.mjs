@@ -47,12 +47,13 @@ Hello
   assert.equal(deck.title, '小さな実験室');
   assert.deepEqual(
     deck.blocks.filter((b) => b.kind === 'slide').map((b) => b.id),
-    ['slide-01', 'slide-02', 'slide-03'],
+    ['slide-01', 'slide-02', 'slide-03', 'slide-04'],
   );
   assert.deepEqual(json(deck.blocks.find((b) => b.id === 'manifest').text).layouts, {
     'slide-01': 'cover',
     'slide-02': 'lab',
-    'slide-03': 'media',
+    'slide-03': 'lab',
+    'slide-04': 'media',
   });
   assert.ok(deck.blocks.some((b) => b.id === 'model-wave'));
   const asset = deck.blocks.find((b) => b.kind === 'asset');

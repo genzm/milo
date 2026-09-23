@@ -64,6 +64,22 @@ npx milo content -o dist/milo.html
 `Cmd+S` / `Ctrl+S` はブラウザの「ページを保存」ではなく、miloの即時保存として動きます。
 未接続なら保存先の接続を開始します。
 
+## Box
+
+`@box` は通常のMarkdownを囲んで、スライド内の独立したボックスとして表示します。
+
+```markdown
+@box tone=accent
+
+### 注意
+
+文章、**強調**、箇条書き、数式 $x^2$ を書けます。
+
+@endbox
+```
+
+`tone` は `accent`（既定）、`default`、`muted`、`dark` に対応しています。BoxはCanvasのnode内でも利用できます。
+
 ## Canvas
 
 `@canvas` はMarkdownで書いたHTML要素を配置し、その背面にSVGの矢印を描きます。単純な流れは、Markdownのまとまりを `-->` で区切るだけで作れます。

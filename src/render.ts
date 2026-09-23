@@ -1,6 +1,6 @@
 import MarkdownIt from 'markdown-it';
 import katex from 'katex';
-import { mountCanvas } from './canvas';
+import { atAttributes, mountCanvas } from './canvas';
 import {
   assetURL,
   directiveRenderer,
@@ -91,6 +91,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
     disposals: (() => void)[] = [];
   const directives: ParsedDirective[] = [];
   const canvases: { source: string; options: string; error?: string }[] = [];
+  const boxes: { source: string; options: string; error?: string }[] = [];
   const display = stripMiloComments(source);
   const footerMarker = /(^|\r?\n)::footer(?:\{\})?[ \t]*(?:\r?\n|$)/m.exec(display);
   const bodySource = footerMarker
@@ -98,6 +99,59 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
       : display,
     footerSource = footerMarker ? display.slice(footerMarker.index + footerMarker[0].length) : '';
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
+  md.block.ruler.before(
+    'fence',
+    'milo-box',
+    (s: any, line: number, end: number, silent: boolean) => {
+      if (s.sCount[line] - s.blkIndent >= 4) return false;
+      const opening = /^@box(?:\s+([\s\S]*))?\s*$/.exec(lineText(s, line).trim());
+      if (!opening) return false;
+      let cursor = line + 1,
+        depth = 1,
+        fence = '';
+      for (; cursor < end; cursor++) {
+        const text = lineText(s, cursor).trim();
+        if (fence) {
+          if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
+          continue;
+        }
+        const openingFence = /^(?:`{3,}|~{3,})/.exec(text);
+        if (openingFence) {
+          fence = openingFence[0];
+          continue;
+        }
+        if (/^@box(?:\s|$)/.test(text)) depth++;
+        else if (text === '@endbox' && --depth === 0) break;
+      }
+      if (silent) return true;
+      const token = s.push('milo_box', '', 0);
+      if (cursor >= end) {
+        token.meta = {
+          index:
+            boxes.push({
+              source: '',
+              options: opening[1] || '',
+              error: 'boxを閉じる @endbox がありません。',
+            }) - 1,
+        };
+        token.map = [line, end];
+        s.line = end;
+        return true;
+      }
+      token.meta = {
+        index:
+          boxes.push({
+            source: s.src.slice(s.bMarks[line + 1], s.bMarks[cursor]),
+            options: opening[1] || '',
+          }) - 1,
+      };
+      token.map = [line, cursor + 1];
+      s.line = cursor + 1;
+      return true;
+    },
+  );
+  md.renderer.rules.milo_box = (tokens, index) =>
+    `<div class="box-block" data-box="${tokens[index].meta!.index}"></div>\n`;
   md.block.ruler.before(
     'fence',
     'milo-canvas',
@@ -157,33 +211,14 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
       const match = /^::([a-z]+)\{(.*)\}\s*$/.exec(text);
       let name = match?.[1] || '',
         raw = match?.[2] || '',
-        nextLine = line + 1,
-        block = false;
-      const textBlock = !match ? /^::text\{(.*)$/.exec(text) : null;
-      if (textBlock) {
-        const body: string[] = textBlock[1] ? [textBlock[1]] : [];
-        let cursor = line + 1;
-        for (; cursor < end; cursor++) {
-          const current = s.src.slice(s.bMarks[cursor], s.eMarks[cursor]);
-          if (current.trim() === '}') break;
-          body.push(current);
-        }
-        if (cursor >= end) return false;
-        name = 'text';
-        raw = body.join('\n');
-        nextLine = cursor + 1;
-        block = true;
-      }
+        nextLine = line + 1;
       if (!name) return false;
       if (silent) return true;
       let item: ParsedDirective;
       try {
         item = {
           name,
-          attrs:
-            name === 'text' && (block || !/^\s*text\s*=/.test(raw))
-              ? { text: raw, block: String(block) }
-              : args(raw),
+          attrs: args(raw),
         };
       } catch (e: any) {
         item = { name, attrs: {}, error: e.message };
@@ -293,15 +328,37 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
     );
   }
 
-  for (const element of root.querySelectorAll<HTMLElement>('[data-canvas]')) {
-    const canvas = canvases[Number(element.dataset.canvas)];
-    try {
-      if (canvas.error) throw new Error(canvas.error);
-      const mounted = mountCanvas(element, canvas.source, canvas.options, renderContext);
-      if (mounted.update) layoutUpdates.push(mounted.update);
-      if (mounted.dispose) disposals.push(mounted.dispose);
-    } catch (e) {
-      showError(element, e);
+  let structuralBlocks = true;
+  while (structuralBlocks) {
+    structuralBlocks = false;
+    for (const element of root.querySelectorAll<HTMLElement>('[data-canvas]:not([data-mounted])')) {
+      structuralBlocks = true;
+      element.dataset.mounted = 'true';
+      const canvas = canvases[Number(element.dataset.canvas)];
+      try {
+        if (canvas.error) throw new Error(canvas.error);
+        const mounted = mountCanvas(element, canvas.source, canvas.options, renderContext);
+        if (mounted.update) layoutUpdates.push(mounted.update);
+        if (mounted.dispose) disposals.push(mounted.dispose);
+      } catch (e) {
+        showError(element, e);
+      }
+    }
+    for (const element of root.querySelectorAll<HTMLElement>('[data-box]:not([data-mounted])')) {
+      structuralBlocks = true;
+      element.dataset.mounted = 'true';
+      const box = boxes[Number(element.dataset.box)];
+      try {
+        if (box.error) throw new Error(box.error);
+        const attrs = atAttributes(box.options),
+          tone = attrs.tone || 'accent';
+        if (!['accent', 'default', 'muted', 'dark'].includes(tone))
+          throw new Error('boxのtoneは accent / default / muted / dark から選んでください。');
+        element.className = `box-block box-tone-${tone}`;
+        element.innerHTML = md.render(box.source);
+      } catch (e) {
+        showError(element, e);
+      }
     }
   }
 

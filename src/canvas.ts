@@ -71,7 +71,7 @@ function choice<T extends string>(
 }
 
 /** Parse the compact attribute syntax shared by canvas, node and edge markers. */
-export function canvasAttributes(source: string): Record<string, string> {
+export function atAttributes(source: string): Record<string, string> {
   const attributes: Record<string, string> = {};
   let rest = source.trim();
   const id = /^#([A-Za-z][\w-]*)/.exec(rest);
@@ -130,7 +130,7 @@ function edgeFrom(attrs: Record<string, string>): CanvasEdge {
 
 /** Parse the contents of an @canvas block without parsing its Markdown node bodies. */
 export function parseCanvas(source: string, rawOptions = ''): CanvasScene {
-  const attrs = canvasAttributes(rawOptions);
+  const attrs = atAttributes(rawOptions);
   const options: CanvasOptions = {
     layout: choice(attrs.layout, ['flow', 'free'], 'flow', 'layout'),
     direction: choice(attrs.direction, ['right', 'left', 'down', 'up'], 'right', 'direction'),
@@ -197,7 +197,7 @@ export function parseCanvas(source: string, rawOptions = ''): CanvasScene {
     if (node) {
       flushCurrent();
       flushLoose();
-      current = { attrs: { ...canvasAttributes(node[2] || ''), id: node[1] }, body: [] };
+      current = { attrs: { ...atAttributes(node[2] || ''), id: node[1] }, body: [] };
       continue;
     }
     const edge = /^@edge\s+([A-Za-z][\w-]*)\s*-->\s*([A-Za-z][\w-]*)(?:\s+([\s\S]*))?\s*$/.exec(
@@ -208,7 +208,7 @@ export function parseCanvas(source: string, rawOptions = ''): CanvasScene {
       flushLoose();
       edges.push(
         edgeFrom({
-          ...canvasAttributes(edge[3] || ''),
+          ...atAttributes(edge[3] || ''),
           from: edge[1],
           to: edge[2],
         }),

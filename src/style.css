@@ -526,7 +526,7 @@ svg {
 }
 /* 3-C. 中央スライド内 — Markdownから描画されるインタラクティブ部品 */
 .equation-block,
-.text-block {
+.box-block {
   padding: 16px 12px 11px;
   background: var(--accent-pale);
   border: 1px solid var(--accent);
@@ -535,24 +535,32 @@ svg {
   overflow-x: auto;
   cursor: pointer;
 }
-.text-block {
+.box-block {
   cursor: default;
   color: var(--slide-ink);
   line-height: 1.75;
-  white-space: pre-wrap;
-}
-.text-block-multiline {
   white-space: normal;
 
-  p {
-    white-space: pre-line;
-  }
   > :first-child {
     margin-top: 0;
   }
   > :last-child {
     margin-bottom: 0;
   }
+}
+.box-tone-default {
+  border-color: #ddd3d6;
+  background: var(--white);
+}
+.box-tone-muted {
+  border-color: #e7dfe1;
+  background: #f8f5f6;
+  color: var(--slide-muted);
+}
+.box-tone-dark {
+  border-color: #1d1a1b;
+  background: #1d1a1b;
+  color: var(--white);
 }
 .equation-block {
   .katex-display {
@@ -752,7 +760,7 @@ input[type='range'] {
       padding-left: 0.73cqw;
     }
     .equation-block,
-    .text-block,
+    .box-block,
     .plot-block,
     .image-block {
       margin: 0.55cqw 0;

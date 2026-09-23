@@ -122,20 +122,6 @@ const equationRenderer: DirectiveRenderer = {
   },
 };
 
-const textRenderer: DirectiveRenderer = {
-  mount(el, d, ctx) {
-    el.classList.add('text-block');
-    const text = d.attrs.text || '',
-      block = d.attrs.block === 'true';
-    if (block) el.classList.add('text-block-multiline');
-    el.innerHTML = text
-      ? (block ? ctx.renderMarkdown?.(text) : ctx.renderInline?.(text)) || esc(text)
-      : '';
-    if (!text) el.classList.add('block-error');
-    return {};
-  },
-};
-
 const plotRenderer: DirectiveRenderer = {
   mount(el, d, ctx) {
     const modelId = d.attrs.model || 'wave',
@@ -338,7 +324,6 @@ const componentRenderer:DirectiveRenderer={mount(el,d,ctx){
 
 const directiveRenderers = new Map<string, DirectiveRenderer>([
   ['equation', equationRenderer],
-  ['text', textRenderer],
   ['plot', plotRenderer],
   ['slider', sliderRenderer],
   ['image', imageRenderer],
