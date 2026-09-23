@@ -153,3 +153,41 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
     window.close();
   }
 });
+
+test('footer uses a paired @footer block and ignores markers in code fences', () => {
+  const window = new Window({ settings: { disableComputedStyleRendering: true } });
+  const originalDocument = globalThis.document;
+  Object.assign(globalThis, { document: window.document });
+  const context = {
+    store: new SourceStore({ html: null, blocks: [] }),
+    present: () => false,
+    parameters: () => ({}),
+    setParameter: () => {},
+    inspect: () => {},
+  };
+  try {
+    const root = window.document.createElement('div');
+    renderSlide(
+      root as unknown as HTMLElement,
+      '# 本文\n\n@footer\n出典：**資料A**\n@endfooter\n\n本文の続き\n\n```md\n@footer\nコード内\n@endfooter\n```',
+      context,
+    );
+    assert.ok(root.classList.contains('has-slide-footer'));
+    assert.equal(root.querySelectorAll('.slide-footer-content').length, 1);
+    assert.equal(root.querySelector('.slide-footer-content strong')?.textContent, '資料A');
+    assert.match(root.textContent, /本文の続き/);
+    assert.match(root.querySelector('code')?.textContent || '', /@footer/);
+
+    const legacy = window.document.createElement('div');
+    renderSlide(legacy as unknown as HTMLElement, '本文\n\n::footer\n\n旧記法', context);
+    assert.ok(!legacy.classList.contains('has-slide-footer'));
+    assert.equal(legacy.querySelector('.slide-footer-content'), null);
+
+    const broken = window.document.createElement('div');
+    renderSlide(broken as unknown as HTMLElement, '@footer\n閉じていない', context);
+    assert.match(broken.querySelector('.block-error')?.textContent || '', /@endfooter/);
+  } finally {
+    Object.assign(globalThis, { document: originalDocument });
+    window.close();
+  }
+});

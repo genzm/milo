@@ -92,12 +92,8 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   const directives: ParsedDirective[] = [];
   const canvases: { source: string; options: string; error?: string }[] = [];
   const boxes: { source: string; options: string; error?: string }[] = [];
+  const footers: { source: string; error?: string }[] = [];
   const display = stripMiloComments(source);
-  const footerMarker = /(^|\r?\n)::footer(?:\{\})?[ \t]*(?:\r?\n|$)/m.exec(display);
-  const bodySource = footerMarker
-      ? display.slice(0, footerMarker.index + footerMarker[1].length)
-      : display,
-    footerSource = footerMarker ? display.slice(footerMarker.index + footerMarker[0].length) : '';
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
   md.block.ruler.before(
     'fence',
@@ -152,6 +148,47 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   );
   md.renderer.rules.milo_box = (tokens, index) =>
     `<div class="box-block" data-box="${tokens[index].meta!.index}"></div>\n`;
+  md.block.ruler.before(
+    'fence',
+    'milo-footer',
+    (s: any, line: number, end: number, silent: boolean) => {
+      if (s.sCount[line] - s.blkIndent >= 4 || lineText(s, line).trim() !== '@footer') return false;
+      let cursor = line + 1,
+        fence = '';
+      for (; cursor < end; cursor++) {
+        const text = lineText(s, cursor).trim();
+        if (fence) {
+          if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
+          continue;
+        }
+        const openingFence = /^(?:`{3,}|~{3,})/.exec(text);
+        if (openingFence) {
+          fence = openingFence[0];
+          continue;
+        }
+        if (text === '@endfooter') break;
+      }
+      if (silent) return true;
+      const token = s.push('milo_footer', '', 0);
+      if (cursor >= end) {
+        token.meta = {
+          index:
+            footers.push({ source: '', error: 'footerを閉じる @endfooter がありません。' }) - 1,
+        };
+        token.map = [line, end];
+        s.line = end;
+        return true;
+      }
+      token.meta = {
+        index: footers.push({ source: s.src.slice(s.bMarks[line + 1], s.bMarks[cursor]) }) - 1,
+      };
+      token.map = [line, cursor + 1];
+      s.line = cursor + 1;
+      return true;
+    },
+  );
+  md.renderer.rules.milo_footer = (tokens, index) =>
+    `<footer class="slide-footer-content" data-footer="${tokens[index].meta!.index}"></footer>\n`;
   md.block.ruler.before(
     'fence',
     'milo-canvas',
@@ -319,13 +356,12 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
     renderMarkdown: (text) => md.render(text),
   };
   root.dataset.markdown = 'slide';
-  root.classList.toggle('has-slide-footer', !!footerMarker);
-  root.innerHTML = md.render(bodySource);
-  if (footerMarker && footerSource.trim()) {
-    root.insertAdjacentHTML(
-      'beforeend',
-      `<footer class="slide-footer-content">${md.render(footerSource)}</footer>`,
-    );
+  root.innerHTML = md.render(display);
+  root.classList.toggle('has-slide-footer', footers.length > 0);
+  for (const element of root.querySelectorAll<HTMLElement>('[data-footer]')) {
+    const footer = footers[Number(element.dataset.footer)];
+    if (footer.error) showError(element, new Error(footer.error));
+    else element.innerHTML = md.render(footer.source);
   }
 
   let structuralBlocks = true;
