@@ -19,25 +19,22 @@ interface Manifest {
 }
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const paths: Record<string, string> = {
-  book: 'M4 4h7v16H4z M13 4h7v16h-7z',
   play: 'm8 5 11 7-11 7Z',
   code: 'm8 5-6 7 6 7m8-14 6 7-6 7m-5 2 2-18',
   plus: 'M12 5v14M5 12h14',
   left: 'm14 5-7 7 7 7',
   right: 'm10 5 7 7-7 7',
   link: 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',
-  check: 'm5 12 4 4L19 6',
   close: 'm6 6 12 12M6 18 18 6',
   file: 'M14 2H5v20h14V7Zm0 0v6h5M8 13h8M8 17h6',
   image: 'M3 3h18v18H3zM3 16l5-5 5 6 4-4 4 4M15 7h.01',
-  help: 'M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 3M12 17h.01',
   copy: 'M8 8h12v13H8zM4 16H2V2h13v3',
   trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',
   up: 'm5 14 7-7 7 7',
   down: 'm5 10 7 7 7-7',
 };
 const icon = (name: string) =>
-  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${name === 'help' ? '<circle cx="12" cy="12" r="10"/>' : ''}<path d="${paths[name] || paths.file}"/></svg>`;
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.file}"/></svg>`;
 const app = $('app');
 let store = SourceStore.fromDOM(document),
   boot = store.snapshot(),
@@ -181,7 +178,7 @@ app.innerHTML = `
 <div class="workspace">
   <aside class="sidebar" aria-label="スライド一覧"><div class="sidebar-heading"><span id="slide-count"></span></div><nav id="slides"></nav><div class="slide-operations"><button id="move-up" class="icon-button" title="前へ移動" aria-label="スライドを前へ移動">${icon('up')}</button><button id="move-down" class="icon-button" title="後ろへ移動" aria-label="スライドを後ろへ移動">${icon('down')}</button><button id="duplicate" class="icon-button" title="複製" aria-label="スライドを複製">${icon('copy')}</button><button id="remove-slide" class="icon-button" title="削除" aria-label="スライドを削除">${icon('trash')}</button></div><button id="add-slide" class="add-slide">${icon('plus')}スライドを追加</button></aside>
   <main class="main-stage"><div class="stage-topline"><div class="stage-tools"><button id="diff" class="text-button">変更を見る <span id="change-count"></span></button></div></div>
-    <div class="stage-scroll"><article class="slide" id="slide"><div class="slide-top"><span class="slide-brand">MILO / RESEARCH NOTES</span><span class="slide-series" id="slide-series"></span></div><div id="slide-content" class="slide-content"></div><footer class="slide-footer"><span id="slide-footer-title"></span><span id="slide-number"></span></footer></article></div>
+    <div class="stage-scroll"><article class="slide" id="slide"><div class="slide-top"><span class="slide-series" id="slide-series"></span></div><div id="slide-content" class="slide-content"></div></article></div>
     <div class="stage-bottom"><nav class="pagination" aria-label="ページ送り"><button id="previous" class="icon-button" aria-label="前のスライド">${icon('left')}</button><span id="page-number"></span><button id="next" class="icon-button" aria-label="次のスライド">${icon('right')}</button></nav></div>
   </main>
   <aside class="inspector" aria-label="原稿とモデルの編集"><div class="inspector-tabs" role="tablist"><button data-tab="slide" role="tab">原稿</button><button data-tab="model" role="tab">モデル</button><!-- Components disabled: <button data-tab="component" role="tab">部品</button> --><button data-tab="asset" role="tab">素材</button><button data-tab="manifest" role="tab">設定</button></div>
@@ -298,8 +295,6 @@ function refreshSlide() {
       : String(current + 1).padStart(2, '0') +
         ' / ' +
         String(manifest.slides.length).padStart(2, '0');
-  $('slide-number').textContent = current === 0 ? '' : String(current + 1).padStart(2, '0');
-  $('slide-footer-title').textContent = manifest.title;
   try {
     rendered = renderSlide($('slide-content'), store.get(id).text, {
       store,

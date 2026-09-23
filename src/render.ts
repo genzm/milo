@@ -229,6 +229,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
     renderInline: (text) => md.renderInline(text),
     renderMarkdown: (text) => md.render(text),
   };
+  root.dataset.markdown = 'slide';
   root.classList.toggle('has-slide-footer', !!footerMarker);
   root.innerHTML = md.render(bodySource);
   if (footerMarker && footerSource.trim()) {
