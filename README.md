@@ -64,6 +64,24 @@ npx milo content -o dist/milo.html
 `Cmd+S` / `Ctrl+S` はブラウザの「ページを保存」ではなく、miloの即時保存として動きます。
 未接続なら保存先の接続を開始します。
 
+## Emphasis
+
+通常の太字は基本文字色、`==` で囲んだ語句はアクセント色で強調します。
+
+```markdown
+**黒字の太字強調**
+
+==アクセント色の強調==
+```
+
+スライド内で最も大きく見せたい短いメッセージには `@impact` を使います。
+
+```markdown
+@impact
+売上が 2.4倍に
+@endimpact
+```
+
 ## Columns
 
 `@columns` は2つ以上のMarkdown領域を等幅で横に並べます。列数は `@column` の数から自動的に決まります。

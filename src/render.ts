@@ -93,6 +93,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   const canvases: { source: string; options: string; error?: string }[] = [];
   const boxes: { source: string; options: string; error?: string }[] = [];
   const columns: { sources: string[]; error?: string }[] = [];
+  const impacts: { source: string; error?: string }[] = [];
   const footers: { source: string; error?: string }[] = [];
   const display = stripMiloComments(source);
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
@@ -214,6 +215,47 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   );
   md.renderer.rules.milo_columns = (tokens, index) =>
     `<div class="columns-block" data-columns="${tokens[index].meta!.index}"></div>\n`;
+  md.block.ruler.before(
+    'fence',
+    'milo-impact',
+    (s: any, line: number, end: number, silent: boolean) => {
+      if (s.sCount[line] - s.blkIndent >= 4 || lineText(s, line).trim() !== '@impact') return false;
+      let cursor = line + 1,
+        fence = '';
+      for (; cursor < end; cursor++) {
+        const text = lineText(s, cursor).trim();
+        if (fence) {
+          if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
+          continue;
+        }
+        const openingFence = /^(?:`{3,}|~{3,})/.exec(text);
+        if (openingFence) {
+          fence = openingFence[0];
+          continue;
+        }
+        if (text === '@endimpact') break;
+      }
+      if (silent) return true;
+      const token = s.push('milo_impact', '', 0);
+      if (cursor >= end) {
+        token.meta = {
+          index:
+            impacts.push({ source: '', error: 'impactを閉じる @endimpact がありません。' }) - 1,
+        };
+        token.map = [line, end];
+        s.line = end;
+        return true;
+      }
+      token.meta = {
+        index: impacts.push({ source: s.src.slice(s.bMarks[line + 1], s.bMarks[cursor]) }) - 1,
+      };
+      token.map = [line, cursor + 1];
+      s.line = cursor + 1;
+      return true;
+    },
+  );
+  md.renderer.rules.milo_impact = (tokens, index) =>
+    `<div class="impact-block" data-impact="${tokens[index].meta!.index}"></div>\n`;
   md.block.ruler.before(
     'fence',
     'milo-footer',
@@ -370,6 +412,33 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   });
   md.renderer.rules.math_inline = (tokens, index) =>
     katex.renderToString(tokens[index].content, { throwOnError: false, trust: false });
+  md.inline.ruler.after('escape', 'accent_emphasis', (s: any, silent: boolean) => {
+    if (
+      s.src.slice(s.pos, s.pos + 2) !== '==' ||
+      s.src[s.pos - 1] === '=' ||
+      !s.src[s.pos + 2] ||
+      /\s/.test(s.src[s.pos + 2])
+    )
+      return false;
+    let end = s.pos + 2;
+    while ((end = s.src.indexOf('==', end)) !== -1) {
+      if (!isEscaped(s.src, end) && !/\s/.test(s.src[end - 1]) && s.src[end + 2] !== '=') break;
+      end += 2;
+    }
+    if (end === -1) return false;
+    const content = s.src.slice(s.pos + 2, end);
+    if (!content || content.includes('\n')) return false;
+    if (!silent) {
+      s.push('accent_emphasis_open', 'mark', 1);
+      const text = s.push('text', '', 0);
+      text.content = content;
+      s.push('accent_emphasis_close', 'mark', -1);
+    }
+    s.pos = end + 2;
+    return true;
+  });
+  md.renderer.rules.accent_emphasis_open = () => '<mark class="accent-emphasis">';
+  md.renderer.rules.accent_emphasis_close = () => '</mark>';
   md.inline.ruler.after('escape', 'underline', (s: any, silent: boolean) => {
     if (s.src[s.pos] !== '+' || s.src[s.pos + 1] !== '+') return false;
     const end = s.src.indexOf('++', s.pos + 2);
@@ -447,6 +516,13 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
       element.innerHTML = group.sources
         .map((column) => `<section class="column-block">${md.render(column)}</section>`)
         .join('');
+    }
+    for (const element of root.querySelectorAll<HTMLElement>('[data-impact]:not([data-mounted])')) {
+      structuralBlocks = true;
+      element.dataset.mounted = 'true';
+      const impact = impacts[Number(element.dataset.impact)];
+      if (impact.error) showError(element, new Error(impact.error));
+      else element.innerHTML = md.render(impact.source);
     }
     for (const element of root.querySelectorAll<HTMLElement>('[data-canvas]:not([data-mounted])')) {
       structuralBlocks = true;

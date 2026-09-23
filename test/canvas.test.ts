@@ -262,3 +262,43 @@ test('columns render two or more Markdown columns with nested structural content
     window.close();
   }
 });
+
+test('strong, accent emphasis and impact provide three distinct emphasis levels', () => {
+  const window = new Window({ settings: { disableComputedStyleRendering: true } });
+  const originalDocument = globalThis.document;
+  Object.assign(globalThis, { document: window.document });
+  const context = {
+    store: new SourceStore({ html: null, blocks: [] }),
+    present: () => false,
+    parameters: () => ({}),
+    setParameter: () => {},
+    inspect: () => {},
+  };
+  try {
+    const root = window.document.createElement('div');
+    renderSlide(
+      root as unknown as HTMLElement,
+      '通常の **黒字強調** と ==アクセント強調==。\n\n@impact\n売上が **2.4倍** に\n@endimpact',
+      context,
+    );
+    assert.equal(root.querySelector('p strong')?.textContent, '黒字強調');
+    assert.equal(root.querySelector('.accent-emphasis')?.textContent, 'アクセント強調');
+    assert.equal(root.querySelector('.impact-block')?.textContent.trim(), '売上が 2.4倍 に');
+    assert.equal(root.querySelector('.impact-block strong')?.textContent, '2.4倍');
+
+    const literal = window.document.createElement('div');
+    renderSlide(
+      literal as unknown as HTMLElement,
+      '`==code==` と $a == b$ と a == b == c',
+      context,
+    );
+    assert.equal(literal.querySelector('.accent-emphasis'), null);
+
+    const broken = window.document.createElement('div');
+    renderSlide(broken as unknown as HTMLElement, '@impact\n閉じていない', context);
+    assert.match(broken.querySelector('.block-error')?.textContent || '', /@endimpact/);
+  } finally {
+    Object.assign(globalThis, { document: originalDocument });
+    window.close();
+  }
+});

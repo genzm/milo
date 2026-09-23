@@ -1493,10 +1493,34 @@ dialog {
     margin: 1.5% 0;
     word-break: normal;
     overflow-wrap: anywhere;
+  }
+  strong {
+    color: inherit;
+    font-weight: 800;
+  }
+  .accent-emphasis {
+    color: var(--accent);
+    background: none;
+    font-weight: 800;
+  }
+  .impact-block {
+    color: var(--accent);
+    font-size: clamp(52px, 6.25cqw, 100px);
+    font-weight: 850;
+    line-height: 1.08;
+    letter-spacing: -0.055em;
+    margin: 3.2% 0;
+    text-wrap: balance;
 
-    strong {
-      color: var(--accent);
-      font-weight: 800;
+    :is(p, h1, h2, h3, h4, h5, h6) {
+      color: inherit;
+      font: inherit;
+      letter-spacing: inherit;
+      line-height: inherit;
+      margin: 0;
+    }
+    :is(strong, .accent-emphasis) {
+      color: inherit;
     }
   }
   .slide-content > :first-child {
@@ -1729,6 +1753,9 @@ dialog {
   }
 }
 :is(.layout-cover, .layout-section) {
+  .impact-block {
+    color: var(--white);
+  }
   .slide-content :is(h2, h3, h4, h5, h6) {
     color: var(--white);
   }
