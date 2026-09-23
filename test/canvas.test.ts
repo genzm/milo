@@ -302,3 +302,54 @@ test('strong, accent emphasis and impact provide three distinct emphasis levels'
     window.close();
   }
 });
+
+test('task items keep source offsets through structural Markdown and toggle one source character', () => {
+  const window = new Window({ settings: { disableComputedStyleRendering: true } });
+  const originalDocument = globalThis.document;
+  Object.assign(globalThis, { document: window.document });
+  const source = `<!-- milo: layout=lab -->
+
+- [ ] ルート
+- [x] 完了済み
+
+@columns
+@column
+- [ ] 左
+@endcolumn
+@column
+@box
+- [ ] 右のボックス
+@endbox
+@endcolumn
+@endcolumns`;
+  const patches: { from: number; to: number; replacement: string }[] = [];
+  try {
+    const root = window.document.createElement('div');
+    const rendered = renderSlide(root as unknown as HTMLElement, source, {
+      store: new SourceStore({ html: null, blocks: [] }),
+      present: () => false,
+      parameters: () => ({}),
+      setParameter: () => {},
+      patchSource: (from, to, replacement) => patches.push({ from, to, replacement }),
+      inspect: () => {},
+    });
+    assert.equal(root.querySelectorAll('.task-marker').length, 4);
+    assert.equal(root.querySelector('[data-task="0"]')?.getAttribute('aria-checked'), 'false');
+    assert.equal(root.querySelector('[data-task="1"]')?.getAttribute('aria-checked'), 'true');
+
+    (root.querySelector('[data-task="0"]') as any).click();
+    (root.querySelector('[data-task="3"]') as any).click();
+    assert.deepEqual(
+      patches.map(({ from, to, replacement }) => [source.slice(from, to), replacement]),
+      [
+        [' ', 'x'],
+        [' ', 'x'],
+      ],
+    );
+    assert.equal(root.querySelector('[data-task="0"]')?.getAttribute('aria-checked'), 'true');
+    rendered.dispose();
+  } finally {
+    Object.assign(globalThis, { document: originalDocument });
+    window.close();
+  }
+});

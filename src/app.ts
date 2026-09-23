@@ -355,6 +355,12 @@ function refreshSlide() {
       present: () => present,
       parameters,
       setParameter,
+      patchSource: (from, to, replacement) =>
+        mutate(() => {
+          const text = store.get(id).text;
+          if (from < 0 || to < from || to > text.length) return;
+          store.setText(id, text.slice(0, from) + replacement + text.slice(to));
+        }),
       inspect: selectBlock,
     });
   } catch (e: any) {

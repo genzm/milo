@@ -81,8 +81,45 @@ function args(raw: string): Record<string, string> {
   return a;
 }
 
-function stripMiloComments(source: string) {
-  return source.replace(/^[ \t]*<!--\s*milo:[\s\S]*?-->[ \t]*(?:\r?\n|$)/gm, '');
+function maskMiloComments(source: string) {
+  return source.replace(/^[ \t]*<!--\s*milo:[\s\S]*?-->[ \t]*(?:\r?\n|$)/gm, (comment) =>
+    comment.replace(/[^\r\n]/g, ' '),
+  );
+}
+
+interface TaskItem {
+  at: number;
+  checked: boolean;
+}
+
+function prepareTaskItems(source: string, tasks: TaskItem[]) {
+  let offset = 0,
+    fence = '';
+  return source.replace(/[^\r\n]*(?:\r\n|\r|\n|$)/g, (line) => {
+    if (!line) return line;
+    const eol = /(?:\r\n|\r|\n)$/.exec(line)?.[0] || '',
+      body = eol ? line.slice(0, -eol.length) : line;
+    let output = body;
+    if (fence) {
+      if (new RegExp(`^[ \\t]{0,3}${fence[0]}{${fence.length},}\\s*$`).test(body)) fence = '';
+    } else {
+      const openingFence = /^[ \t]{0,3}(`{3,}|~{3,})/.exec(body);
+      if (openingFence) fence = openingFence[1];
+      else {
+        const marker = /^([ \t]*(?:(?:[-+*])|(?:\d+[.)]))[ \t]+)\[([ xX])\](?=[ \t]+)/.exec(body);
+        if (marker) {
+          const index =
+            tasks.push({
+              at: offset + marker[1].length + 1,
+              checked: marker[2].toLowerCase() === 'x',
+            }) - 1;
+          output = marker[1] + `\uE000${index}\uE001` + body.slice(marker[0].length);
+        }
+      }
+    }
+    offset += line.length;
+    return output + eol;
+  });
 }
 
 export function renderSlide(root: HTMLElement, source: string, ctx: RenderContext): Rendered {
@@ -95,7 +132,8 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   const columns: { sources: string[]; error?: string }[] = [];
   const impacts: { source: string; error?: string }[] = [];
   const footers: { source: string; error?: string }[] = [];
-  const display = stripMiloComments(source);
+  const tasks: TaskItem[] = [];
+  const display = prepareTaskItems(maskMiloComments(source), tasks);
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
   md.block.ruler.before(
     'fence',
@@ -463,6 +501,21 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   });
   md.renderer.rules.live_value = (tokens, index) =>
     `<span class="live-value" data-model="${esc(tokens[index].meta!.id)}" data-key="${esc(tokens[index].meta!.key)}"></span>`;
+  md.inline.ruler.before('text', 'task_item', (s: any, silent: boolean) => {
+    const match = /^\uE000(\d+)\uE001/.exec(s.src.slice(s.pos));
+    if (!match) return false;
+    if (!silent) {
+      const token = s.push('task_item', '', 0);
+      token.meta = { index: Number(match[1]) };
+    }
+    s.pos += match[0].length;
+    return true;
+  });
+  md.renderer.rules.task_item = (tokens, index) => {
+    const taskIndex = Number(tokens[index].meta!.index),
+      checked = tasks[taskIndex]?.checked || false;
+    return `<button type="button" class="task-marker" data-task="${taskIndex}" role="checkbox" aria-checked="${checked}" aria-label="${checked ? '完了済み。未完了に戻す' : '未完了。完了にする'}"></button>`;
+  };
   md.renderer.rules.image = (tokens, index) => {
     const token = tokens[index],
       src = String(token.attrGet('src') || ''),
@@ -577,6 +630,24 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
         label.textContent = '?';
       }
     });
+  const toggleTask = (event: Event) => {
+    const target = event.target as Element | null,
+      button = target?.closest<HTMLButtonElement>('.task-marker');
+    if (!button || !root.contains(button)) return;
+    const task = tasks[Number(button.dataset.task)];
+    if (!task) return;
+    event.preventDefault();
+    event.stopPropagation();
+    task.checked = !task.checked;
+    button.setAttribute('aria-checked', String(task.checked));
+    button.setAttribute(
+      'aria-label',
+      task.checked ? '完了済み。未完了に戻す' : '未完了。完了にする',
+    );
+    ctx.patchSource?.(task.at, task.at + 1, task.checked ? 'x' : ' ');
+  };
+  root.addEventListener('click', toggleTask);
+  disposals.push(() => root.removeEventListener('click', toggleTask));
   const update = () => {
     updates.forEach((run) => run());
     layoutUpdates.forEach((run) => run());

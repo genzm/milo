@@ -82,6 +82,16 @@ npx milo content -o dist/milo.html
 @endimpact
 ```
 
+## Task items
+
+箇条書きの先頭に `[ ]` または `[x]` を置くと、クリック可能なチェック項目になります。クリックした状態はMarkdown原稿にも保存されます。
+
+```markdown
+- 通常の項目
+- [ ] 未完了の項目
+- [x] 完了した項目
+```
+
 ## Columns
 
 `@columns` は2つ以上のMarkdown領域を等幅で横に並べます。列数は `@column` の数から自動的に決まります。

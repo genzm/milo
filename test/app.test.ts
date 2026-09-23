@@ -260,6 +260,30 @@ test('display math interrupts prose inside a box without blank lines', async () 
   }
 });
 
+test('clicking a task item patches the Markdown source and editor', async () => {
+  const app = await launch();
+  try {
+    const editor = app.code();
+    editor.dispatch({
+      changes: {
+        from: 0,
+        to: editor.state.doc.length,
+        insert: '# Tasks\n\n- [ ] 未完了\n- [x] 完了済み\n',
+      },
+    });
+    await until(
+      () => app.w.document.querySelectorAll('.task-marker').length === 2,
+      'Task items did not render',
+    );
+    app.click('.task-marker[data-task="0"]');
+    assert.match(editor.state.doc.toString(), /- \[x\] 未完了/);
+    assert.equal(app.query('.task-marker[data-task="0"]').getAttribute('aria-checked'), 'true');
+    assert.deepEqual(app.errors, []);
+  } finally {
+    await app.close();
+  }
+});
+
 test('connect → authored slider → autosave → reopen keeps the exact one-token diff and editor', async () => {
   const app = await launch();
   try {

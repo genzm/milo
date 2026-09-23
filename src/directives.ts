@@ -51,6 +51,7 @@ export interface RenderContext {
   present: () => boolean;
   parameters: (modelId: string, m: Model) => Record<string, number>;
   setParameter: (modelId: string, key: string, value: number) => void;
+  patchSource?: (from: number, to: number, replacement: string) => void;
   inspect: (id: string) => void;
   renderInline?: (source: string) => string;
   renderMarkdown?: (source: string) => string;

@@ -1562,6 +1562,47 @@ dialog {
   li > p {
     margin: 0;
   }
+  li:has(> .task-marker:first-child),
+  li:has(> p > .task-marker:first-child) {
+    list-style: none;
+  }
+  .task-marker {
+    display: inline-grid;
+    place-items: center;
+    width: 1em;
+    height: 1em;
+    margin: 0 0.48em 0 -1.48em;
+    padding: 0;
+    vertical-align: -0.1em;
+    color: inherit;
+    background: transparent;
+    border: 0.1em solid currentColor;
+    border-radius: 0.18em;
+    cursor: pointer;
+
+    &::after {
+      content: '';
+      width: 0.48em;
+      height: 0.26em;
+      border-bottom: 0.12em solid var(--white);
+      border-left: 0.12em solid var(--white);
+      opacity: 0;
+      transform: translateY(-0.05em) rotate(-45deg);
+    }
+    &[aria-checked='true'] {
+      color: var(--accent);
+      background: var(--accent);
+      border-color: var(--accent);
+
+      &::after {
+        opacity: 1;
+      }
+    }
+    &:focus-visible {
+      outline: 0.12em solid var(--accent);
+      outline-offset: 0.16em;
+    }
+  }
   .columns-block {
     display: grid;
     grid-template-columns: repeat(var(--column-count), minmax(0, 1fr));
