@@ -85,7 +85,7 @@ npx milo content -o dist/milo.html
 `@canvas` はMarkdownで書いたHTML要素を配置し、その背面にSVGの矢印を描きます。単純な流れは、Markdownのまとまりを `-->` で区切るだけで作れます。
 
 ```markdown
-@canvas layout=flow direction=right
+@canvas direction=right
 
 ### 入力
 
@@ -110,7 +110,7 @@ npx milo content -o dist/milo.html
 接続が分岐する図では、nodeにIDを付けてedgeを指定します。
 
 ```markdown
-@canvas layout=flow direction=down route=elbow
+@canvas direction=down route=elbow
 
 @node source tone=accent
 
@@ -132,6 +132,8 @@ npx milo content -o dist/milo.html
 @endcanvas
 ```
 
-`layout=free` ではnodeの `x`、`y`、`width`、`height`、または `frame=x,y,width,height` を指定します。座標系の既定値は横1000、縦420です。`flow` でも `dx` / `dy` で自動配置後の位置を調整でき、`pinned x=... y=...` で特定のnodeだけを固定できます。
+`@canvas` はflowと高さの自動計算が既定です。必要な場合だけ数値の `height` で自動計算を上書きできます。
+
+`layout=free` ではnodeの `x`、`y`、`width`、`height`、または `frame=x,y,width,height` を指定します。座標系の既定値は横1000、縦420です。flowでも `dx` / `dy` で自動配置後の位置を調整でき、`pinned x=... y=...` で特定のnodeだけを固定できます。
 
 nodeの `shape` は `card`、`round`、`ellipse`、`diamond`、`plain`、edgeの `route` は `curve`、`straight`、`elbow` に対応しています。

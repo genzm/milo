@@ -9,6 +9,7 @@ interface CanvasOptions {
   direction: CanvasDirection;
   width: number;
   height: number;
+  autoHeight: boolean;
   gap: number;
   route: CanvasRoute;
 }
@@ -131,11 +132,16 @@ function edgeFrom(attrs: Record<string, string>): CanvasEdge {
 /** Parse the contents of an @canvas block without parsing its Markdown node bodies. */
 export function parseCanvas(source: string, rawOptions = ''): CanvasScene {
   const attrs = atAttributes(rawOptions);
+  const layout = choice(attrs.layout, ['flow', 'free'], 'flow', 'layout');
+  if (attrs.height === 'auto' && layout === 'free')
+    throw new Error('freeレイアウトのheightは数値で指定してください。');
+  const autoHeight = layout === 'flow' && (attrs.height === undefined || attrs.height === 'auto');
   const options: CanvasOptions = {
-    layout: choice(attrs.layout, ['flow', 'free'], 'flow', 'layout'),
+    layout,
     direction: choice(attrs.direction, ['right', 'left', 'down', 'up'], 'right', 'direction'),
     width: finite(attrs.width, 1000)!,
-    height: finite(attrs.height, 420)!,
+    height: autoHeight ? 420 : finite(attrs.height, 420)!,
+    autoHeight,
     gap: finite(attrs.gap, 54)!,
     route: choice(attrs.route, ['curve', 'straight', 'elbow'], 'curve', 'route'),
   };
@@ -278,6 +284,27 @@ function ranks(scene: CanvasScene) {
   // With no edges, authored order is the flow.
   if (!scene.edges.length) rank.forEach((_, i) => (rank[i] = i));
   return rank;
+}
+
+/** Resolve flow height from its measured node contents; free and explicit heights stay fixed. */
+export function canvasHeight(scene: CanvasScene, measured: number[] = []): number {
+  if (!scene.options.autoHeight) return scene.options.height;
+  const horizontal = scene.options.direction === 'right' || scene.options.direction === 'left',
+    rank = ranks(scene),
+    groups = Array.from({ length: Math.max(...rank) + 1 }, () => [] as number[]);
+  rank.forEach((value, i) => groups[value].push(i));
+  const heights = scene.nodes.map((node, i) => node.height ?? measured[i] ?? estimatedHeight(node));
+  const contentHeight = horizontal
+    ? Math.max(
+        ...groups.map(
+          (members) =>
+            members.reduce((sum, i) => sum + heights[i], 0) +
+            scene.options.gap * Math.max(0, members.length - 1),
+        ),
+      )
+    : groups.reduce((sum, members) => sum + Math.max(...members.map((i) => heights[i])), 0) +
+      scene.options.gap * Math.max(0, groups.length - 1);
+  return Math.max(160, Math.ceil(contentHeight + 68));
 }
 
 /** Deterministic scene layout; measured heights can be supplied by the DOM renderer. */
@@ -433,6 +460,7 @@ export function mountCanvas(
       const vertical = scene.options.direction === 'down' || scene.options.direction === 'up';
       const width = scene.nodes[i].width ?? (vertical ? 250 : 220);
       item.style.width = `${(width / scene.options.width) * 100}%`;
+      item.style.minHeight = '';
     });
     const bounds = element.getBoundingClientRect();
     const ratio = bounds.width ? scene.options.width / bounds.width : 1;
@@ -441,6 +469,9 @@ export function mountCanvas(
       const height = item.scrollHeight * ratio;
       return height > 1 ? height : estimatedHeight(scene.nodes[i]);
     });
+    scene.options.height = canvasHeight(scene, measured);
+    element.style.aspectRatio = `${scene.options.width} / ${scene.options.height}`;
+    svg.setAttribute('viewBox', `0 0 ${scene.options.width} ${scene.options.height}`);
     const frames = layoutCanvas(scene, measured);
     elements.forEach((item, i) => {
       const frame = frames[i];

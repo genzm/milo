@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
-import { layoutCanvas, parseCanvas } from '../src/canvas.ts';
+import { canvasHeight, layoutCanvas, parseCanvas } from '../src/canvas.ts';
 import { renderSlide } from '../src/render.ts';
 import { SourceStore } from '../src/source.ts';
 
@@ -30,6 +30,8 @@ test('canvas accepts loose Markdown as nodes around arrow shorthand', () => {
 test('flow, free and hybrid node placement share one frame model', () => {
   const flow = parseCanvas('@node a\nA\n@node b dx=12 dy=5\nB\n@edge a --> b', 'direction=down');
   const frames = layoutCanvas(flow, [80, 90]);
+  assert.equal(flow.options.autoHeight, true);
+  assert.equal(canvasHeight(flow, [80, 90]), 292);
   assert.ok(frames[1].y > frames[0].y);
   assert.equal(frames[1].height, 90);
 
@@ -38,13 +40,20 @@ test('flow, free and hybrid node placement share one frame model', () => {
     'layout=free',
   );
   assert.deepEqual(layoutCanvas(free)[0], { x: 10, y: 20, width: 210, height: 100 });
+  assert.equal(free.options.autoHeight, false);
+  assert.equal(canvasHeight(free), 420);
   assert.equal(layoutCanvas(free)[1].x, 300);
+
+  const fixedFlow = parseCanvas('A\n-->\nB', 'height=300');
+  assert.equal(fixedFlow.options.autoHeight, false);
+  assert.equal(canvasHeight(fixedFlow), 300);
 });
 
 test('canvas reports structural and reference errors', () => {
   assert.throws(() => parseCanvas('-->\ntext'), /前にnode/);
   assert.throws(() => parseCanvas('@node a\nA\n@edge a --> missing'), /接続先/);
   assert.throws(() => parseCanvas('@node a\nA\n@node a\nB'), /重複/);
+  assert.throws(() => parseCanvas('A', 'layout=free height=auto'), /数値/);
 });
 
 test('canvas control words inside fenced code stay Markdown', () => {
