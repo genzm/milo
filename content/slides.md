@@ -87,6 +87,10 @@ Markdownの見た目を保ったまま、ひとつの図になります。
 
 @endcanvas
 
+@impact
+売上が死ぬほど伸びた @align=center
+@endimpact
+
 ---
 
 <!-- milo: layout=lab -->

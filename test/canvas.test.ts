@@ -176,6 +176,20 @@ test('footer uses a paired @footer block and ignores markers in code fences', ()
     assert.equal(root.querySelectorAll('.slide-footer-content').length, 1);
     assert.equal(root.querySelector('.slide-footer-content strong')?.textContent, '資料A');
     assert.match(root.textContent, /本文の続き/);
+
+    const aligned = window.document.createElement('div');
+    renderSlide(
+      aligned as unknown as HTMLElement,
+      '# 本文\n\n@footer\n## 中央 @align=center\n\n右寄せ。 @align=right\n\nそのまま。\n@endfooter',
+      context,
+    );
+    const footer = aligned.querySelector('.slide-footer-content');
+    assert.equal(footer?.querySelector('h2')?.className, 'align-center');
+    assert.equal(footer?.querySelector('h2')?.textContent, '中央');
+    assert.equal(footer?.querySelector('p')?.className, 'align-right');
+    assert.equal(footer?.querySelector('p')?.textContent, '右寄せ。');
+    assert.equal(footer?.querySelectorAll('p')[1]?.className, '');
+    assert.equal(footer?.querySelectorAll('p')[1]?.textContent, 'そのまま。');
     assert.match(root.querySelector('code')?.textContent || '', /@footer/);
 
     const legacy = window.document.createElement('div');
@@ -348,6 +362,79 @@ test('task items keep source offsets through structural Markdown and toggle one 
     );
     assert.equal(root.querySelector('[data-task="0"]')?.getAttribute('aria-checked'), 'true');
     rendered.dispose();
+  } finally {
+    Object.assign(globalThis, { document: originalDocument });
+    window.close();
+  }
+});
+
+test('align marks headings and paragraphs inside the slide, boxes, columns and nodes', () => {
+  const window = new Window({ settings: { disableComputedStyleRendering: true } });
+  const originalDocument = globalThis.document;
+  Object.assign(globalThis, { document: window.document });
+  const context = {
+    store: new SourceStore({ html: null, blocks: [] }),
+    present: () => false,
+    parameters: () => ({}),
+    setParameter: () => {},
+    inspect: () => {},
+  };
+  try {
+    const root = window.document.createElement('div');
+    renderSlide(
+      root as unknown as HTMLElement,
+      `# 中央の見出し @align=center
+
+省略した段落。
+
+明示した左寄せ。 @align=left
+
+右寄せの **一文**。 @align=right
+
+文中の @align=center はそのまま残る。
+
+@box
+## 箱の中 @align=right
+@endbox
+
+@columns
+@column
+### 列の見出し @align=center
+@endcolumn
+@column
+列の本文 @align=left
+@endcolumn
+@endcolumns
+
+@canvas
+@node one
+#### ノード @align=center
+
+ノードの本文 @align=right
+@endcanvas`,
+      context,
+    );
+    const heading = root.querySelector('h1');
+    assert.equal(heading?.className, 'align-center');
+    assert.equal(heading?.textContent, '中央の見出し');
+    assert.equal(root.querySelector('p')?.className, '');
+    assert.equal(root.querySelector('p')?.textContent, '省略した段落。');
+    const paragraphs = [...root.querySelectorAll(':scope > p')];
+    assert.equal(paragraphs[1]?.className, 'align-left');
+    assert.equal(paragraphs[1]?.textContent, '明示した左寄せ。');
+    assert.equal(paragraphs[2]?.className, 'align-right');
+    assert.equal(paragraphs[2]?.querySelector('strong')?.textContent, '一文');
+    assert.equal(paragraphs[3]?.className, '');
+    assert.match(paragraphs[3]?.textContent || '', /@align=center/);
+    assert.equal(root.querySelector('.box-block h2')?.className, 'align-right');
+    assert.equal(root.querySelector('.box-block h2')?.textContent, '箱の中');
+    assert.equal(root.querySelector('.column-block h3')?.className, 'align-center');
+    assert.equal(root.querySelector('.column-block p')?.className, 'align-left');
+    assert.equal(root.querySelector('.column-block p')?.textContent, '列の本文');
+    assert.equal(root.querySelector('.canvas-node h4')?.className, 'align-center');
+    assert.equal(root.querySelector('.canvas-node h4')?.textContent, 'ノード');
+    assert.equal(root.querySelector('.canvas-node p')?.className, 'align-right');
+    assert.equal(root.querySelector('.canvas-node p')?.textContent, 'ノードの本文');
   } finally {
     Object.assign(globalThis, { document: originalDocument });
     window.close();

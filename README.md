@@ -82,6 +82,18 @@ npx milo content -o dist/milo.html
 @endimpact
 ```
 
+## Align
+
+見出しと段落は、末尾の指定で行を揃えます。省略したときは左寄せです。`@box`、`@column`、Canvas の node の中でも同じように指定できます。中央寄せと右寄せの見出しには、左のアクセントバーは付きません。
+
+```markdown
+# 中央の見出し @align=center
+
+右寄せの一文。 @align=right
+
+左寄せを明示する一文。 @align=left
+```
+
 ## Task items
 
 箇条書きの先頭に `[ ]` または `[x]` を置くと、クリック可能なチェック項目になります。クリックした状態はMarkdown原稿にも保存されます。

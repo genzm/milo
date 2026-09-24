@@ -73,6 +73,20 @@ function isEscaped(source: string, at: number) {
   return slashes % 2 === 1;
 }
 
+function alignBlocks(state: any) {
+  const tokens = state.tokens;
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token.type !== 'inline') continue;
+    const parent = tokens[i - 1];
+    if (!parent || (parent.type !== 'heading_open' && parent.type !== 'paragraph_open')) continue;
+    const match = /(?:^|[ \t]+)@align=(left|center|right)[ \t]*$/.exec(token.content);
+    if (!match) continue;
+    token.content = token.content.slice(0, match.index);
+    parent.attrJoin('class', `align-${match[1]}`);
+  }
+}
+
 function args(raw: string): Record<string, string> {
   const a: Record<string, string> = {};
   const leftovers = raw.replace(/([\w-]+)\s*=\s*"([^"\r\n]*)"/g, (_, k, v) => ((a[k] = v), ''));
@@ -135,6 +149,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   const tasks: TaskItem[] = [];
   const display = prepareTaskItems(maskMiloComments(source), tasks);
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
+  md.core.ruler.before('inline', 'milo_align', alignBlocks);
   md.block.ruler.before(
     'fence',
     'milo-box',

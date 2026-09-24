@@ -1452,6 +1452,15 @@ dialog {
     height: 0.95em;
     background: var(--accent);
   }
+  &:not(.layout-cover):not(.layout-section)
+    .slide-content
+    > h1:first-child:is(.align-center, .align-right) {
+    padding-left: 0;
+
+    &::before {
+      content: none;
+    }
+  }
   h2 {
     font-size: clamp(18px, 1.65cqw, 27px);
     line-height: 1.35;
@@ -1493,6 +1502,23 @@ dialog {
     margin: 1.5% 0;
     word-break: normal;
     overflow-wrap: anywhere;
+  }
+  :is(h1, h2, h3, h4, h5, h6, p).align-left {
+    text-align: left;
+  }
+  :is(h1, h2, h3, h4, h5, h6, p).align-center {
+    text-align: center;
+  }
+  :is(h1, h2, h3, h4, h5, h6, p).align-right {
+    text-align: right;
+  }
+  h1:is(.align-center, .align-right) {
+    max-width: none;
+    padding-left: 0;
+
+    &::before {
+      content: none;
+    }
   }
   strong {
     color: inherit;
@@ -1748,6 +1774,9 @@ dialog {
   p:first-of-type {
     font-size: clamp(10px, 1.27cqw, 14px);
     max-width: 580px;
+  }
+  p:is(.align-center, .align-right) {
+    max-width: none;
   }
   .plot-block {
     margin-top: 22px;
