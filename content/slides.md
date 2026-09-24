@@ -30,7 +30,7 @@ description: 原稿・数式・動く図・編集道具を内蔵する、自己�
 @columns
 @column
 
-### 左側
+### どんなMarkdownかけますか? @align=center
 
 通常のMarkdownを書けます。通常のMarkdownを書けます。
 通常のMarkdownを書けます。
@@ -49,10 +49,14 @@ description: 原稿・数式・動く図・編集道具を内蔵する、自己�
 @endcolumn
 @column
 
-### 右側
+### 記法の種類 @align=center
 
 - 箇条書き
-- 数式 $x^2$
+- 数式 $x^2$, code `print()`
+
+```
+print()
+```
 
 @endcolumn
 @endcolumns
@@ -88,7 +92,7 @@ Markdownの見た目を保ったまま、ひとつの図になります。
 @endcanvas
 
 @impact
-売上が死ぬほど伸びた @align=center
+死ぬほど使いやすい @align=center
 @endimpact
 
 ---
