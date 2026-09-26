@@ -936,3 +936,11 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
+yakuhanjp 4.1.1
+============================================================
+Yaku Han JP by Qrac (QRANOKO)
+License: (OFL-1.1 AND MIT)
+https://yakuhanjp.qranoko.jp
+Gothic punctuation is based on Noto Sans JP, licensed under the SIL Open Font License 1.1.
+The published package does not include a separate license file.
+

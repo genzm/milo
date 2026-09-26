@@ -276,6 +276,43 @@ async function embedSlideFont() {
   };
 }
 
+async function embedYakuHanJP() {
+  const root = dirname(require.resolve('yakuhanjp/package.json'));
+  const info = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+  const source = await readFile(join(root, 'dist/css/yakuhanjp.css'), 'utf8');
+  if (source.includes('</style') || /url\((?!data:)[^)]+\.woff2\)/.test(source) === false) {
+    throw new Error('YakuHanJP stylesheet is missing its font files');
+  }
+  const [header, ...blocks] = source.split('@font-face');
+  const selected = blocks.filter(
+    (block) => /font-weight:400[;}]/.test(block) || /font-weight:800[;}]/.test(block),
+  );
+  if (selected.length !== 2) throw new Error('YakuHanJP is missing weight 400 or 800');
+  let face = `${header}${selected.map((block) => `@font-face${block}`).join('')}`;
+  const files = [
+    ...new Set([...face.matchAll(/url\(\.\.\/fonts\/([^)]+\.woff2)\)/g)].map((m) => m[1])),
+  ];
+  const data = new Map(
+    await Promise.all(
+      files.map(async (file) => {
+        const bytes = await readFile(join(root, 'dist/fonts', file));
+        return [file, bytes.toString('base64')];
+      }),
+    ),
+  );
+  face = face.replace(/url\(\.\.\/fonts\/([^)]+\.woff2)\)/g, (_, file) => {
+    const encoded = data.get(file);
+    if (!encoded) throw new Error(`Missing YakuHanJP font: ${file}`);
+    return `url(data:font/woff2;base64,${encoded})`;
+  });
+  face = face.replaceAll('font-display:swap', 'font-display:block');
+  if (/url\((?!data:)/.test(face)) throw new Error('Unembedded YakuHanJP font');
+  return {
+    css: `${face}\n`,
+    notice: `${info.name} ${info.version}\n${'='.repeat(60)}\nYaku Han JP by Qrac (QRANOKO)\nLicense: ${info.license}\n${info.homepage}\nGothic punctuation is based on Noto Sans JP, licensed under the SIL Open Font License 1.1.\nThe published package does not include a separate license file.\n\n`,
+  };
+}
+
 let toolboxPromise = null;
 async function toolbox() {
   if (toolboxPromise) return toolboxPromise;
@@ -309,7 +346,8 @@ async function toolbox() {
     }
     if (/url\((?!data:)/.test(mathCSS)) throw new Error('Unembedded font dependency');
     const slideFont = await embedSlideFont();
-    const css = `${slideFont.css}${await readFile(join(packageRoot, 'src/style.css'), 'utf8')}`;
+    const yakuHan = await embedYakuHanJP();
+    const css = `${yakuHan.css}${slideFont.css}${await readFile(join(packageRoot, 'src/style.css'), 'utf8')}`;
     const packages = [
       ...new Set(
         Object.keys(result.metafile.inputs)
@@ -336,7 +374,7 @@ async function toolbox() {
       if (!license) throw new Error(`Missing dependency license: ${root}`);
       notices += `${info.name} ${info.version}\n${'='.repeat(60)}\n${license}\n\n`;
     }
-    notices += slideFont.notice;
+    notices += `${slideFont.notice}${yakuHan.notice}`;
     return { runtime, mathCSS, css, notices };
   })();
   return toolboxPromise;
@@ -374,6 +412,7 @@ ${deck.blocks
      ======================================================================== -->
 <!-- EMBEDDED DEPENDENCY: KaTeX CSS and WOFF2 fonts. Changed only on a runtime upgrade. -->
 <!-- EMBEDDED DEPENDENCY: Noto Sans JP WOFF2, weights 400 and 800. OFL-1.1 text is in app-styles. -->
+<!-- EMBEDDED DEPENDENCY: YakuHanJP WOFF2, weights 400 and 800. OFL-1.1 AND MIT. Punctuation only, placed ahead of Noto Sans JP. -->
 <style id="math-styles">${mathCSS}</style>
 <!-- APPLICATION STYLE -->
 <style id="app-styles">${css}</style>
