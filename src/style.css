@@ -1434,7 +1434,7 @@ dialog {
     }
   }
   h1 {
-    font-size: clamp(27px, 3.15cqw, 50px);
+    font-size: 50px;
     font-weight: 800;
     line-height: 1.2;
     letter-spacing: -0.055em;
@@ -1465,7 +1465,7 @@ dialog {
     }
   }
   h2 {
-    font-size: clamp(18px, 1.65cqw, 27px);
+    font-size: 30px;
     line-height: 1.35;
     letter-spacing: -0.3px;
     color: var(--slide-ink);
@@ -1473,7 +1473,7 @@ dialog {
     font-weight: 750;
   }
   h3 {
-    font-size: clamp(15px, 1.3cqw, 21px);
+    font-size: 21px;
     line-height: 1.6;
     margin: 1.45cqw 0 0.73cqw;
     color: var(--slide-ink);
@@ -1481,23 +1481,19 @@ dialog {
   h4,
   h5,
   h6 {
+    font-size: 18px;
     color: var(--slide-muted);
     line-height: 1.45;
     letter-spacing: 0.02em;
     margin: 1.5cqw 0 0.55cqw;
   }
   h4 {
-    font-size: clamp(12px, 1.02cqw, 16px);
     text-transform: uppercase;
-  }
-  h5,
-  h6 {
-    font-size: clamp(11px, 0.9cqw, 14px);
   }
   p,
   ul,
   ol {
-    font-size: clamp(12px, 1.08cqw, 17px);
+    font-size: 18px;
     line-height: 1.75;
     color: var(--slide-ink);
   }
