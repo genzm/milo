@@ -558,8 +558,15 @@ function scaleSlide() {
   const stage = $('stage-scroll'),
     viewport = $('slide-viewport'),
     slide = $('slide'),
-    availableWidth = stage.clientWidth,
-    availableHeight = stage.clientHeight;
+    stageStyle = getComputedStyle(stage),
+    horizontalPadding =
+      (Number.parseFloat(stageStyle.paddingLeft) || 0) +
+      (Number.parseFloat(stageStyle.paddingRight) || 0),
+    verticalPadding =
+      (Number.parseFloat(stageStyle.paddingTop) || 0) +
+      (Number.parseFloat(stageStyle.paddingBottom) || 0),
+    availableWidth = Math.max(0, stage.clientWidth - horizontalPadding),
+    availableHeight = Math.max(0, stage.clientHeight - verticalPadding);
   if (availableWidth <= 0) return;
   const fitWidth = availableWidth / SLIDE_WIDTH,
     fitHeight = availableHeight > 0 ? availableHeight / SLIDE_HEIGHT : fitWidth,
@@ -568,6 +575,7 @@ function scaleSlide() {
   viewport.style.height = `${SLIDE_HEIGHT * scale}px`;
   slide.style.transform = `scale(${scale})`;
   slide.dataset.scale = String(scale);
+  if (!present) stage.scrollLeft = 0;
 }
 function unique(prefix: string) {
   return prefix + '-' + crypto.randomUUID().slice(0, 8);

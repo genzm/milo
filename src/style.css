@@ -507,6 +507,9 @@ svg {
   flex: none;
   width: var(--slide-width);
   height: var(--slide-height);
+  overflow: hidden;
+  background: var(--white);
+  box-shadow: 0 9px 30px #00000012;
 }
 /* 3-B. 中央ステージ下部 — ページ送り */
 .stage-bottom {
@@ -1380,10 +1383,10 @@ dialog {
   color: var(--slide-ink);
   border: 1px solid #d8d8d8;
   border-radius: 0;
-  box-shadow: 0 9px 30px #00000012;
   overflow: hidden;
   transform-origin: top left;
-  padding: 4.7% 5.15% 3.5%;
+  /* Keep the authored 1600px coordinate system independent of the scaled wrapper. */
+  padding: 75.2px 82.4px 56px;
   font-family: 'LINE Seed JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
   .slide-top {
     display: flex;
@@ -1730,7 +1733,7 @@ dialog {
   }
 }
 .layout-cover {
-  padding: 8.3% 10.7% 7%;
+  padding: 132.8px 171.2px 112px;
   isolation: isolate;
 
   &::before {
@@ -1833,7 +1836,7 @@ dialog {
 }
 .layout-section {
   background: var(--accent);
-  padding: 7.5% 10.7%;
+  padding: 120px 171.2px;
 
   .slide-top {
     right: 5.2%;
@@ -1890,43 +1893,6 @@ dialog {
     font-size: clamp(22px, 2.82cqw, 31px);
   }
 }
-/* Slide-only mobile overrides. The earlier 720px block belongs to the editor shell. */
-@media (max-width: 720px) {
-  .slide {
-    padding: 4.7% 5.15% 3.5%;
-
-    h1 {
-      font-size: 22px;
-    }
-    p,
-    ul,
-    ol {
-      font-size: 10px;
-      line-height: 1.55;
-    }
-    &:not(.layout-cover):not(.layout-section) .slide-content > h1:first-child {
-      padding-left: 11px;
-
-      &::before {
-        width: 4px;
-      }
-    }
-  }
-  .layout-cover {
-    padding: 8.3% 10.7% 7%;
-
-    h1 {
-      font-size: 29px;
-    }
-  }
-  .layout-section {
-    padding: 7.5% 10.7%;
-
-    h1 {
-      font-size: 31px;
-    }
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
@@ -1972,6 +1938,8 @@ dialog {
 .presenting .slide {
   flex: none;
   border-color: transparent;
+}
+.presenting .slide-viewport {
   box-shadow: none;
 }
 .presenting .equation-block {
@@ -2012,6 +1980,7 @@ dialog {
   .slide-viewport {
     width: 100% !important;
     height: auto !important;
+    box-shadow: none;
   }
   .slide-content {
     break-inside: avoid;

@@ -211,11 +211,13 @@ test('editor and presentation keep one logical slide layout and only change scal
       clientWidth: { configurable: true, get: () => width },
       clientHeight: { configurable: true, get: () => height },
     });
+    stage.style.padding = '0';
     assert.equal(app.w.document.documentElement.style.getPropertyValue('--slide-width'), '1600px');
     assert.equal(app.w.document.documentElement.style.getPropertyValue('--slide-height'), '900px');
     app.w.dispatchEvent(new app.w.Event('resize'));
     assert.equal(app.query('#slide').dataset.scale, '0.5');
     assert.equal(app.query('#slide-viewport').style.width, '800px');
+    assert.equal(stage.scrollLeft, 0);
     app.click('[data-index="1"]');
     assert.equal(app.w.document.querySelectorAll('.slider-block').length, 2);
     const content = app.query('#slide-content').innerHTML;
