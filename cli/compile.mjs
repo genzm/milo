@@ -317,6 +317,9 @@ let toolboxPromise = null;
 async function toolbox() {
   if (toolboxPromise) return toolboxPromise;
   toolboxPromise = (async () => {
+    const markdownRequire = createRequire(join(packageRoot, 'node_modules/markdown-it/package.json'));
+    const entitiesRoot = dirname(dirname(markdownRequire.resolve('entities')));
+    if (basename(entitiesRoot) !== 'entities') throw new Error('entities package layout changed');
     const result = await build({
       absWorkingDir: packageRoot,
       entryPoints: [join(packageRoot, 'src/app.ts')],
@@ -328,6 +331,14 @@ async function toolbox() {
       charset: 'utf8',
       minify: true,
       legalComments: 'eof',
+      alias: {
+        '@codemirror/lang-html': join(packageRoot, 'cli/shims/lang-html.mjs'),
+        'linkify-it': join(packageRoot, 'cli/shims/linkify-it.mjs'),
+        'punycode.js': join(packageRoot, 'cli/shims/punycode.mjs'),
+        entities: join(entitiesRoot, 'dist/index.js'),
+        'entities/decode': join(entitiesRoot, 'dist/decode.js'),
+        'entities/escape': join(entitiesRoot, 'dist/escape.js'),
+      },
     });
     const runtime = result.outputFiles[0].text;
     if (/<\/script[\s>]/i.test(runtime)) throw new Error('Unsafe script terminator in runtime');
@@ -351,13 +362,35 @@ async function toolbox() {
     const packages = [
       ...new Set(
         Object.keys(result.metafile.inputs)
-          .filter((p) => p.startsWith('node_modules/'))
           .map((p) => {
-            const a = p.split('/');
-            return a.slice(0, a[1].startsWith('@') ? 3 : 2).join('/');
-          }),
+            const parts = p.split('/');
+            let index = -1;
+            for (let i = 0; i < parts.length; i++) if (parts[i] === 'node_modules') index = i;
+            if (index < 0) return '';
+            const end = index + (parts[index + 1]?.startsWith('@') ? 3 : 2);
+            return parts.slice(0, end).join('/');
+          })
+          .filter(Boolean),
       ),
     ].sort();
+    const blocked = new Set([
+      '@codemirror/lang-css',
+      '@codemirror/lang-html',
+      '@codemirror/lang-javascript',
+      '@codemirror/lint',
+      '@lezer/css',
+      '@lezer/html',
+      '@lezer/javascript',
+      'codemirror',
+      'linkify-it',
+      'punycode.js',
+    ]);
+    const unexpected = packages
+      .map((root) => root.slice('node_modules/'.length))
+      .filter((name) => blocked.has(name));
+    if (unexpected.length) {
+      throw new Error(`Unexpected embedded dependency: ${unexpected.join(', ')}`);
+    }
     let notices = 'Third-party software embedded in milo\n\n';
     for (const root of packages) {
       const abs = join(packageRoot, root);

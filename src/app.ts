@@ -1,11 +1,36 @@
-import { basicSetup } from 'codemirror';
-import { EditorState, StateField, type Text } from '@codemirror/state';
-import { Decoration, EditorView, keymap, type DecorationSet } from '@codemirror/view';
-import { indentWithTab } from '@codemirror/commands';
-import { markdown } from '@codemirror/lang-markdown';
-// Components are currently disabled; restore this import with their editor UI.
-// import { javascript } from '@codemirror/lang-javascript';
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+} from '@codemirror/autocomplete';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { json as jsonLanguage } from '@codemirror/lang-json';
+import { markdown } from '@codemirror/lang-markdown';
+import {
+  bracketMatching,
+  defaultHighlightStyle,
+  foldGutter,
+  foldKeymap,
+  indentOnInput,
+  syntaxHighlighting,
+} from '@codemirror/language';
+import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
+import { EditorState, StateField, type Text } from '@codemirror/state';
+import {
+  crosshairCursor,
+  Decoration,
+  drawSelection,
+  dropCursor,
+  EditorView,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  highlightSpecialChars,
+  keymap,
+  lineNumbers,
+  rectangularSelection,
+  type DecorationSet,
+} from '@codemirror/view';
 import { SourceStore, json, normalize, type Block, type Kind } from './source';
 import { Autosaver, readFile, type FileHandle } from './save';
 import { validateModel, type Model } from './expression';
@@ -55,6 +80,34 @@ function hiddenSlideMetadata(doc: Text): DecorationSet {
     : Decoration.none;
 }
 
+const editorSetup = [
+  lineNumbers(),
+  highlightActiveLineGutter(),
+  highlightSpecialChars(),
+  history(),
+  foldGutter(),
+  drawSelection(),
+  dropCursor(),
+  EditorState.allowMultipleSelections.of(true),
+  indentOnInput(),
+  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  bracketMatching(),
+  closeBrackets(),
+  autocompletion(),
+  rectangularSelection(),
+  crosshairCursor(),
+  highlightActiveLine(),
+  highlightSelectionMatches(),
+  keymap.of([
+    ...closeBracketsKeymap,
+    ...defaultKeymap,
+    ...searchKeymap,
+    ...historyKeymap,
+    ...foldKeymap,
+    ...completionKeymap,
+  ]),
+];
+const slideMarkdown = markdown({ completeHTMLTags: false });
 const hiddenSlideMetadataField = StateField.define<DecorationSet>({
   create: (state) => hiddenSlideMetadata(state.doc),
   update: (decorations, transaction) =>
@@ -514,11 +567,11 @@ function refreshInspector() {
   }
   $('source-editor').ondragover = null;
   $('source-editor').ondrop = null;
-  const lang = activeTab === 'slide' ? markdown() : jsonLanguage();
+  const lang = activeTab === 'slide' ? slideMarkdown : jsonLanguage();
   const state = EditorState.create({
     doc: b.text,
     extensions: [
-      basicSetup,
+      editorSetup,
       lang,
       keymap.of([indentWithTab]),
       EditorView.lineWrapping,
