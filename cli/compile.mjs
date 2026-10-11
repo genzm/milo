@@ -5,7 +5,8 @@ import { basename, dirname, extname, join, relative, resolve, sep } from 'node:p
 import { fileURLToPath } from 'node:url';
 import { parse as parseJSONC } from 'jsonc-parser';
 import { parseTalkMarkdown } from './document.mjs';
-import { loadStyles } from './styles.mjs';
+import { loadBuildResources } from './resources.mjs';
+import { embedSlideFonts } from './fonts.mjs';
 
 export { parseTalkMarkdown } from './document.mjs';
 
@@ -236,84 +237,6 @@ export async function loadDeck(inputPath) {
   };
 }
 
-export const SLIDE_FONT_PACKAGE = '@fontsource/noto-sans-jp';
-const SLIDE_FONT_FAMILY = 'Noto Sans JP';
-export const SLIDE_FONT_WEIGHTS = [400, 800];
-
-async function embedSlideFont() {
-  const root = dirname(require.resolve(`${SLIDE_FONT_PACKAGE}/package.json`));
-  const info = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
-  const license = await readFile(join(root, 'LICENSE'), 'utf8');
-  if (license.includes('*/') || /<\/style/i.test(license)) {
-    throw new Error(`${SLIDE_FONT_FAMILY} license cannot be embedded in a style comment`);
-  }
-  let css = `/* ${SLIDE_FONT_FAMILY}\n${license.trim()}\n*/\n`;
-  for (const weight of SLIDE_FONT_WEIGHTS) {
-    let face = await readFile(join(root, `${weight}.css`), 'utf8');
-    face = face.replace(/, url\([^)]+\) format\('woff'\)/g, '');
-    const files = [
-      ...new Set([...face.matchAll(/url\(\.\/files\/([^)]+\.woff2)\)/g)].map((m) => m[1])),
-    ];
-    const data = new Map(
-      await Promise.all(
-        files.map(async (file) => {
-          const bytes = await readFile(join(root, 'files', file));
-          return [file, bytes.toString('base64')];
-        }),
-      ),
-    );
-    face = face.replace(/url\(\.\/files\/([^)]+\.woff2)\)/g, (_, file) => {
-      const encoded = data.get(file);
-      if (!encoded) throw new Error(`Missing ${SLIDE_FONT_FAMILY} font: ${file}`);
-      return `url(data:font/woff2;base64,${encoded})`;
-    });
-    face = face.replaceAll('font-display: swap', 'font-display: block');
-    if (/url\((?!data:)/.test(face)) throw new Error(`Unembedded ${SLIDE_FONT_FAMILY} font`);
-    css += `${face}\n`;
-  }
-  return {
-    css,
-    notice: `${info.name} ${info.version}\n${'='.repeat(60)}\n${license.trim()}\n\n`,
-  };
-}
-
-async function embedYakuHanJP() {
-  const root = dirname(require.resolve('yakuhanjp/package.json'));
-  const info = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
-  const source = await readFile(join(root, 'dist/css/yakuhanjp.css'), 'utf8');
-  if (source.includes('</style') || /url\((?!data:)[^)]+\.woff2\)/.test(source) === false) {
-    throw new Error('YakuHanJP stylesheet is missing its font files');
-  }
-  const [header, ...blocks] = source.split('@font-face');
-  const selected = blocks.filter(
-    (block) => /font-weight:400[;}]/.test(block) || /font-weight:800[;}]/.test(block),
-  );
-  if (selected.length !== 2) throw new Error('YakuHanJP is missing weight 400 or 800');
-  let face = `${header}${selected.map((block) => `@font-face${block}`).join('')}`;
-  const files = [
-    ...new Set([...face.matchAll(/url\(\.\.\/fonts\/([^)]+\.woff2)\)/g)].map((m) => m[1])),
-  ];
-  const data = new Map(
-    await Promise.all(
-      files.map(async (file) => {
-        const bytes = await readFile(join(root, 'dist/fonts', file));
-        return [file, bytes.toString('base64')];
-      }),
-    ),
-  );
-  face = face.replace(/url\(\.\.\/fonts\/([^)]+\.woff2)\)/g, (_, file) => {
-    const encoded = data.get(file);
-    if (!encoded) throw new Error(`Missing YakuHanJP font: ${file}`);
-    return `url(data:font/woff2;base64,${encoded})`;
-  });
-  face = face.replaceAll('font-display:swap', 'font-display:block');
-  if (/url\((?!data:)/.test(face)) throw new Error('Unembedded YakuHanJP font');
-  return {
-    css: `${face}\n`,
-    notice: `${info.name} ${info.version}\n${'='.repeat(60)}\nYaku Han JP by Qrac (QRANOKO)\nLicense: ${info.license}\n${info.homepage}\nGothic punctuation is based on Noto Sans JP, licensed under the SIL Open Font License 1.1.\nThe published package does not include a separate license file.\n\n`,
-  };
-}
-
 let toolboxPromise = null;
 async function toolbox() {
   if (toolboxPromise) return toolboxPromise;
@@ -359,9 +282,6 @@ async function toolbox() {
       }
     }
     if (/url\((?!data:)/.test(mathCSS)) throw new Error('Unembedded font dependency');
-    const slideFont = await embedSlideFont();
-    const yakuHan = await embedYakuHanJP();
-    const css = `${yakuHan.css}${slideFont.css}${await loadStyles()}`;
     const packages = [
       ...new Set(
         Object.keys(result.metafile.inputs)
@@ -410,8 +330,7 @@ async function toolbox() {
       if (!license) throw new Error(`Missing dependency license: ${root}`);
       notices += `${info.name} ${info.version}\n${'='.repeat(60)}\n${license}\n\n`;
     }
-    notices += `${slideFont.notice}${yakuHan.notice}`;
-    return { runtime, mathCSS, css, notices };
+    return { runtime, mathCSS, notices };
   })();
   return toolboxPromise;
 }
@@ -479,10 +398,16 @@ ${sources}
 `;
 }
 
-export async function compile({ input, out, writeNotices = false } = {}) {
+export async function compile({ input, out, writeNotices = false, resources } = {}) {
   if (!input) throw new Error('コンパイルするスライドのパスを指定してください。');
   const deck = await loadDeck(input);
-  const parts = await toolbox();
+  const [toolboxParts, shared] = await Promise.all([toolbox(), resources ?? loadBuildResources()]);
+  const fonts = await embedSlideFonts(shared.fonts);
+  const parts = {
+    ...toolboxParts,
+    css: `${fonts.css}${shared.styles}`,
+    notices: toolboxParts.notices + fonts.notice,
+  };
   const html = renderHtml(deck, parts);
   const outPath = resolve(out || defaultOutPath(deck.slidesFile));
   await mkdir(dirname(outPath), { recursive: true });

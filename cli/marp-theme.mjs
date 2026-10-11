@@ -1,14 +1,12 @@
-import { readFile, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
+import { writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import prettier from 'prettier';
-import { SLIDE_FONT_PACKAGE, SLIDE_FONT_WEIGHTS } from './compile.mjs';
-import { loadStyles } from './styles.mjs';
+import { loadBuildResources } from './resources.mjs';
+import { linkedSlideFonts } from './fonts.mjs';
 import size from '../src/slide-size.json' with { type: 'json' };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const require = createRequire(import.meta.url);
 const themePath = join(root, 'marp/milo.css');
 
 const EXCLUDED =
@@ -22,8 +20,9 @@ const SLIDE_BOX = new Set([
   'section.essay',
 ]);
 
-export async function compileMarpTheme() {
-  const style = await loadStyles();
+export async function compileMarpTheme(resources) {
+  const sharedResources = resources ?? (await loadBuildResources());
+  const style = sharedResources.styles;
   const parsed = parseRules(stripComments(style));
   const rootVars = declarationsOf(parsed, ':root');
   const kept = parsed.filter((rule) => keepTopLevel(rule.selector));
@@ -37,7 +36,7 @@ export async function compileMarpTheme() {
   addFooterGaps(transformed, shared.footerGap);
   applyRootVars(section, rootVars, transformed);
   nestUniversal(section, parsed);
-  const fonts = await fontFaces();
+  const fonts = linkedSlideFonts(sharedResources.fonts, dirname(themePath));
   const css = `/* @theme milo */
 /*
   src/styles/ と src/slide-size.json、スライド用フォントから生成したファイルです。
@@ -57,8 +56,8 @@ section {
   return prettier.format(css, { ...config, filepath: themePath });
 }
 
-export async function writeMarpTheme() {
-  const css = await compileMarpTheme();
+export async function writeMarpTheme(resources) {
+  const css = await compileMarpTheme(resources);
   await writeFile(themePath, css);
   return themePath;
 }
@@ -336,42 +335,6 @@ function paginationDeclarations(fromSlide, base) {
     );
   }
   return decls;
-}
-
-async function fontFaces() {
-  const notoRoot = dirname(require.resolve(`${SLIDE_FONT_PACKAGE}/package.json`));
-  const faces = [];
-  for (const weight of SLIDE_FONT_WEIGHTS) {
-    let css = await readFile(join(notoRoot, `${weight}.css`), 'utf8');
-    css = css.replace(
-      /src: url\(\.\/files\/([^)]+\.woff2)\) format\('woff2'\), url\(\.\/files\/[^)]+\) format\('woff'\)/g,
-      `src: url('../node_modules/${SLIDE_FONT_PACKAGE}/files/$1') format('woff2')`,
-    );
-    if (css.includes("format('woff')"))
-      throw new Error(`${SLIDE_FONT_PACKAGE} ${weight} still has woff`);
-    faces.push(css.replaceAll('font-display: swap', 'font-display: block'));
-  }
-  const yakuRoot = dirname(require.resolve('yakuhanjp/package.json'));
-  const yaku = await readFile(join(yakuRoot, 'dist/css/yakuhanjp.css'), 'utf8');
-  const selected = yaku
-    .split('@font-face')
-    .slice(1)
-    .filter((block) =>
-      SLIDE_FONT_WEIGHTS.some((weight) => new RegExp(`font-weight:\\s*${weight}[;}]`).test(block)),
-    );
-  if (selected.length !== SLIDE_FONT_WEIGHTS.length) {
-    throw new Error('YakuHanJP is missing a slide weight');
-  }
-  const yakuCss = selected
-    .map((block) => {
-      const face = `@font-face${block}`.replaceAll('font-display:swap', 'font-display: block');
-      return face.replace(
-        /url\(\.\.\/fonts\/([^)]+\.woff2)\)/g,
-        "url('../node_modules/yakuhanjp/dist/fonts/$1')",
-      );
-    })
-    .join('\n');
-  return `${yakuCss}\n${faces.join('\n')}`;
 }
 
 function stripComments(css) {
