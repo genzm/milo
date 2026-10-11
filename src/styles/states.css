@@ -1,0 +1,93 @@
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+/* ========================================================================
+   8. Presentation and print states
+   ======================================================================== */
+/* 8-A. 発表モード — 外側の編集UIだけを隠し、.slide の内容は共有 */
+.presenting {
+  overflow: hidden;
+  background: #111;
+}
+.presenting .app-header,
+.presenting .save-notice,
+.presenting .sidebar,
+.presenting .inspector,
+.presenting .stage-topline,
+.presenting .stage-bottom {
+  display: none !important;
+}
+.presenting .workspace {
+  display: block;
+  width: 100vw;
+  height: 100dvh;
+}
+.presenting .main-stage {
+  width: 100vw;
+  height: 100dvh;
+  padding: 0;
+  background: #111;
+}
+.presenting .stage-scroll {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+.presenting .slide {
+  flex: none;
+  border-color: transparent;
+}
+.presenting .slide-viewport {
+  box-shadow: none;
+}
+.presenting .equation-block {
+  cursor: default;
+}
+@media print {
+  /* 6-C. 印刷 — 編集UIを隠してスライドだけを出力 */
+  body {
+    overflow: visible;
+    background: white;
+  }
+  .app-header,
+  .sidebar,
+  .inspector,
+  .stage-topline,
+  .stage-bottom,
+  .toast,
+  .save-notice {
+    display: none !important;
+  }
+  .workspace,
+  .main-stage,
+  .stage-scroll {
+    display: block;
+    height: auto;
+    padding: 0;
+    overflow: visible;
+  }
+  .slide {
+    border: 0;
+    box-shadow: none;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16/9;
+    max-width: none;
+    transform: none !important;
+  }
+  .slide-viewport {
+    width: 100% !important;
+    height: auto !important;
+    box-shadow: none;
+  }
+  .slide-content {
+    break-inside: avoid;
+  }
+}

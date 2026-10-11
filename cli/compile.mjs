@@ -5,6 +5,7 @@ import { basename, dirname, extname, join, relative, resolve, sep } from 'node:p
 import { fileURLToPath } from 'node:url';
 import { parse as parseJSONC } from 'jsonc-parser';
 import { parseTalkMarkdown } from './document.mjs';
+import { loadStyles } from './styles.mjs';
 
 export { parseTalkMarkdown } from './document.mjs';
 
@@ -317,7 +318,9 @@ let toolboxPromise = null;
 async function toolbox() {
   if (toolboxPromise) return toolboxPromise;
   toolboxPromise = (async () => {
-    const markdownRequire = createRequire(join(packageRoot, 'node_modules/markdown-it/package.json'));
+    const markdownRequire = createRequire(
+      join(packageRoot, 'node_modules/markdown-it/package.json'),
+    );
     const entitiesRoot = dirname(dirname(markdownRequire.resolve('entities')));
     if (basename(entitiesRoot) !== 'entities') throw new Error('entities package layout changed');
     const result = await build({
@@ -358,7 +361,7 @@ async function toolbox() {
     if (/url\((?!data:)/.test(mathCSS)) throw new Error('Unembedded font dependency');
     const slideFont = await embedSlideFont();
     const yakuHan = await embedYakuHanJP();
-    const css = `${yakuHan.css}${slideFont.css}${await readFile(join(packageRoot, 'src/style.css'), 'utf8')}`;
+    const css = `${yakuHan.css}${slideFont.css}${await loadStyles()}`;
     const packages = [
       ...new Set(
         Object.keys(result.metafile.inputs)

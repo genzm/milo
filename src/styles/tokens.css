@@ -1,0 +1,102 @@
+:root {
+  color-scheme: light;
+  --ui-text-micro: 8px;
+  --ui-text-tiny: 9px;
+  --ui-text-caption: 10px;
+  --ui-text-small: 11px;
+  --ui-text-body: 12px;
+  --ui-text-base: 13px;
+  --ui-text-brand: 14px;
+  --ui-text-heading: 18px;
+
+  --ink: #030b09;
+  --muted: #77817c;
+  --line: #dfe5df;
+  --green: #030b09;
+  --accent: #d42d5a;
+  --accent-selection: #d42d5a22;
+  --accent-area: #d42d5a18;
+  --accent-caption: #b1264b;
+  --accent-value: #a91f45;
+
+  --white: #fff;
+  --paper: var(--white);
+  --bg: #fff;
+  --panel: #f7f7f7;
+  --control-hover: var(--accent);
+  --control-hover-strong: var(--accent);
+  --success: #549a65;
+  --accent-pale: #fde7ed;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --app-header-height: 76px;
+  --sidebar-width: 186px;
+  --inspector-width: 342px;
+  --stage-gutter: 27px;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Noto Sans JP',
+    'Hiragino Kaku Gothic ProN',
+    Meiryo,
+    sans-serif;
+  font-size: var(--ui-text-base);
+
+  /* Slide roles. Keep defaults here; layout and component rules only consume them.
+   cqw values retain the original container geometry during this refactor. */
+  --slide-text-title: 50px;
+  --slide-text-heading: 30px;
+  --slide-text-subheading: 21px;
+  --slide-text-label: 18px;
+  --slide-text-body: 27px;
+  --slide-text-footer: clamp(9px, 0.72cqw, 12px);
+  --slide-text-impact: clamp(52px, 6.25cqw, 100px);
+  --slide-text-quote: clamp(19px, 2.36cqw, 38px);
+  --slide-text-table: clamp(15px, 1.9cqw, 30px);
+  --slide-text-cover-title: clamp(35px, 4.2cqw, 68px);
+  --slide-text-cover-subtitle: clamp(15px, 2.54cqw, 28px);
+  --slide-text-section-title: clamp(38px, 4.7cqw, 76px);
+  --slide-text-essay-title: clamp(22px, 2.82cqw, 31px);
+  --slide-text-essay-body: clamp(15px, 2.54cqw, 28px);
+  --slide-text-node-heading: clamp(12px, 1.25cqw, 20px);
+  --slide-text-node-body: clamp(9px, 0.86cqw, 14px);
+  --slide-text-image-caption: 0.82cqw;
+  --slide-text-series: 0.91cqw;
+  --slide-text-chart-label: 0.91cqw;
+  --slide-text-chart-caption: 0.73cqw;
+  --slide-text-slider-label: 11px;
+  --slide-text-slider-value: 1.36cqw;
+  --slide-text-parameter: 9px;
+  --slide-text-edge-label: 12px;
+  --slide-leading-body: 1.75;
+  --slide-leading-title: 1.2;
+  --slide-leading-heading: 1.35;
+  --slide-leading-subheading: 1.6;
+  --slide-leading-node: 1.5;
+  --slide-pad-top: 75.2px;
+  --slide-pad-x: 82.4px;
+  --slide-pad-bottom: 56px;
+  --slide-cover-pad-top: 132.8px;
+  --slide-cover-pad-x: 171.2px;
+  --slide-cover-pad-bottom: 112px;
+  --slide-section-pad-y: 120px;
+  --slide-section-pad-x: 171.2px;
+  --slide-space-block: 2.4%;
+  --slide-space-paragraph: 1.5%;
+  --slide-space-paragraph-following: 1.1%;
+  --slide-space-column: 1.64cqw;
+  --slide-space-node-y: 1.18cqw;
+  --slide-space-node-x: 1.36cqw;
+  --slide-space-footer: 4.4cqw;
+  --slide-ink: #000;
+  --slide-pale: #fff3f6;
+  --slide-muted: #8b747a;
+  --slide-box-border: #ddd3d6;
+  --slide-surface-muted: #f8f5f6;
+  --slide-border-muted: #e7dfe1;
+  --slide-surface-dark: #1d1a1b;
+  --slide-code-bg: #fafafa;
+  --slide-code-border: #dedede;
+  --slide-table-stripe: #fff9fa;
+}

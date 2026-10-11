@@ -4,6 +4,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import prettier from 'prettier';
 import { SLIDE_FONT_PACKAGE, SLIDE_FONT_WEIGHTS } from './compile.mjs';
+import { loadStyles } from './styles.mjs';
+import size from '../src/slide-size.json' with { type: 'json' };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
@@ -21,11 +23,7 @@ const SLIDE_BOX = new Set([
 ]);
 
 export async function compileMarpTheme() {
-  const [style, app] = await Promise.all([
-    readFile(join(root, 'src/style.css'), 'utf8'),
-    readFile(join(root, 'src/app.ts'), 'utf8'),
-  ]);
-  const size = slideSize(app);
+  const style = await loadStyles();
   const parsed = parseRules(stripComments(style));
   const rootVars = declarationsOf(parsed, ':root');
   const kept = parsed.filter((rule) => keepTopLevel(rule.selector));
@@ -42,7 +40,7 @@ export async function compileMarpTheme() {
   const fonts = await fontFaces();
   const css = `/* @theme milo */
 /*
-  src/style.css と src/app.ts、スライド用フォントから生成したファイルです。
+  src/styles/ と src/slide-size.json、スライド用フォントから生成したファイルです。
   直接編集せず、npm run marp で作り直してください。
 */
 
@@ -63,17 +61,6 @@ export async function writeMarpTheme() {
   const css = await compileMarpTheme();
   await writeFile(themePath, css);
   return themePath;
-}
-
-function slideSize(source) {
-  const width = Number(source.match(/const SLIDE_WIDTH = (\d+)/)?.[1]);
-  if (!width) throw new Error('src/app.ts の SLIDE_WIDTH を読めません。');
-  if (source.includes('SLIDE_HEIGHT = (SLIDE_WIDTH * 9) / 16')) {
-    return { width, height: (width * 9) / 16 };
-  }
-  const height = Number(source.match(/const SLIDE_HEIGHT = (\d+)/)?.[1]);
-  if (!height) throw new Error('src/app.ts の SLIDE_HEIGHT を読めません。');
-  return { width, height };
 }
 
 function keepTopLevel(selector) {
@@ -111,7 +98,10 @@ function hoistIntoSection(section, rules) {
 function addFooterGaps(rules, gap) {
   if (!gap) throw new Error('スライドフッターの余白が見つかりません。');
   const walk = (rule) => {
-    if (rule.declarations.some((decl) => decl.startsWith('--slide-pad-bottom:'))) {
+    if (
+      SLIDE_BOX.has(rule.selector) &&
+      rule.declarations.some((decl) => decl.startsWith('padding:'))
+    ) {
       rule.children = rule.children.filter((child) => child.selector !== '&:has(> footer)');
       rule.children.push({
         selector: '&:has(> footer)',
@@ -138,6 +128,14 @@ function applyRootVars(section, rootVars, rules) {
       .filter((decl) => decl.startsWith('--'))
       .map((decl) => decl.split(':')[0].trim()),
   );
+  // Include transitive dependencies, e.g. --paper -> --white.
+  const available = new Map(rootVars.map((decl) => [decl.split(':')[0].trim(), decl]));
+  for (const name of used) {
+    if (defined.has(name)) continue;
+    for (const match of (available.get(name) ?? '').matchAll(/var\((--[\w-]+)\)/g)) {
+      used.add(match[1]);
+    }
+  }
   const copied = rootVars.filter((decl) => {
     const name = decl.split(':')[0].trim();
     return name.startsWith('--') && used.has(name) && !defined.has(name);
@@ -304,9 +302,13 @@ function expandPadding(declarations) {
     }
     const [top, right = top, bottom = top] = parts;
     return [
-      `--slide-pad-top: ${top}`,
-      `--slide-pad-x: ${right}`,
-      `--slide-pad-bottom: ${bottom}`,
+      ...[
+        ['--slide-pad-top', top],
+        ['--slide-pad-x', right],
+        ['--slide-pad-bottom', bottom],
+      ]
+        .filter(([name, value]) => value !== `var(${name})`)
+        .map(([name, value]) => `${name}: ${value}`),
       'padding: var(--slide-pad-top) var(--slide-pad-x) var(--slide-pad-bottom)',
     ];
   });

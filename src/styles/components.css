@@ -1,0 +1,304 @@
+/* 3-C. 中央スライド内 — Markdownから描画されるインタラクティブ部品 */
+.equation-block,
+.box-block {
+  padding: 16px 12px 11px;
+  background: var(--accent-pale);
+  border: 1px solid var(--accent);
+  border-radius: 0;
+  margin: 20px 0;
+  overflow-x: auto;
+  cursor: pointer;
+}
+.box-block {
+  cursor: default;
+  color: var(--slide-ink);
+  line-height: var(--slide-leading-body);
+  white-space: normal;
+
+  > :first-child {
+    margin-top: 0;
+  }
+  > :last-child {
+    margin-bottom: 0;
+  }
+}
+.box-tone-default {
+  border-color: var(--slide-box-border);
+  background: var(--white);
+}
+.box-tone-muted {
+  border-color: var(--slide-border-muted);
+  background: var(--slide-surface-muted);
+  color: var(--slide-muted);
+}
+.box-tone-dark {
+  border-color: var(--slide-surface-dark);
+  background: var(--slide-surface-dark);
+  color: var(--white);
+}
+.equation-block {
+  .katex-display {
+    margin: 0;
+    overflow: visible;
+    font-size: 1.02em;
+  }
+}
+.parameter-summary {
+  text-align: center;
+  font: var(--slide-text-parameter) var(--mono);
+  letter-spacing: 0.2px;
+  color: #8e5362;
+  margin-top: 12px;
+}
+.math-prose {
+  overflow-x: auto;
+}
+.slide u {
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.09em;
+  text-underline-offset: 0.12em;
+}
+.plot-block {
+  margin: 17px 0 10px;
+  border: 1px solid #e5d6da;
+  border-radius: 0;
+  background: var(--white);
+  padding: 10px 13px 8px;
+
+  > svg {
+    width: 100%;
+    height: auto;
+    max-height: 28.18cqw;
+    touch-action: pan-y;
+  }
+}
+.slide-content:has(.slider-block) .plot-block > svg {
+  max-height: 16cqw;
+}
+.chart-grid {
+  stroke: #eee3e6;
+  stroke-width: 1;
+}
+.chart-labels {
+  fill: var(--slide-muted);
+  font: var(--slide-text-chart-label) var(--mono);
+}
+.chart-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.8;
+  stroke-linejoin: round;
+}
+.chart-area {
+  fill: var(--accent-area);
+  stroke: none;
+}
+.chart-dot {
+  fill: var(--white);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.chart-cursor {
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.chart-caption {
+  position: relative;
+  height: 7px;
+  padding: 0 5px;
+  color: var(--accent-caption);
+  font: var(--slide-text-chart-caption) var(--mono);
+  letter-spacing: 0.7px;
+  pointer-events: none;
+
+  .probe-label {
+    position: absolute;
+    bottom: 0;
+    left: 5px;
+    max-width: calc(100% - 10px);
+    overflow: hidden;
+    font-family: inherit;
+    letter-spacing: 0;
+    line-height: 1;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--slide-muted);
+  }
+}
+.slider-block {
+  margin: 18px 0 14px;
+  padding: 0 4px;
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font: var(--slide-text-slider-label) var(--mono);
+  }
+  output {
+    font: var(--slide-text-slider-value) var(--mono);
+    min-width: 45px;
+    text-align: right;
+    color: var(--accent);
+  }
+}
+input[type='range'] {
+  accent-color: var(--accent);
+  height: 5px;
+  flex: 1;
+  min-width: 50px;
+  cursor: pointer;
+}
+.live-value {
+  font-family: var(--mono);
+  color: var(--accent-value);
+  background: var(--accent-pale);
+  border-radius: 0;
+  padding: 0 5px;
+  font-size: 0.92em;
+}
+.embedded-image {
+  display: block;
+  max-width: 100%;
+  max-height: 32.73cqw;
+  object-fit: contain;
+  border-radius: 5px;
+  margin: 12px auto;
+}
+.image-block {
+  margin: 15px 0;
+
+  .image-caption {
+    font-size: var(--slide-text-image-caption);
+    text-align: center;
+    color: var(--slide-muted);
+    margin: 7px 0;
+  }
+}
+.milo-canvas {
+  position: relative;
+  width: 100%;
+  margin: 1.45cqw 0;
+  overflow: hidden;
+  isolation: isolate;
+
+  .canvas-connections,
+  .canvas-content {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .canvas-connections {
+    z-index: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .canvas-content {
+    z-index: 1;
+  }
+  .canvas-node {
+    --canvas-node-bg: var(--white);
+    position: absolute;
+    box-sizing: border-box;
+    padding: var(--slide-space-node-y) var(--slide-space-node-x);
+    border: 1px solid #ddcdd1;
+    background: var(--canvas-node-bg);
+    color: var(--slide-ink);
+    overflow: hidden;
+
+    > :first-child {
+      margin-top: 0;
+    }
+    > :last-child {
+      margin-bottom: 0;
+    }
+    :is(h1, h2, h3, h4, h5, h6) {
+      margin-top: 0;
+      margin-bottom: 0.55cqw;
+      color: inherit;
+      font-size: var(--slide-text-node-heading);
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+    }
+    :is(p, ul, ol, blockquote) {
+      margin-top: 0.4cqw;
+      margin-bottom: 0;
+      color: inherit;
+      font-size: var(--slide-text-node-body);
+      line-height: var(--slide-leading-node);
+    }
+    ul,
+    ol {
+      padding-left: 1.45cqw;
+    }
+    blockquote {
+      padding-left: 0.73cqw;
+    }
+    .equation-block,
+    .box-block,
+    .plot-block,
+    .image-block {
+      margin: 0.55cqw 0;
+    }
+  }
+  .canvas-shape-round {
+    border-radius: 1.45cqw;
+  }
+  .canvas-shape-ellipse {
+    border-radius: 50%;
+    padding-right: 2cqw;
+    padding-left: 2cqw;
+    text-align: center;
+  }
+  .canvas-shape-diamond {
+    border: 0;
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    padding: 2cqw 2.7cqw;
+  }
+  .canvas-shape-plain {
+    border-color: transparent;
+    background: transparent;
+  }
+  .canvas-tone-accent {
+    --canvas-node-bg: var(--accent-pale);
+    border-color: var(--accent);
+  }
+  .canvas-tone-muted {
+    --canvas-node-bg: var(--slide-surface-muted);
+    border-color: var(--slide-border-muted);
+    color: var(--slide-muted);
+  }
+  .canvas-tone-dark {
+    --canvas-node-bg: var(--slide-surface-dark);
+    border-color: var(--slide-surface-dark);
+    color: var(--white);
+  }
+  .canvas-edge {
+    fill: none;
+    stroke: #2d2628;
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+  .canvas-edge-accent {
+    stroke: var(--accent);
+  }
+  .canvas-edge-muted {
+    stroke: #a9999e;
+  }
+  .canvas-edge.is-dashed {
+    stroke-dasharray: 7 6;
+  }
+  .canvas-arrow-head {
+    fill: context-stroke;
+  }
+  .canvas-edge-label {
+    fill: var(--slide-muted);
+    paint-order: stroke;
+    stroke: var(--white);
+    stroke-width: 5px;
+    stroke-linejoin: round;
+    font: var(--slide-text-edge-label) var(--mono);
+  }
+}

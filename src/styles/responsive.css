@@ -1,0 +1,181 @@
+/* ========================================================================
+   6. Responsive overrides
+   These rules intentionally follow the base UI rules above.
+   ======================================================================== */
+/* 6-A. レスポンシブ — 編集画面の列・余白・高さだけを調整 */
+@media (min-width: 1700px) {
+  :root {
+    --sidebar-width: 210px;
+    --inspector-width: 390px;
+    --stage-gutter: 45px;
+  }
+  /* 画面全体の列幅と中央ステージの余白 */
+  .workspace {
+    grid-template-columns: var(--sidebar-width) minmax(500px, 1fr) var(--inspector-width);
+  }
+  .thumb-paper {
+    width: 155px;
+    min-height: 94px;
+  }
+  .cm-editor {
+    font-size: var(--ui-text-body);
+  }
+  .stage-topline {
+    min-height: 80px;
+  }
+}
+@media (max-width: 1250px) {
+  :root {
+    --sidebar-width: 151px;
+    --inspector-width: 300px;
+    --stage-gutter: 18px;
+  }
+  /* 画面全体の列幅 */
+  .workspace {
+    grid-template-columns: var(--sidebar-width) minmax(365px, 1fr) var(--inspector-width);
+  }
+  .app-header {
+    gap: 20px;
+    padding: 0 18px;
+  }
+  .document-name {
+    display: none;
+  }
+  .header-actions {
+    margin-left: auto;
+  }
+  .sidebar {
+    padding: 20px 10px 12px;
+  }
+  .thumb-paper {
+    width: 111px;
+    min-height: 76px;
+    padding: 9px;
+  }
+  .stage-tools .text-button {
+    font-size: var(--ui-text-caption);
+  }
+  .brand {
+    font-size: var(--ui-text-body);
+  }
+}
+@media (max-width: 980px) {
+  :root {
+    --app-header-height: 66px;
+    --stage-gutter: 16px;
+  }
+  /* 左サイドバーを隠し、中央ステージ + 右サイドバーにする */
+  .workspace {
+    grid-template-columns: minmax(380px, 1fr) var(--inspector-width);
+  }
+  .sidebar {
+    display: none;
+  }
+  .save-state {
+    font-size: var(--ui-text-tiny);
+  }
+  .button {
+    font-size: var(--ui-text-caption);
+    padding: 7px 10px;
+  }
+  .header-actions {
+    gap: 7px;
+  }
+  .stage-topline {
+    min-height: 53px;
+  }
+}
+@media (max-width: 720px) {
+  :root {
+    --app-header-height: 60px;
+    --stage-gutter: 12px;
+  }
+  /* モバイルでは縦積み: ヘッダー → 中央ステージ → 右サイドバー */
+  body {
+    overflow: auto;
+  }
+  .app-header {
+    position: sticky;
+    top: 0;
+    padding: 0 var(--stage-gutter);
+    gap: 8px;
+  }
+  .brand {
+    font-size: var(--ui-text-caption);
+    gap: 7px;
+  }
+  .header-actions {
+    gap: 5px;
+  }
+  .save-state {
+    font-size: var(--ui-text-micro);
+    max-width: 93px;
+  }
+  .save-state > span:last-child {
+    white-space: normal;
+    line-height: 1.5;
+  }
+  .button {
+    min-height: 31px;
+    font-size: var(--ui-text-tiny);
+    padding: 6px 8px;
+  }
+  .button svg {
+    width: 13px;
+    height: 13px;
+  }
+  #present svg,
+  #connect svg {
+    display: none;
+  }
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100dvh - var(--app-header-height));
+  }
+  .stage-scroll {
+    overflow: visible;
+    padding-bottom: 5px;
+  }
+  .stage-topline {
+    min-height: 48px;
+  }
+  .slider-block label {
+    gap: 11px;
+  }
+  .stage-bottom {
+    min-height: 57px;
+  }
+  .inspector {
+    height: 470px;
+    margin: 0 12px 22px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .inspector-heading {
+    padding: 12px 15px 8px;
+  }
+  .inspector-tabs {
+    height: 43px;
+  }
+  .source-editor {
+    min-height: 200px;
+  }
+  .sidebar {
+    display: none;
+  }
+  .save-notice {
+    position: fixed;
+    top: var(--app-header-height);
+    font-size: var(--ui-text-caption);
+    gap: 8px;
+  }
+  dialog {
+    padding: 20px;
+  }
+  .equation-block .katex-display {
+    font-size: 0.85em;
+  }
+}

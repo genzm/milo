@@ -21,7 +21,19 @@ test('marp theme is compiled from the current milo slide settings', async () => 
   assert.match(css, /visibility: hidden/);
   assert.match(css, /left: var\(--slide-pad-x\)/);
   assert.match(css, /bottom: var\(--slide-pad-bottom\)/);
-  assert.match(css, /padding-bottom: calc\(var\(--slide-pad-bottom\) \+ 4\.4cqw\)/);
+  assert.match(css, /--slide-space-footer: 4\.4cqw/);
+  assert.match(
+    css,
+    /padding-bottom: calc\(var\(--slide-pad-bottom\) \+ var\(--slide-space-footer\)\)/,
+  );
+  assert.doesNotMatch(css, /(--[\w-]+): var\(\1\)/);
+  // A standalone Marp theme must carry every token it references, including
+  // dependencies of layout padding and color aliases.
+  const defined = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map((match) => match[1]));
+  for (const [, name] of css.matchAll(/var\((--[\w-]+)\)/g)) {
+    assert.ok(defined.has(name), `Missing Marp token: ${name}`);
+  }
+  assert.equal((css.match(/&:has\(> footer\)/g) ?? []).length, 3);
   assert.doesNotMatch(css, /task-marker|plot-block|impact-block|columns-block|slider-block/);
   assert.doesNotMatch(css, /\.layout-|source-editor|slide-thumb|#d8d8d8/);
 });

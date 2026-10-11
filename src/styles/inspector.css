@@ -1,0 +1,345 @@
+.block-error {
+  border: 1px solid #ebc2ac !important;
+  background: #fff5ed !important;
+  color: #9d5734;
+  font-size: var(--ui-text-body);
+  line-height: 1.8;
+  padding: 14px;
+  border-radius: 5px;
+  overflow-wrap: anywhere;
+}
+.inline-error,
+.manifest-error {
+  color: #aa5139;
+  font-size: var(--ui-text-small);
+  line-height: 1.8;
+}
+.manifest-error {
+  padding: 8px;
+  background: #fff0e5;
+  margin-bottom: 15px;
+}
+/* ========================================================================
+   4. Inspector — source, model, asset and manifest editing
+   ======================================================================== */
+/* 4. 右サイドバー — 原稿・モデル・素材の編集 */
+.inspector {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+}
+/* 4-A. 右サイドバー上部 — 編集対象タブ */
+.inspector-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  height: 51px;
+  align-items: stretch;
+  padding: 0 15px;
+  flex-shrink: 0;
+  gap: 3px;
+
+  button {
+    flex: 1;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    font-size: var(--ui-text-small);
+    color: #91909f;
+    padding: 0 5px;
+
+    &.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      font-weight: 650;
+    }
+  }
+}
+.inspector-heading {
+  padding: 16px 17px 10px;
+  flex-shrink: 0;
+}
+/* 4-B. 右サイドバー — Markdown/JSONC の対象選択と説明 */
+.source-select {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+
+  select {
+    min-width: 0;
+    width: 100%;
+    border: 0;
+    border-radius: 4px;
+    background: var(--white);
+    font-family: var(--mono);
+    color: #4b5a40;
+    font-size: var(--ui-text-caption);
+    padding: 8px 6px;
+    white-space: nowrap;
+  }
+}
+.layout-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 17px 13px;
+
+  label {
+    font-size: var(--ui-text-caption);
+    color: var(--ink);
+  }
+  select {
+    font-size: var(--ui-text-caption);
+    background: transparent;
+    border: 1px solid #a8a8a8;
+    border-radius: 4px;
+    color: var(--ink);
+    padding: 3px 4px;
+    margin-left: 7px;
+  }
+}
+/* 4-C. 右サイドバー中央 — Markdown・JSONCエディタ */
+.source-editor {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid #e7ebdf;
+}
+.cm-editor {
+  height: 100%;
+  font-size: var(--ui-text-small);
+
+  .cm-scroller {
+    font-family: var(--mono);
+    line-height: 1.95;
+    scrollbar-width: thin;
+    scrollbar-color: #d4ddc7 transparent;
+  }
+  .cm-content {
+    padding: 16px 0;
+    caret-color: #2d6547;
+  }
+  .cm-line {
+    padding-left: 9px;
+    padding-right: 14px;
+  }
+  .cm-gutters {
+    background: var(--panel);
+    border-right: 0;
+    color: #bac2ad;
+    font-size: var(--ui-text-tiny);
+    padding-right: 5px;
+  }
+  .cm-activeLineGutter,
+  .cm-activeLine {
+    background: #f2f2f299;
+  }
+  &.cm-focused {
+    outline: none;
+  }
+  .cm-selectionBackground {
+    background: var(--accent) !important;
+  }
+  .cm-foldGutter {
+    width: 10px;
+  }
+  .cm-tooltip {
+    font-size: var(--ui-text-small);
+    background: #f5f7ef;
+    border-color: #d6e0c8;
+  }
+  .cm-panels {
+    background: #eef3e5;
+    color: var(--ink);
+  }
+  .cm-button {
+    background: #e6eedb;
+  }
+}
+.inspector-footer {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding: 12px 15px;
+  font: var(--ui-text-micro) var(--mono);
+  letter-spacing: 0.4px;
+  color: #9aa78c;
+  flex-shrink: 0;
+
+  > span:last-child {
+    font-family: inherit;
+    letter-spacing: 0;
+  }
+}
+/* 4-D. 右サイドバー — 画像・動画などの素材 */
+.asset-panel {
+  padding: 20px 17px;
+  overflow: auto;
+  height: 100%;
+  text-align: center;
+
+  > strong {
+    font: var(--ui-text-small) var(--mono);
+    overflow-wrap: anywhere;
+  }
+  > p {
+    font-size: var(--ui-text-caption);
+    color: var(--ink);
+    line-height: 1.8;
+  }
+  > .button {
+    margin: 10px auto;
+    display: flex;
+    width: 100%;
+  }
+  > .text-button {
+    font-size: var(--ui-text-caption);
+  }
+}
+.asset-preview {
+  min-height: 130px;
+  background: repeating-conic-gradient(#edf0e8 0% 25%, #f8faf4 0% 50%) 50% / 16px 16px;
+  border: 1px solid #dee5d5;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+
+  img {
+    max-width: 100%;
+    max-height: 220px;
+  }
+}
+.asset-reference {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+
+  code {
+    display: block;
+    font: var(--ui-text-caption) var(--mono);
+    margin-top: 5px;
+    color: var(--ink);
+  }
+}
+.asset-drop-note {
+  margin-top: 20px;
+}
+.empty-source {
+  padding: 30px 20px;
+  color: var(--muted);
+  font-size: var(--ui-text-body);
+}
+/* ========================================================================
+   5. Transient UI — dialogs, notifications and diffs
+   ======================================================================== */
+/* 5. 一時UI — ダイアログ・通知・差分表示 */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  background: #263d2e;
+  color: #fffefa;
+  box-shadow: 0 5px 24px #0002;
+  border-radius: 7px;
+  font-size: var(--ui-text-body);
+  line-height: 1.7;
+  max-width: min(700px, 90vw);
+  z-index: 100;
+}
+dialog {
+  border: 1px solid #d7dfcb;
+  border-radius: 12px;
+  background: #fffef9;
+  color: var(--ink);
+  padding: 25px 30px;
+  max-width: min(690px, 93vw);
+  width: 690px;
+  max-height: 85dvh;
+  box-shadow: 0 20px 100px #12220e33;
+
+  &::backdrop {
+    background: #18261e55;
+    backdrop-filter: blur(3px);
+  }
+}
+.dialog-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 18px;
+
+  h2 {
+    font-size: var(--ui-text-heading);
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    margin: 0;
+  }
+}
+#dialog-content {
+  font-size: var(--ui-text-base);
+  line-height: 1.9;
+}
+.dialog-note {
+  color: #879079;
+  font-size: var(--ui-text-small);
+  line-height: 1.9;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+}
+.diff-section {
+  h3 {
+    font: var(--ui-text-small) var(--mono);
+    font-weight: 600;
+    margin: 24px 0 9px;
+  }
+  pre {
+    margin: 0;
+    background: #f6f7f1;
+    border: 1px solid #e2e7d8;
+    border-radius: 5px;
+    overflow: auto;
+    font: var(--ui-text-caption)/1.8 var(--mono);
+    padding: 10px 0;
+
+    span {
+      display: block;
+      min-width: max-content;
+      padding: 0 12px;
+      white-space: pre;
+    }
+  }
+  .diff-add {
+    background: #e2efd8;
+    color: #38602a;
+  }
+  .diff-remove {
+    background: #f4e2dc;
+    color: #a15137;
+  }
+  p {
+    font-size: var(--ui-text-body);
+    color: #7c8771;
+  }
+}
+.empty-diff {
+  text-align: center;
+  padding: 40px;
+  color: #95a087;
+  font-size: var(--ui-text-body);
+}
+@keyframes blink {
+  50% {
+    opacity: 0.35;
+  }
+}

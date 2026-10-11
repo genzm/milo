@@ -1,3 +1,4 @@
+import slideSize from './slide-size.json';
 import {
   autocompletion,
   closeBrackets,
@@ -114,8 +115,7 @@ const hiddenSlideMetadataField = StateField.define<DecorationSet>({
     transaction.docChanged ? hiddenSlideMetadata(transaction.newDoc) : decorations,
   provide: (field) => EditorView.decorations.from(field),
 });
-const SLIDE_WIDTH = 1600;
-const SLIDE_HEIGHT = (SLIDE_WIDTH * 9) / 16;
+const { width: SLIDE_WIDTH, height: SLIDE_HEIGHT } = slideSize;
 document.documentElement.style.setProperty('--slide-width', `${SLIDE_WIDTH}px`);
 document.documentElement.style.setProperty('--slide-height', `${SLIDE_HEIGHT}px`);
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;

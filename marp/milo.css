@@ -1,6 +1,6 @@
 /* @theme milo */
 /*
-  src/style.css と src/app.ts、スライド用フォントから生成したファイルです。
+  src/styles/ と src/slide-size.json、スライド用フォントから生成したファイルです。
   直接編集せず、npm run marp で作り直してください。
 */
 
@@ -4642,9 +4642,42 @@ section {
   --accent: #d42d5a;
   --white: #fff;
   --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --slide-text-title: 50px;
+  --slide-text-heading: 30px;
+  --slide-text-subheading: 21px;
+  --slide-text-label: 18px;
+  --slide-text-body: 27px;
+  --slide-text-footer: clamp(9px, 0.72cqw, 12px);
+  --slide-text-quote: clamp(19px, 2.36cqw, 38px);
+  --slide-text-table: clamp(15px, 1.9cqw, 30px);
+  --slide-text-cover-title: clamp(35px, 4.2cqw, 68px);
+  --slide-text-cover-subtitle: clamp(15px, 2.54cqw, 28px);
+  --slide-text-section-title: clamp(38px, 4.7cqw, 76px);
+  --slide-text-essay-title: clamp(22px, 2.82cqw, 31px);
+  --slide-text-essay-body: clamp(15px, 2.54cqw, 28px);
+  --slide-text-image-caption: 0.82cqw;
+  --slide-text-series: 0.91cqw;
+  --slide-leading-body: 1.75;
+  --slide-leading-title: 1.2;
+  --slide-leading-heading: 1.35;
+  --slide-leading-subheading: 1.6;
+  --slide-pad-top: 75.2px;
+  --slide-pad-x: 82.4px;
+  --slide-pad-bottom: 56px;
+  --slide-cover-pad-top: 132.8px;
+  --slide-cover-pad-x: 171.2px;
+  --slide-cover-pad-bottom: 112px;
+  --slide-section-pad-y: 120px;
+  --slide-section-pad-x: 171.2px;
+  --slide-space-block: 2.4%;
+  --slide-space-paragraph: 1.5%;
+  --slide-space-paragraph-following: 1.1%;
+  --slide-space-footer: 4.4cqw;
   --slide-ink: #000;
-  --slide-pale: #fff3f6;
   --slide-muted: #8b747a;
+  --slide-code-bg: #fafafa;
+  --slide-code-border: #dedede;
+  --slide-table-stripe: #fff9fa;
   container-type: inline-size;
   width: 1600px;
   height: 900px;
@@ -4654,9 +4687,6 @@ section {
   background: var(--white);
   color: var(--slide-ink);
   overflow: hidden;
-  --slide-pad-top: 75.2px;
-  --slide-pad-x: 82.4px;
-  --slide-pad-bottom: 56px;
   padding: var(--slide-pad-top) var(--slide-pad-x) var(--slide-pad-bottom);
   font-family:
     YakuHanJP, 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
@@ -4679,7 +4709,7 @@ section {
     top: 4.2%;
     margin: 0;
     z-index: 3;
-    font: 0.91cqw/1 var(--mono);
+    font: var(--slide-text-series)/1 var(--mono);
     color: #111;
     letter-spacing: 0.04em;
     bottom: auto;
@@ -4695,7 +4725,7 @@ section {
     bottom: var(--slide-pad-bottom);
     left: var(--slide-pad-x);
     color: var(--slide-muted);
-    font-size: clamp(9px, 0.72cqw, 12px);
+    font-size: var(--slide-text-footer);
     line-height: 1.4;
     overflow: hidden;
     :is(h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote) {
@@ -4706,9 +4736,9 @@ section {
     }
   }
   h1 {
-    font-size: 50px;
+    font-size: var(--slide-text-title);
     font-weight: 800;
-    line-height: 1.2;
+    line-height: var(--slide-leading-title);
     letter-spacing: -0.055em;
     color: var(--accent);
     margin: 0 0 3.1%;
@@ -4734,23 +4764,23 @@ section {
     }
   }
   h2 {
-    font-size: 30px;
-    line-height: 1.35;
+    font-size: var(--slide-text-heading);
+    line-height: var(--slide-leading-heading);
     letter-spacing: -0.3px;
     color: var(--slide-ink);
     margin: 2.4% 0 1.4%;
     font-weight: 750;
   }
   h3 {
-    font-size: 21px;
-    line-height: 1.6;
+    font-size: var(--slide-text-subheading);
+    line-height: var(--slide-leading-subheading);
     margin: 1.45cqw 0 0.73cqw;
     color: var(--slide-ink);
   }
   h4,
   h5,
   h6 {
-    font-size: 18px;
+    font-size: var(--slide-text-label);
     color: var(--slide-muted);
     line-height: 1.45;
     letter-spacing: 0.02em;
@@ -4762,12 +4792,12 @@ section {
   p,
   ul,
   ol {
-    font-size: 27px;
-    line-height: 1.75;
+    font-size: var(--slide-text-body);
+    line-height: var(--slide-leading-body);
     color: var(--slide-ink);
   }
   p {
-    margin: 1.5% 0;
+    margin: var(--slide-space-paragraph) 0;
     word-break: normal;
     overflow-wrap: anywhere;
   }
@@ -4804,7 +4834,7 @@ section {
     margin-bottom: 0;
   }
   p + p {
-    margin-top: 1.1%;
+    margin-top: var(--slide-space-paragraph-following);
   }
   em {
     color: var(--slide-muted);
@@ -4837,9 +4867,9 @@ section {
   blockquote {
     border-left: 0.45cqw solid var(--accent);
     padding: 0 0 0 1.64cqw;
-    margin: 2.4% 0;
+    margin: var(--slide-space-block) 0;
     p {
-      font-size: clamp(19px, 2.36cqw, 38px);
+      font-size: var(--slide-text-quote);
       color: var(--slide-ink);
       font-weight: 650;
       margin: 0;
@@ -4855,20 +4885,20 @@ section {
   }
   code {
     font-family: var(--mono);
-    background: #fafafa;
-    border: 1px solid #dedede;
+    background: var(--slide-code-bg);
+    border: 1px solid var(--slide-code-border);
     padding: 1px 4px;
     border-radius: 3px;
     font-size: 0.88em;
   }
   pre {
-    background: #fafafa;
-    border: 1px solid #dedede;
+    background: var(--slide-code-bg);
+    border: 1px solid var(--slide-code-border);
     border-radius: 5px;
     padding: 1.36cqw;
     overflow: auto;
     max-width: 100%;
-    line-height: 1.75;
+    line-height: var(--slide-leading-body);
     code {
       padding: 0;
       border: 0;
@@ -4879,7 +4909,7 @@ section {
     width: 100%;
     margin: 2% 0;
     border-collapse: collapse;
-    font-size: clamp(15px, 1.9cqw, 30px);
+    font-size: var(--slide-text-table);
     line-height: 1.5;
     text-align: left;
   }
@@ -4897,7 +4927,7 @@ section {
     border-bottom: 2px solid var(--accent);
   }
   tr:nth-child(even) td {
-    background: #fff9fa;
+    background: var(--slide-table-stripe);
   }
   hr {
     border: 0;
@@ -4907,7 +4937,7 @@ section {
   .image-block {
     margin: 15px 0;
     .image-caption {
-      font-size: 0.82cqw;
+      font-size: var(--slide-text-image-caption);
       text-align: center;
       color: var(--slide-muted);
       margin: 7px 0;
@@ -4930,14 +4960,14 @@ section {
     overflow-x: auto;
   }
   &:has(> footer) {
-    padding-bottom: calc(var(--slide-pad-bottom) + 4.4cqw);
+    padding-bottom: calc(var(--slide-pad-bottom) + var(--slide-space-footer));
   }
 }
 
 section.cover {
-  --slide-pad-top: 132.8px;
-  --slide-pad-x: 171.2px;
-  --slide-pad-bottom: 112px;
+  --slide-pad-top: var(--slide-cover-pad-top);
+  --slide-pad-x: var(--slide-cover-pad-x);
+  --slide-pad-bottom: var(--slide-cover-pad-bottom);
   padding: var(--slide-pad-top) var(--slide-pad-x) var(--slide-pad-bottom);
   isolation: isolate;
   display: flex;
@@ -4957,7 +4987,7 @@ section.cover {
     z-index: -1;
   }
   h1 {
-    font-size: clamp(35px, 4.2cqw, 68px);
+    font-size: var(--slide-text-cover-title);
     line-height: 1.15;
     letter-spacing: -0.055em;
     color: var(--white);
@@ -4973,14 +5003,14 @@ section.cover {
     border-left-color: var(--white);
   }
   p:first-of-type {
-    font-size: clamp(15px, 2.54cqw, 28px);
+    font-size: var(--slide-text-cover-subtitle);
     max-width: 580px;
   }
   p:is(.align-center, .align-right) {
     max-width: none;
   }
   &:has(> footer) {
-    padding-bottom: calc(var(--slide-pad-bottom) + 4.4cqw);
+    padding-bottom: calc(var(--slide-pad-bottom) + var(--slide-space-footer));
   }
 }
 
@@ -4992,9 +5022,9 @@ section:is(.cover, .section) {
 
 section.section {
   background: var(--accent);
-  --slide-pad-top: 120px;
-  --slide-pad-x: 171.2px;
-  --slide-pad-bottom: 120px;
+  --slide-pad-top: var(--slide-section-pad-y);
+  --slide-pad-x: var(--slide-section-pad-x);
+  --slide-pad-bottom: var(--slide-section-pad-y);
   padding: var(--slide-pad-top) var(--slide-pad-x) var(--slide-pad-bottom);
   display: flex;
   flex-direction: column;
@@ -5008,7 +5038,7 @@ section.section {
   h1 {
     position: relative;
     padding-left: 24px;
-    font-size: clamp(38px, 4.7cqw, 76px);
+    font-size: var(--slide-text-section-title);
     line-height: 1.12;
     color: var(--white);
     max-width: 88%;
@@ -5033,7 +5063,7 @@ section.section {
     border-left-color: var(--white);
   }
   &:has(> footer) {
-    padding-bottom: calc(var(--slide-pad-bottom) + 4.4cqw);
+    padding-bottom: calc(var(--slide-pad-bottom) + var(--slide-space-footer));
   }
 }
 
@@ -5046,10 +5076,10 @@ section.media {
 section.essay {
   p,
   li {
-    font-size: clamp(15px, 2.54cqw, 28px);
+    font-size: var(--slide-text-essay-body);
   }
   h1 {
-    font-size: clamp(22px, 2.82cqw, 31px);
+    font-size: var(--slide-text-essay-title);
   }
 }
 
