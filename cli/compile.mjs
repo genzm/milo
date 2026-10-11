@@ -235,9 +235,9 @@ export async function loadDeck(inputPath) {
   };
 }
 
-const SLIDE_FONT_PACKAGE = '@fontsource/noto-sans-jp';
+export const SLIDE_FONT_PACKAGE = '@fontsource/noto-sans-jp';
 const SLIDE_FONT_FAMILY = 'Noto Sans JP';
-const SLIDE_FONT_WEIGHTS = [400, 800];
+export const SLIDE_FONT_WEIGHTS = [400, 800];
 
 async function embedSlideFont() {
   const root = dirname(require.resolve(`${SLIDE_FONT_PACKAGE}/package.json`));
