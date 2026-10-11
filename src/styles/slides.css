@@ -23,9 +23,7 @@
     YakuHanJP, 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
   .slide-top {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 1.82cqw;
     position: absolute;
     right: 4.9%;
     top: 4.2%;

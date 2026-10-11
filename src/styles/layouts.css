@@ -12,10 +12,6 @@
   .slide-top {
     right: 6.2%;
     top: 6.1%;
-
-    &::before {
-      content: none;
-    }
   }
   .slide-series {
     color: var(--white);
