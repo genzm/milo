@@ -26,6 +26,79 @@ function lineText(state: any, line: number) {
   return state.src.slice(state.bMarks[line] + state.tShift[line], state.eMarks[line]);
 }
 
+// Only structural lines participate in milo block delimiters. Fenced code
+// can contain literal @endbox, @column, etc. without ending the block.
+function* structuralLines(state: any, from: number, end: number): Generator<[number, string]> {
+  let fence = '';
+  for (let line = from; line < end; line++) {
+    const text = lineText(state, line).trim();
+    if (fence) {
+      if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
+      continue;
+    }
+    const opening = /^(?:`{3,}|~{3,})/.exec(text);
+    if (opening) {
+      fence = opening[0];
+      continue;
+    }
+    yield [line, text];
+  }
+}
+
+interface PairedBlock {
+  source: string;
+  options?: string;
+  error?: string;
+}
+
+function registerPairedBlock(
+  md: InstanceType<typeof MarkdownIt>,
+  name: string,
+  blocks: PairedBlock[],
+  config: { className: string; tag?: string; attributes?: boolean; nested?: boolean },
+) {
+  const opening = config.attributes
+    ? new RegExp(`^@${name}(?:\\s+([\\s\\S]*))?\\s*$`)
+    : new RegExp(`^@${name}$`);
+  const closing = `@end${name}`;
+  md.block.ruler.before(
+    'fence',
+    `milo-${name}`,
+    (state: any, line: number, end: number, silent: boolean) => {
+      if (state.sCount[line] - state.blkIndent >= 4) return false;
+      const match = opening.exec(lineText(state, line).trim());
+      if (!match) return false;
+      let finish = end,
+        depth = 1;
+      for (const [cursor, text] of structuralLines(state, line + 1, end)) {
+        if (config.nested && opening.test(text)) depth++;
+        else if (text === closing && --depth === 0) {
+          finish = cursor;
+          break;
+        }
+      }
+      if (silent) return true;
+      const token = state.push(`milo_${name}`, '', 0);
+      token.meta = {
+        index:
+          blocks.push({
+            source:
+              finish < end ? state.src.slice(state.bMarks[line + 1], state.bMarks[finish]) : '',
+            options: match[1] || '',
+            ...(finish >= end ? { error: `${name}を閉じる ${closing} がありません。` } : {}),
+          }) - 1,
+      };
+      const next = finish < end ? finish + 1 : end;
+      token.map = [line, next];
+      state.line = next;
+      return true;
+    },
+  );
+  const tag = config.tag ?? 'div';
+  md.renderer.rules[`milo_${name}`] = (tokens, index) =>
+    `<${tag} class="${config.className}" data-${name}="${tokens[index].meta!.index}"></${tag}>\n`;
+}
+
 function mathBlock(state: any, line: number, end: number, silent: boolean) {
   if (state.sCount[line] - state.blkIndent >= 4) return false;
   const first = lineText(state, line).trimEnd();
@@ -150,59 +223,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   const display = prepareTaskItems(maskMiloComments(source), tasks);
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
   md.core.ruler.before('inline', 'milo_align', alignBlocks);
-  md.block.ruler.before(
-    'fence',
-    'milo-box',
-    (s: any, line: number, end: number, silent: boolean) => {
-      if (s.sCount[line] - s.blkIndent >= 4) return false;
-      const opening = /^@box(?:\s+([\s\S]*))?\s*$/.exec(lineText(s, line).trim());
-      if (!opening) return false;
-      let cursor = line + 1,
-        depth = 1,
-        fence = '';
-      for (; cursor < end; cursor++) {
-        const text = lineText(s, cursor).trim();
-        if (fence) {
-          if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
-          continue;
-        }
-        const openingFence = /^(?:`{3,}|~{3,})/.exec(text);
-        if (openingFence) {
-          fence = openingFence[0];
-          continue;
-        }
-        if (/^@box(?:\s|$)/.test(text)) depth++;
-        else if (text === '@endbox' && --depth === 0) break;
-      }
-      if (silent) return true;
-      const token = s.push('milo_box', '', 0);
-      if (cursor >= end) {
-        token.meta = {
-          index:
-            boxes.push({
-              source: '',
-              options: opening[1] || '',
-              error: 'boxを閉じる @endbox がありません。',
-            }) - 1,
-        };
-        token.map = [line, end];
-        s.line = end;
-        return true;
-      }
-      token.meta = {
-        index:
-          boxes.push({
-            source: s.src.slice(s.bMarks[line + 1], s.bMarks[cursor]),
-            options: opening[1] || '',
-          }) - 1,
-      };
-      token.map = [line, cursor + 1];
-      s.line = cursor + 1;
-      return true;
-    },
-  );
-  md.renderer.rules.milo_box = (tokens, index) =>
-    `<div class="box-block" data-box="${tokens[index].meta!.index}"></div>\n`;
+  registerPairedBlock(md, 'box', boxes, { className: 'box-block', attributes: true, nested: true });
   md.block.ruler.before(
     'fence',
     'milo-columns',
@@ -211,21 +232,11 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
         return false;
       let cursor = line + 1,
         depth = 1,
-        fence = '',
         columnStart = -1,
         error = '';
       const sources: string[] = [];
-      for (; cursor < end; cursor++) {
-        const text = lineText(s, cursor).trim();
-        if (fence) {
-          if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
-          continue;
-        }
-        const openingFence = /^(?:`{3,}|~{3,})/.exec(text);
-        if (openingFence) {
-          fence = openingFence[0];
-          continue;
-        }
+      for (const [structuralLine, text] of structuralLines(s, line + 1, end)) {
+        cursor = structuralLine;
         if (text === '@columns') {
           depth++;
           continue;
@@ -256,6 +267,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
           break;
         }
       }
+      if (!error && depth > 0) cursor = end;
       if (silent) return true;
       if (!error && cursor >= end) error = 'columnsを閉じる @endcolumns がありません。';
       if (!error && sources.length < 2) error = 'columnsには2つ以上の @column が必要です。';
@@ -268,139 +280,9 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   );
   md.renderer.rules.milo_columns = (tokens, index) =>
     `<div class="columns-block" data-columns="${tokens[index].meta!.index}"></div>\n`;
-  md.block.ruler.before(
-    'fence',
-    'milo-impact',
-    (s: any, line: number, end: number, silent: boolean) => {
-      if (s.sCount[line] - s.blkIndent >= 4 || lineText(s, line).trim() !== '@impact') return false;
-      let cursor = line + 1,
-        fence = '';
-      for (; cursor < end; cursor++) {
-        const text = lineText(s, cursor).trim();
-        if (fence) {
-          if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
-          continue;
-        }
-        const openingFence = /^(?:`{3,}|~{3,})/.exec(text);
-        if (openingFence) {
-          fence = openingFence[0];
-          continue;
-        }
-        if (text === '@endimpact') break;
-      }
-      if (silent) return true;
-      const token = s.push('milo_impact', '', 0);
-      if (cursor >= end) {
-        token.meta = {
-          index:
-            impacts.push({ source: '', error: 'impactを閉じる @endimpact がありません。' }) - 1,
-        };
-        token.map = [line, end];
-        s.line = end;
-        return true;
-      }
-      token.meta = {
-        index: impacts.push({ source: s.src.slice(s.bMarks[line + 1], s.bMarks[cursor]) }) - 1,
-      };
-      token.map = [line, cursor + 1];
-      s.line = cursor + 1;
-      return true;
-    },
-  );
-  md.renderer.rules.milo_impact = (tokens, index) =>
-    `<div class="impact-block" data-impact="${tokens[index].meta!.index}"></div>\n`;
-  md.block.ruler.before(
-    'fence',
-    'milo-footer',
-    (s: any, line: number, end: number, silent: boolean) => {
-      if (s.sCount[line] - s.blkIndent >= 4 || lineText(s, line).trim() !== '@footer') return false;
-      let cursor = line + 1,
-        fence = '';
-      for (; cursor < end; cursor++) {
-        const text = lineText(s, cursor).trim();
-        if (fence) {
-          if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
-          continue;
-        }
-        const openingFence = /^(?:`{3,}|~{3,})/.exec(text);
-        if (openingFence) {
-          fence = openingFence[0];
-          continue;
-        }
-        if (text === '@endfooter') break;
-      }
-      if (silent) return true;
-      const token = s.push('milo_footer', '', 0);
-      if (cursor >= end) {
-        token.meta = {
-          index:
-            footers.push({ source: '', error: 'footerを閉じる @endfooter がありません。' }) - 1,
-        };
-        token.map = [line, end];
-        s.line = end;
-        return true;
-      }
-      token.meta = {
-        index: footers.push({ source: s.src.slice(s.bMarks[line + 1], s.bMarks[cursor]) }) - 1,
-      };
-      token.map = [line, cursor + 1];
-      s.line = cursor + 1;
-      return true;
-    },
-  );
-  md.renderer.rules.milo_footer = (tokens, index) =>
-    `<footer class="slide-footer-content" data-footer="${tokens[index].meta!.index}"></footer>\n`;
-  md.block.ruler.before(
-    'fence',
-    'milo-canvas',
-    (s: any, line: number, end: number, silent: boolean) => {
-      if (s.sCount[line] - s.blkIndent >= 4) return false;
-      const opening = /^@canvas(?:\s+([\s\S]*))?\s*$/.exec(lineText(s, line).trim());
-      if (!opening) return false;
-      let cursor = line + 1,
-        fence = '';
-      for (; cursor < end; cursor++) {
-        const text = lineText(s, cursor).trim();
-        if (fence) {
-          if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
-          continue;
-        }
-        const openingFence = /^(?:`{3,}|~{3,})/.exec(text);
-        if (openingFence) {
-          fence = openingFence[0];
-          continue;
-        }
-        if (text === '@endcanvas') break;
-      }
-      if (cursor >= end) {
-        if (silent) return true;
-        const token = s.push('milo_canvas', '', 0);
-        token.meta = {
-          index:
-            canvases.push({
-              source: '',
-              options: opening[1] || '',
-              error: 'canvasを閉じる @endcanvas がありません。',
-            }) - 1,
-        };
-        token.map = [line, end];
-        s.line = end;
-        return true;
-      }
-      if (silent) return true;
-      const start = s.bMarks[line + 1],
-        finish = s.bMarks[cursor];
-      const token = s.push('milo_canvas', '', 0);
-      token.meta = {
-        index: canvases.push({ source: s.src.slice(start, finish), options: opening[1] || '' }) - 1,
-      };
-      token.map = [line, cursor + 1];
-      s.line = cursor + 1;
-      return true;
-    },
-  );
-  md.renderer.rules.milo_canvas = (tokens, index) =>
-    `<div class="milo-canvas" data-canvas="${tokens[index].meta!.index}"></div>\n`;
+  registerPairedBlock(md, 'impact', impacts, { className: 'impact-block' });
+  registerPairedBlock(md, 'footer', footers, { className: 'slide-footer-content', tag: 'footer' });
+  registerPairedBlock(md, 'canvas', canvases, { className: 'milo-canvas', attributes: true });
   md.block.ruler.before(
     'fence',
     'milo-directive',
