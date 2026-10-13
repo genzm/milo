@@ -5,6 +5,8 @@ import { basename, dirname, extname, join, relative, resolve, sep } from 'node:p
 import { fileURLToPath } from 'node:url';
 import { parse as parseJSONC } from 'jsonc-parser';
 import { parseTalkMarkdown } from './document.mjs';
+import { slideLayout } from '../src/slide-layout.mjs';
+export { slideLayout } from '../src/slide-layout.mjs';
 import { loadBuildResources } from './resources.mjs';
 import { embedSlideFonts } from './fonts.mjs';
 
@@ -167,31 +169,6 @@ async function loadReferencedAssets(dir, refs) {
     blocks.push({ id, kind: 'asset', name, text });
   }
   return blocks;
-}
-
-function parseMiloAttrs(raw) {
-  const attrs = {};
-  const leftover = raw
-    .trim()
-    .replace(/([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+))/g, (_, key, dq, sq, bare) => {
-      attrs[key] = dq ?? sq ?? bare;
-      return '';
-    });
-  if (leftover.trim()) throw new Error(`milo コメントを解釈できません: ${raw.trim()}`);
-  return attrs;
-}
-
-const LAYOUTS = new Set(['cover', 'section', 'lab', 'media', 'essay']);
-
-export function slideLayout(text) {
-  const match = /^\s*<!--\s*milo:\s*([\s\S]*?)\s*-->/.exec(text);
-  if (!match) return undefined;
-  const layout = parseMiloAttrs(match[1]).layout;
-  if (!layout) return undefined;
-  if (!LAYOUTS.has(layout)) {
-    throw new Error(`未対応のレイアウトです: ${layout}`);
-  }
-  return layout;
 }
 
 export async function loadDeck(inputPath) {

@@ -1,4 +1,5 @@
 import slideSize from './slide-size.json';
+import { LAYOUTS, slideLayout, setSlideLayout, type SlideLayout } from './slide-layout.mjs';
 import {
   autocompletion,
   closeBrackets,
@@ -42,38 +43,6 @@ interface Manifest {
   title: string;
   slides: string[];
 }
-const LAYOUTS = ['cover', 'section', 'lab', 'media', 'essay'] as const;
-type SlideLayout = (typeof LAYOUTS)[number];
-const MILO_COMMENT = /^(\s*<!--\s*milo:\s*)([\s\S]*?)(\s*-->)/;
-
-function slideLayout(text: string): SlideLayout {
-  const raw = MILO_COMMENT.exec(text)?.[2] || '',
-    match = /(?:^|\s)layout\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+))/.exec(raw),
-    value = match?.[1] ?? match?.[2] ?? match?.[3] ?? 'lab';
-  if (!LAYOUTS.includes(value as SlideLayout)) throw new Error(`未対応のレイアウトです: ${value}`);
-  return value as SlideLayout;
-}
-
-function setSlideLayout(text: string, layout: SlideLayout) {
-  const comment = MILO_COMMENT.exec(text);
-  if (!comment) {
-    const eol = text.includes('\r\n') ? '\r\n' : '\n';
-    return `<!-- milo: layout=${layout} -->${eol}${eol}${text}`;
-  }
-  const raw = comment[2],
-    next = /\blayout\s*=\s*(?:"[^"]*"|'[^']*'|[^\s]+)/.test(raw)
-      ? raw.replace(
-          /(\blayout\s*=\s*)(?:"([^"]*)"|'([^']*)'|([^\s]+))/,
-          (_, prefix: string, double: string | undefined, single: string | undefined) =>
-            prefix +
-            (double !== undefined ? `"${layout}"` : single !== undefined ? `'${layout}'` : layout),
-        )
-      : `${raw.trimEnd()}${raw.trim() ? ' ' : ''}layout=${layout}`;
-  return (
-    text.slice(0, comment.index) + comment[1] + next + comment[3] + text.slice(comment[0].length)
-  );
-}
-
 function hiddenSlideMetadata(doc: Text): DecorationSet {
   const match = /^(?:\s*<!--\s*milo:[\s\S]*?-->[ \t]*(?:\r?\n)?)/.exec(doc.toString());
   return match
@@ -253,7 +222,7 @@ function titleOf(id: string) {
 }
 function layoutOf(id: string) {
   try {
-    return slideLayout(store.get(id).text);
+    return slideLayout(store.get(id).text) ?? 'lab';
   } catch {
     return 'lab';
   }
