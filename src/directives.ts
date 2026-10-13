@@ -1,7 +1,4 @@
 import katex from 'katex';
-// Components are intentionally disabled for now. Restore this import together
-// with componentRenderer and its registry entry below to enable them again.
-// import { ComponentRunner,sceneSVG } from './component';
 import { evaluate, parseExpression, toTex, nameTex, validateModel, type Model } from './expression';
 import { SourceStore, json } from './source';
 
@@ -55,7 +52,6 @@ export interface RenderContext {
   inspect: (id: string) => void;
   renderInline?: (source: string) => string;
   renderMarkdown?: (source: string) => string;
-  // componentState:Map<string,any>; // Components are currently disabled.
 }
 export interface Directive {
   name: string;
@@ -302,33 +298,11 @@ const imageRenderer: DirectiveRenderer = {
   },
 };
 
-/* Components are intentionally disabled, but the implementation is kept here
- * so it can be restored without reconstructing the Worker integration.
-const componentRenderer:DirectiveRenderer={mount(el,d,ctx){
-  const modelId=d.attrs.model||'wave',id=resolve(ctx.store,d.attrs.id||'phase','component'),code=ctx.store.get(id).text;
-  el.classList.add('component-block');const view=document.createElement('div'),controls=document.createElement('div'),caption=document.createElement('div');controls.className='component-controls';caption.className='component-caption';caption.textContent='部品を起動中…';el.append(view,controls,caption);
-  const runner=new ComponentRunner(code);let dead=false,renderSeq=0;
-  const context=()=>{const {p}=model(ctx,modelId);return{params:p,session:ctx.componentState.get(id)||{}};};
-  const render=async()=>{const seq=++renderSeq;try{const scene=await runner.view(context());if(dead||seq!==renderSeq)return;view.replaceChildren(sceneSVG(scene));caption.textContent=scene.caption||'JavaScriptで編集できる図';el.classList.remove('block-error');
-    const specs=Array.isArray(scene.controls)?scene.controls.slice(0,12):[];
-    if(controls.dataset.ids!==JSON.stringify(specs.map((s:any)=>s.id))){controls.replaceChildren();controls.dataset.ids=JSON.stringify(specs.map((s:any)=>s.id));
-      for(const spec of specs){if(spec.type!=='range')continue;const label=document.createElement('label');label.innerHTML='<span></span><input type="range"><output></output>';label.querySelector('span')!.textContent=String(spec.label||spec.id);const input=label.querySelector('input')!;input.dataset.id=String(spec.id);input.setAttribute('aria-label',String(spec.label||spec.id));label.querySelector('output')!.textContent=fmt(Number(spec.value));
-        input.addEventListener('input',async()=>{try{const action=await runner.update({id:spec.id,value:Number(input.value)},context());if(dead)return;if(action?.session&&typeof action.session==='object'){ctx.componentState.set(id,{...ctx.componentState.get(id),...action.session});}
-          if(action?.parameter&&Number.isFinite(action.value))ctx.setParameter(resolve(ctx.store,modelId,'model'),String(action.parameter),action.value);await render();}catch(e:any){caption.textContent=e.message;}});controls.append(label);
-      }
-    }
-    for(const spec of specs){const input=[...controls.querySelectorAll('input')].find(n=>n.dataset.id===String(spec.id));if(!input)continue;const min=Number(spec.min??0),max=Number(spec.max??1),step=Number(spec.step??.01),value=Number(spec.value??0);if(![min,max,step,value].every(Number.isFinite)||max<=min||step<=0)throw new Error('部品スライダーの値が不正です。');input.min=String(min);input.max=String(max);input.step=String(step);input.value=String(value);input.parentElement!.querySelector('output')!.textContent=fmt(value);}
-  }catch(e:any){if(dead)return;el.classList.add('block-error');caption.textContent=e.message+' 右の「部品」で修正できます。';}};
-  return{update:()=>{void render();},dispose:()=>{dead=true;runner.dispose();}};
-}};
-*/
-
 const directiveRenderers = new Map<string, DirectiveRenderer>([
   ['equation', equationRenderer],
   ['plot', plotRenderer],
   ['slider', sliderRenderer],
   ['image', imageRenderer],
-  // ['component',componentRenderer] // Components are currently disabled.
 ]);
 export function directiveRenderer(name: string) {
   return directiveRenderers.get(name);

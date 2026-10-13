@@ -39,7 +39,6 @@ const groups = [
   ['manifest', 'DOCUMENT SETTINGS', 'MILO SETTINGS'],
   ['slide', 'SLIDES', 'MILO SLIDES'],
   ['model', 'MODELS', 'MILO MODELS'],
-  ['component', 'COMPONENTS', 'MILO COMPONENTS'],
   ['asset', 'ASSETS / LARGE EMBEDDED DATA', 'MILO ASSETS'],
 ];
 

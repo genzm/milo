@@ -120,7 +120,6 @@ let activeTab: Kind = 'slide',
   binding = false,
   renderTimer: ReturnType<typeof setTimeout> | null = null,
   cacheTimer: ReturnType<typeof setTimeout> | null = null;
-// const componentState=new Map<string,any>(); // Components are currently disabled.
 let manifest: Manifest = {
   title: 'milo',
   slides: store.list('slide').map((b) => b.id),
@@ -258,7 +257,7 @@ app.innerHTML = `
     <div class="stage-scroll" id="stage-scroll"><div class="slide-viewport" id="slide-viewport"><article class="slide" id="slide"><div class="slide-top"><span class="slide-series" id="slide-series"></span></div><div id="slide-content" class="slide-content"></div></article></div></div>
     <div class="stage-bottom"><nav class="pagination" aria-label="ページ送り"><button id="previous" class="icon-button" aria-label="前のスライド">${icon('left')}</button><span id="page-number"></span><button id="next" class="icon-button" aria-label="次のスライド">${icon('right')}</button></nav></div>
   </main>
-  <aside class="inspector" aria-label="原稿とモデルの編集"><div class="inspector-tabs" role="tablist"><button data-tab="slide" role="tab">原稿</button><button data-tab="model" role="tab">モデル</button><!-- Components disabled: <button data-tab="component" role="tab">部品</button> --><button data-tab="asset" role="tab">素材</button><button data-tab="manifest" role="tab">設定</button></div>
+  <aside class="inspector" aria-label="原稿とモデルの編集"><div class="inspector-tabs" role="tablist"><button data-tab="slide" role="tab">原稿</button><button data-tab="model" role="tab">モデル</button><button data-tab="asset" role="tab">素材</button><button data-tab="manifest" role="tab">設定</button></div>
     <div class="inspector-heading"><div class="source-select"><select id="source-select" aria-label="編集するソース"></select><button id="add-source" class="icon-button" aria-label="ソースを追加">${icon('plus')}</button></div></div><div id="inspector-extra"></div><div id="source-editor" class="source-editor"></div><div class="inspector-footer"><span id="source-kind"></span><span>変更は自動で反映</span></div>
   </aside>
 </div><div id="toast" class="toast" role="status" hidden></div><input type="file" id="asset-input" accept="image/gif,image/png,image/jpeg,image/webp,image/svg+xml" hidden><dialog id="dialog"><div class="dialog-top"><h2 id="dialog-title"></h2><button id="dialog-close" class="icon-button" aria-label="閉じる">${icon('close')}</button></div><div id="dialog-content"></div></dialog>`;
@@ -467,7 +466,6 @@ const langLabels: Partial<Record<Kind, string>> = {
   model: 'JSONC / MODEL',
   asset: 'EMBEDDED ASSET',
   manifest: 'JSONC / DOCUMENT',
-  // component:'JAVASCRIPT / WORKER'
 };
 function refreshInspector() {
   editor?.destroy();
@@ -852,7 +850,6 @@ $('add-source').onclick = () => {
     chooseAsset();
     return;
   }
-  // Component source creation is disabled with the component tab.
   if (activeTab === 'model') {
     const kind = activeTab,
       id = unique(kind);

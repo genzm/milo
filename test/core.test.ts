@@ -27,7 +27,7 @@ const fixture = (eol = '\n') =>
       kind: 'model',
       text: '{\n  // this comment stays\n  "parameters": {\n    "gamma": 0.2,\n    "omega": 3.0\n  },\n  "expression": "exp(-gamma * t) < 1"\n}',
     }) +
-    '\n<!-- END MILO MODELS -->\n<!-- END MILO COMPONENTS -->\n<!-- END MILO ASSETS -->\n' +
+    '\n<!-- END MILO MODELS -->\n<!-- END MILO ASSETS -->\n' +
     END_MARKER +
     '\n<script>const untouched = "A";</script>\n'
   ).replace(/\n/g, eol);
@@ -361,7 +361,7 @@ test('built artifact contains one kernel and all dependencies; a model edit leav
     s = SourceStore.fromHTML(html);
   assert.equal(s.list().length, 8);
   assert.equal(s.list('slide').length, 5);
-  assert.equal(s.list('component').length, 0);
+  assert.equal(html.includes('MILO COMPONENTS'), false);
   assert.equal(/<script[^>]+\bsrc\s*=/i.test(html), false);
   assert.equal(/<link[^>]+rel="stylesheet"/i.test(html), false);
   const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');

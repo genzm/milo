@@ -2,9 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Window } from 'happy-dom';
-// Component Worker test support is currently disabled with the feature.
-// import {Worker as NodeWorker} from 'node:worker_threads';
-// import {resolveObjectURL} from 'node:buffer';
 import { EditorView } from '@codemirror/view';
 import { SourceStore, json } from '../src/source.ts';
 
@@ -90,16 +87,7 @@ async function launch(html = initial, file = createFile(html)) {
       disableComputedStyleRendering: true,
     },
   });
-  /* Component Worker shim (disabled with the component feature).
-  const workers=new Set<any>();
-  class WorkerShim {
-    onmessage:any;onerror:any;node:NodeWorker|null=null;queue:any[]=[];closed=false;
-    constructor(url:string){workers.add(this);const blob=resolveObjectURL(url);if(!blob)throw new Error('Worker blob missing');void blob.text().then(source=>{if(this.closed)return;this.node=new NodeWorker(`const {parentPort}=require('node:worker_threads'); const self=globalThis; self.postMessage=data=>parentPort.postMessage(data); ${source}\nparentPort.on('message',data=>self.onmessage({data}));`,{eval:true});this.node.on('message',data=>this.onmessage?.({data}));this.node.on('error',error=>this.onerror?.({message:error.message,preventDefault(){}}));for(const data of this.queue)this.node.postMessage(data);this.queue=[];});}
-    postMessage(data:any){if(this.node)this.node.postMessage(data);else this.queue.push(data);}
-    terminate(){this.closed=true;void this.node?.terminate();workers.delete(this);}
-  }
-  Object.defineProperty(w,'Worker',{value:WorkerShim});
-  */
+
   Object.defineProperty(w, 'Blob', { value: Blob });
   Object.defineProperty(w, 'URL', { value: URL });
   Object.defineProperty(w, 'TextEncoder', { value: TextEncoder });
@@ -397,19 +385,6 @@ test('presentation slider edits update the source and code-editor transactions u
     await app.close();
   }
 });
-
-/* Component integration test retained for when the feature is enabled again.
-test('editable Worker source persists, errors are repairable, and hanging code is stopped',async()=>{
-  const app=await launch();try{
-    app.click('#connect');await until(()=>app.query('#save-label').textContent==='保存済み','No connection');app.click('[data-index="3"]');await until(()=>!!app.query('.component-block svg'),'No component');app.click('[data-tab="component"]');
-    let editor=app.code();const original=editor.state.doc.toString();const updated=original.replace('#D42D5A','#a65b36');editor.dispatch({changes:{from:0,to:editor.state.doc.length,insert:updated}});
-    await until(()=>app.query('.component-block circle[fill="#a65b36"]')!==null,'Component code did not change the diagram');await until(()=>app.query('#save-label').textContent==='保存済み','Component edit did not save');assert.ok(SourceStore.fromHTML(app.file.disk).get('component-phase').text.includes('#a65b36'));
-    editor.dispatch({changes:{from:0,to:editor.state.doc.length,insert:'function view( {'}});await until(()=>app.query('.component-block')?.classList.contains('block-error'),'Syntax error did not display');assert.ok(app.query('.cm-content'));
-    editor.dispatch({changes:{from:0,to:editor.state.doc.length,insert:'function view() { while (true) {} }'}});await until(()=>app.query('.component-caption')?.textContent.includes('1.5秒'),'Infinite component was not stopped',3500);assert.ok(app.query('.cm-content'));
-    editor.dispatch({changes:{from:0,to:editor.state.doc.length,insert:updated}});await until(()=>!!app.query('.component-block circle[fill="#a65b36"]'),'Component did not recover');assert.deepEqual(app.errors,[]);
-  }finally{await app.close();}
-});
-*/
 
 test('adding, reordering and deleting slides preserves a reopenable deck', async () => {
   const app = await launch();

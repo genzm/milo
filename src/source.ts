@@ -10,12 +10,11 @@ import {
 
 export const SOURCE_TYPE = 'application/x-milo-source';
 export const END_MARKER = '<!-- END MILO SOURCES -->';
-export type Kind = 'manifest' | 'slide' | 'model' | 'component' | 'asset';
+export type Kind = 'manifest' | 'slide' | 'model' | 'asset';
 export const GROUP_END_MARKERS: Record<Kind, string> = {
   manifest: '<!-- END MILO SETTINGS -->',
   slide: '<!-- END MILO SLIDES -->',
   model: '<!-- END MILO MODELS -->',
-  component: '<!-- END MILO COMPONENTS -->',
   asset: '<!-- END MILO ASSETS -->',
 };
 export interface Block {
@@ -60,7 +59,7 @@ function contentBounds(html: string, start: number, end: number) {
   else if (html[end - 1] === '\n') end--;
   return { start, end: Math.max(start, end) };
 }
-const kindOrder: Kind[] = ['manifest', 'slide', 'model', 'component', 'asset'];
+const kindOrder: Kind[] = ['manifest', 'slide', 'model', 'asset'];
 function lastIndexWhere<T>(items: T[], test: (item: T) => boolean) {
   for (let i = items.length - 1; i >= 0; i--) if (test(items[i])) return i;
   return -1;
