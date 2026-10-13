@@ -33,11 +33,12 @@ import {
   rectangularSelection,
   type DecorationSet,
 } from '@codemirror/view';
-import { SourceStore, json, normalize, type Block, type Kind } from './source';
+import { SourceStore, json, normalize, type Kind } from './source';
 import { Autosaver, readFile, type FileHandle } from './save';
 import { validateModel, type Model } from './expression';
 import { renderSlide, esc, fmt, assetURL, type Rendered } from './render';
 import { cacheGet, cacheSet } from './cache';
+import { DraftStore } from './drafts';
 
 interface Manifest {
   title: string;
@@ -127,76 +128,7 @@ let manifest: Manifest = {
 let manifestError = '';
 const docId = document.querySelector('meta[name="milo-id"]')?.getAttribute('content') || 'milo';
 const cacheKey = docId + '|' + location.href.split('#')[0];
-const draftKey = 'draft:' + cacheKey,
-  previousKey = 'previous:' + cacheKey,
-  conflictKey = 'conflict:' + cacheKey;
-type DraftBlock = Pick<Block, 'id' | 'kind' | 'name' | 'text'>;
-interface Draft {
-  version: 1;
-  base: string;
-  content: string;
-  blocks: DraftBlock[];
-  when: number;
-  reason: 'edit' | 'hidden' | 'conflict' | 'saved';
-}
-function blockFingerprint(blocks: Iterable<Pick<Block, 'id' | 'kind' | 'name' | 'text'>>) {
-  let a = 0x811c9dc5,
-    b = 0x9e3779b9,
-    length = 0;
-  const feed = (value: string) => {
-    const s = value.length + ':' + value;
-    length += s.length;
-    for (let i = 0; i < s.length; i++) {
-      const c = s.charCodeAt(i);
-      a = Math.imul(a ^ c, 0x01000193);
-      b = Math.imul((b ^ c) >>> 0, 0x85ebca6b);
-      b ^= b >>> 13;
-    }
-  };
-  let count = 0;
-  for (const block of blocks) {
-    count++;
-    feed(block.id);
-    feed(block.kind);
-    feed(block.name);
-    feed(normalize(block.text));
-  }
-  return `${count}:${length}:${(a >>> 0).toString(16)}:${(b >>> 0).toString(16)}`;
-}
-let openingFingerprint = blockFingerprint(opening.blocks);
-const draftBlocks = () =>
-  store.list().map(({ id, kind, name, text }) => ({ id, kind, name, text }));
-async function persistDraft(reason: Draft['reason'] = 'edit'): Promise<Draft | null> {
-  const blocks = draftBlocks(),
-    draft: Draft = {
-      version: 1,
-      base: openingFingerprint,
-      content: blockFingerprint(blocks),
-      blocks,
-      when: Date.now(),
-      reason,
-    };
-  return (await cacheSet(draftKey, draft)) ? draft : null;
-}
-async function archiveDraft() {
-  const draft = (await cacheGet(draftKey)) as Draft | undefined;
-  if (
-    !draft?.blocks?.length ||
-    saver.state !== 'saved' ||
-    saver.dirty() ||
-    draft.content !== blockFingerprint(store.list())
-  )
-    return;
-  if (await cacheSet(previousKey, { ...draft, reason: 'saved' } satisfies Draft))
-    await cacheSet(draftKey, undefined);
-}
-async function preserveConflictDraft() {
-  const draft = await persistDraft('conflict');
-  if (!draft) return false;
-  if (!(await cacheSet(conflictKey, draft))) return false;
-  await cacheSet(draftKey, undefined);
-  return true;
-}
+const drafts = new DraftStore(cacheKey, store, opening.blocks);
 function readManifest() {
   try {
     const m = json<any>(store.get('manifest').text),
@@ -238,9 +170,9 @@ const saver = new Autosaver(
   () => store.html,
   () => {
     updateSave();
-    if (saver.state === 'saved' && !saver.dirty()) void archiveDraft();
+    if (saver.state === 'saved' && !saver.dirty()) void drafts.archive(saver);
     else if (['conflict', 'permission', 'error'].includes(saver.state))
-      void persistDraft(saver.state === 'conflict' ? 'conflict' : 'edit');
+      void drafts.persist(saver.state === 'conflict' ? 'conflict' : 'edit');
   },
 );
 
@@ -402,9 +334,9 @@ function scheduleCache() {
   if (cacheTimer) clearTimeout(cacheTimer);
   cacheTimer = setTimeout(() => {
     cacheTimer = null;
-    if (saver.handle && !saver.dirty()) void archiveDraft();
-    else if (!saver.handle && !sourceChanged()) void cacheSet(draftKey, undefined);
-    else void persistDraft();
+    if (saver.handle && !saver.dirty()) void drafts.archive(saver);
+    else if (!saver.handle && !sourceChanged()) void drafts.discard();
+    else void drafts.persist();
   }, 150);
 }
 function afterChange(kind: 'source' | 'parameter' | 'structure' = 'source') {
@@ -709,7 +641,7 @@ async function resolveSave() {
     )
       return;
     try {
-      if (!(await preserveConflictDraft())) {
+      if (!(await drafts.preserveConflict())) {
         toast('未保存の編集をブラウザに退避できないため、読み直しを中止しました。');
         return;
       }
@@ -718,7 +650,7 @@ async function resolveSave() {
       store.restore(disk.snapshot());
       boot = store.snapshot();
       opening = store.snapshot();
-      openingFingerprint = blockFingerprint(opening.blocks);
+      drafts.rebase(opening.blocks);
       saver.bind(saver.handle!, text);
       updateNav();
       activeBlock = currentId();
@@ -935,57 +867,33 @@ document.addEventListener('visibilitychange', () => {
       cacheTimer = null;
     }
     if ((saver.handle && saver.dirty()) || (!saver.handle && sourceChanged()))
-      void persistDraft('hidden');
+      void drafts.persist('hidden');
     void saver.flush();
   }
 });
 async function restoreLocal() {
-  const active = (await cacheGet(draftKey)) as Draft | undefined,
-    conflict = (await cacheGet(conflictKey)) as Draft | undefined;
-  const draft = active?.blocks?.length ? active : conflict?.blocks?.length ? conflict : undefined,
-    draftStorageKey = active?.blocks?.length ? draftKey : conflictKey;
+  const recovery = await drafts.recovery();
   remembered = (await cacheGet('handle:' + cacheKey)) || null;
   updateSave();
-  if (
-    draft?.blocks?.length &&
-    JSON.stringify(draft.blocks.map((b: Block) => [b.id, b.text])) !==
-      JSON.stringify(store.list().map((b) => [b.id, b.text]))
-  ) {
-    const changedBase = draft.base && draft.base !== blockFingerprint(store.list());
+  if (recovery) {
     dialog(
       '未保存の編集が残っています',
-      `<p>${changedBase ? '退避後にHTML側も変更されています。内容を確認してから復元してください。' : '前回このブラウザに退避された原稿があります。復元すると、現在の原稿にその編集を戻します。'}</p><div class="dialog-actions"><button class="button" id="discard-draft">現在のHTMLを使う</button><button class="button primary" id="restore-draft">編集を復元</button></div>`,
+      `<p>${recovery.changedBase ? '退避後にHTML側も変更されています。内容を確認してから復元してください。' : '前回このブラウザに退避された原稿があります。復元すると、現在の原稿にその編集を戻します。'}</p><div class="dialog-actions"><button class="button" id="discard-draft">現在のHTMLを使う</button><button class="button primary" id="restore-draft">編集を復元</button></div>`,
     );
     $('discard-draft').onclick = () => {
-      void cacheSet(draftStorageKey, undefined);
+      void drafts.discard(recovery.storage);
       $<HTMLDialogElement>('dialog').close();
       void tryResume();
     };
     $('restore-draft').onclick = () => {
-      void cacheSet(draftStorageKey, undefined);
-      mutate(() => {
-        const ids = new Set(draft.blocks.map((b: Block) => b.id));
-        for (const b of draft.blocks) {
-          if (store.blocks.has(b.id)) store.setText(b.id, b.text);
-          else store.add(b);
-        }
-        for (const b of store.list()) if (!ids.has(b.id) && b.id !== 'manifest') store.remove(b.id);
-        let before: string | null = null;
-        for (const id of draft.blocks
-          .filter((b: Block) => b.kind === 'slide')
-          .map((b: Block) => b.id)
-          .reverse()) {
-          store.moveBefore(id, before);
-          before = id;
-        }
-      }, 'structure');
+      void drafts.discard(recovery.storage);
+      mutate(() => drafts.restore(recovery.draft), 'structure');
       refreshInspector();
       $<HTMLDialogElement>('dialog').close();
       void tryResume();
     };
     return;
   }
-  if (active?.blocks?.length) void cacheSet(draftKey, undefined);
   await tryResume();
 }
 async function tryResume() {
