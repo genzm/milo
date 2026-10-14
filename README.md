@@ -19,6 +19,23 @@ npx milo content -o dist/milo.html
 
 生成した HTML をデスクトップ版 Chrome または Edge で開きます。右上の「自動保存を接続」で、その HTML を選んで書き込みを許可してください。右側の原稿を編集すると、入力が止まって約 500ms 後に保存します。入力中も約 2 秒ごとに保存を試みます。`Cmd+S` / `Ctrl+S` は即時保存です。閉じる前に「保存済み」を確認してください。
 
+## PDFを同時出力
+
+PDFを作る場合だけ、PlaywrightのChromiumを導入します。
+
+```sh
+npx playwright install chromium
+npx milo content --pdf -o dist/slides.html
+```
+
+`dist/slides.html` と `dist/slides.pdf` を生成します。通常のHTML出力にはChromiumは不要です。
+PDFはスライド1枚につき1ページで、寸法は `src/slide-size.json` に従います。
+HTMLと同じレンダラー・CSS・フォントを使い、編集UIは含みません。
+
+グラフとスライダーはモデルの初期値、チェックリストは原稿の状態で表示します。
+GIFは印刷時の静止フレームになります。PDFの基準はコンパイル時点のMarkdownで、
+生成後にHTML内で編集した内容は反映されません。PDF出力に失敗した場合も、生成済みのHTMLは残ります。
+
 ## 原稿
 
 先頭の frontmatter にタイトル、各スライド先頭のコメントにレイアウトを書きます。レイアウトは `cover`、`section`、`lab`、`media`、`essay` です。

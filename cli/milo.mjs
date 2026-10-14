@@ -4,7 +4,7 @@ import { compile } from './compile.mjs';
 const HELP = `milo — Markdown スライドを単一 HTML にコンパイルします。
 
 使い方:
-  milo <スライドのパス> [-o <出力.html>]
+  milo <スライドのパス> [-o <出力.html>] [--pdf]
 
 <path> は slides.md、別の .md ファイル、またはそれらを含むディレクトリです。
 frontmatter・milo:model フェンス・Markdown 画像を取り込みます。models/ にあれば追加します。
@@ -12,6 +12,7 @@ frontmatter・milo:model フェンス・Markdown 画像を取り込みます。m
 オプション:
   -o, --out <file>   出力先 HTML（省略時は Markdown と同じ場所の <名前>.html）
       --notices      依存ライセンスを THIRD_PARTY_NOTICES.txt に書き出す
+      --pdf          HTMLと同じ名前のPDFを同時出力（Chromiumの導入が必要）
   -h, --help         このヘルプ
 `;
 
@@ -25,6 +26,7 @@ async function main(argv) {
   let input;
   let out;
   let writeNotices = false;
+  let pdf = false;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '-h' || arg === '--help') {
@@ -40,6 +42,10 @@ async function main(argv) {
       writeNotices = true;
       continue;
     }
+    if (arg === '--pdf') {
+      pdf = true;
+      continue;
+    }
     if (arg.startsWith('-')) return fail(`不明なオプションです: ${arg}`);
     if (input) return fail('スライドのパスは1つだけ指定してください。');
     input = arg;
@@ -50,6 +56,19 @@ async function main(argv) {
   console.log(
     `Built ${result.outPath}: ${(size / 1024).toFixed(0)} KiB; ${result.blocks.length} source blocks; all fonts embedded.`,
   );
+  if (pdf) {
+    const { renderPdf, pdfOutputPath } = await import('./pdf.mjs');
+    const path = await renderPdf({
+      deck: result.deck,
+      parts: result.parts,
+      outPath: pdfOutputPath(result.outPath),
+    });
+    console.log(`Built ${path}`);
+  }
 }
 
-await main(process.argv);
+try {
+  await main(process.argv);
+} catch (error) {
+  fail(error.message);
+}

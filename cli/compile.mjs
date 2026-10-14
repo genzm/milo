@@ -26,7 +26,7 @@ const IMAGE_MIME = {
 
 const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\0/g, '&#0;');
 const attrs = (s) => escape(s).replace(/"/g, '&quot;');
-const sourceBlock = (b) => `<script
+export const sourceBlock = (b) => `<script
   type="application/x-milo-source"
   id="${b.id}"
   data-kind="${b.kind}"
@@ -213,35 +213,38 @@ export async function loadDeck(inputPath) {
   };
 }
 
+export async function bundleRuntime(entry) {
+  const markdownRequire = createRequire(join(packageRoot, 'node_modules/markdown-it/package.json'));
+  const entitiesRoot = dirname(dirname(markdownRequire.resolve('entities')));
+  if (basename(entitiesRoot) !== 'entities') throw new Error('entities package layout changed');
+  const result = await build({
+    absWorkingDir: packageRoot,
+    entryPoints: [join(packageRoot, 'src', entry)],
+    bundle: true,
+    write: false,
+    metafile: true,
+    format: 'iife',
+    target: 'es2022',
+    charset: 'utf8',
+    minify: true,
+    legalComments: 'eof',
+    alias: {
+      '@codemirror/lang-html': join(packageRoot, 'cli/shims/lang-html.mjs'),
+      'linkify-it': join(packageRoot, 'cli/shims/linkify-it.mjs'),
+      'punycode.js': join(packageRoot, 'cli/shims/punycode.mjs'),
+      entities: join(entitiesRoot, 'dist/index.js'),
+      'entities/decode': join(entitiesRoot, 'dist/decode.js'),
+      'entities/escape': join(entitiesRoot, 'dist/escape.js'),
+    },
+  });
+  return result;
+}
+
 let toolboxPromise = null;
 async function toolbox() {
   if (toolboxPromise) return toolboxPromise;
   toolboxPromise = (async () => {
-    const markdownRequire = createRequire(
-      join(packageRoot, 'node_modules/markdown-it/package.json'),
-    );
-    const entitiesRoot = dirname(dirname(markdownRequire.resolve('entities')));
-    if (basename(entitiesRoot) !== 'entities') throw new Error('entities package layout changed');
-    const result = await build({
-      absWorkingDir: packageRoot,
-      entryPoints: [join(packageRoot, 'src/app.ts')],
-      bundle: true,
-      write: false,
-      metafile: true,
-      format: 'iife',
-      target: 'es2022',
-      charset: 'utf8',
-      minify: true,
-      legalComments: 'eof',
-      alias: {
-        '@codemirror/lang-html': join(packageRoot, 'cli/shims/lang-html.mjs'),
-        'linkify-it': join(packageRoot, 'cli/shims/linkify-it.mjs'),
-        'punycode.js': join(packageRoot, 'cli/shims/punycode.mjs'),
-        entities: join(entitiesRoot, 'dist/index.js'),
-        'entities/decode': join(entitiesRoot, 'dist/decode.js'),
-        'entities/escape': join(entitiesRoot, 'dist/escape.js'),
-      },
-    });
+    const result = await bundleRuntime('app.ts');
     const runtime = result.outputFiles[0].text;
     if (/<\/script[\s>]/i.test(runtime)) throw new Error('Unsafe script terminator in runtime');
     const katexRoot = resolve(dirname(require.resolve('katex/package.json')), 'dist');
@@ -374,9 +377,15 @@ ${sources}
 `;
 }
 
-export async function compile({ input, out, writeNotices = false, resources } = {}) {
-  if (!input) throw new Error('コンパイルするスライドのパスを指定してください。');
-  const deck = await loadDeck(input);
+export async function compile({
+  input,
+  out,
+  writeNotices = false,
+  resources,
+  deck: loadedDeck,
+} = {}) {
+  if (!input && !loadedDeck) throw new Error('コンパイルするスライドのパスを指定してください。');
+  const deck = loadedDeck ?? (await loadDeck(input));
   const [toolboxParts, shared] = await Promise.all([toolbox(), resources ?? loadBuildResources()]);
   const fonts = await embedSlideFonts(shared.fonts);
   const parts = {
@@ -389,5 +398,5 @@ export async function compile({ input, out, writeNotices = false, resources } = 
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, html);
   if (writeNotices) await writeFile(join(packageRoot, 'THIRD_PARTY_NOTICES.txt'), parts.notices);
-  return { outPath, html, blocks: deck.blocks };
+  return { outPath, html, blocks: deck.blocks, deck, parts };
 }

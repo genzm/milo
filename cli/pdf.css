@@ -1,0 +1,29 @@
+/* Only the temporary PDF document receives these overrides. */
+body.milo-pdf {
+  margin: 0;
+  overflow: visible;
+  background: white;
+}
+
+body.milo-pdf .slide {
+  width: var(--slide-width);
+  height: var(--slide-height);
+  aspect-ratio: auto;
+  flex: none;
+  transform: none !important;
+  border: 0;
+  box-shadow: none;
+  break-inside: avoid;
+  break-after: page;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+body.milo-pdf .slide:last-child {
+  break-after: auto;
+}
+
+body.milo-pdf * {
+  animation: none !important;
+  transition: none !important;
+}

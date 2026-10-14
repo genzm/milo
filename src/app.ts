@@ -1,4 +1,5 @@
 import slideSize from './slide-size.json';
+import { slideFrameMarkup, slideNumber } from './slide-frame';
 import { LAYOUTS, slideLayout, setSlideLayout, type SlideLayout } from './slide-layout.mjs';
 import {
   autocompletion,
@@ -186,7 +187,7 @@ app.innerHTML = `
 <div class="workspace">
   <aside class="sidebar" aria-label="スライド一覧"><div class="sidebar-heading"><span id="slide-count"></span></div><nav id="slides"></nav><div class="slide-operations"><button id="move-up" class="icon-button" title="前へ移動" aria-label="スライドを前へ移動">${icon('up')}</button><button id="move-down" class="icon-button" title="後ろへ移動" aria-label="スライドを後ろへ移動">${icon('down')}</button><button id="duplicate" class="icon-button" title="複製" aria-label="スライドを複製">${icon('copy')}</button><button id="remove-slide" class="icon-button" title="削除" aria-label="スライドを削除">${icon('trash')}</button></div><button id="add-slide" class="add-slide">${icon('plus')}スライドを追加</button></aside>
   <main class="main-stage"><div class="stage-topline"><div class="stage-tools"><button id="diff" class="text-button">変更を見る <span id="change-count"></span></button></div></div>
-    <div class="stage-scroll" id="stage-scroll"><div class="slide-viewport" id="slide-viewport"><article class="slide" id="slide"><div class="slide-top"><span class="slide-series" id="slide-series"></span></div><div id="slide-content" class="slide-content"></div></article></div></div>
+    <div class="stage-scroll" id="stage-scroll"><div class="slide-viewport" id="slide-viewport"><article class="slide" id="slide">${slideFrameMarkup(true)}</article></div></div>
     <div class="stage-bottom"><nav class="pagination" aria-label="ページ送り"><button id="previous" class="icon-button" aria-label="前のスライド">${icon('left')}</button><span id="page-number"></span><button id="next" class="icon-button" aria-label="次のスライド">${icon('right')}</button></nav></div>
   </main>
   <aside class="inspector" aria-label="原稿とモデルの編集"><div class="inspector-tabs" role="tablist"><button data-tab="slide" role="tab">原稿</button><button data-tab="model" role="tab">モデル</button><button data-tab="asset" role="tab">素材</button><button data-tab="manifest" role="tab">設定</button></div>
@@ -296,12 +297,7 @@ function refreshSlide() {
   const id = currentId();
   if (!id) return;
   $('slide').className = 'slide layout-' + layoutOf(id);
-  $('slide-series').textContent =
-    current === 0
-      ? ''
-      : String(current + 1).padStart(2, '0') +
-        ' / ' +
-        String(manifest.slides.length).padStart(2, '0');
+  $('slide-series').textContent = slideNumber(current, manifest.slides.length);
   try {
     rendered = renderSlide($('slide-content'), store.get(id).text, {
       store,
