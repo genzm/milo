@@ -100,6 +100,10 @@ function resolveInside(root, relPath) {
   return abs;
 }
 
+function atSlide(slide, message) {
+  return slide ? `スライド ${slide}: ${message}` : message;
+}
+
 function wrapAsset(mime, body) {
   if (mime === 'image/svg+xml') return `mime: ${mime}\n\n${body}`;
   const base64 = Buffer.isBuffer(body)
@@ -112,20 +116,31 @@ async function loadReferencedAssets(dir, refs) {
   const blocks = [];
   const used = new Set();
   const byPath = new Map();
-  for (const ref of refs) {
+  for (const { ref, slide } of refs) {
     if (!ref || ref.startsWith('asset:') || isRemoteRef(ref)) continue;
-    const abs = resolveInside(dir, ref);
+    let abs;
+    try {
+      abs = resolveInside(dir, ref);
+    } catch (error) {
+      throw new Error(atSlide(slide, error.message));
+    }
     if (byPath.has(abs)) continue;
     const ext = extname(abs).toLowerCase();
     const mime = IMAGE_MIME[ext];
-    if (!mime) throw new Error(`未対応の画像です: ${ref}`);
+    if (!mime) throw new Error(atSlide(slide, `未対応の画像です: ${ref}`));
     const stem = basename(abs, ext);
     let id = prefixedId(stem, 'asset');
     let n = 2;
     while (used.has(id)) id = prefixedId(`${stem}-${n++}`, 'asset');
     used.add(id);
     byPath.set(abs, id);
-    const bytes = await readFile(abs);
+    let bytes;
+    try {
+      bytes = await readFile(abs);
+    } catch (error) {
+      if (error.code === 'ENOENT') throw new Error(atSlide(slide, `画像が見つかりません: ${ref}`));
+      throw error;
+    }
     const text =
       mime === 'image/svg+xml' ? wrapAsset(mime, bytes.toString('utf8')) : wrapAsset(mime, bytes);
     const name = relative(dir, abs).split(sep).join('/');
@@ -150,7 +165,13 @@ export async function loadDeck(inputPath) {
     typeof meta.title === 'string' && meta.title.trim()
       ? meta.title.trim()
       : slideTexts[0].match(/^#\s+(.+)$/m)?.[1]?.trim() || basename(dir);
-  for (const slide of slides) slideLayout(slide.text);
+  for (let index = 0; index < slides.length; index++) {
+    try {
+      slideLayout(slides[index].text);
+    } catch (error) {
+      throw new Error(atSlide(index + 1, error.message));
+    }
+  }
   const manifest = {
     id: 'manifest',
     kind: 'manifest',
@@ -337,6 +358,17 @@ ${sources}
 </body>
 </html>
 `;
+}
+
+function count(value, noun) {
+  return `${value} ${noun}${value === 1 ? '' : 's'}`;
+}
+
+export function buildReport({ outPath, html, blocks }) {
+  const slides = blocks.filter((block) => block.kind === 'slide').length;
+  const assets = blocks.filter((block) => block.kind === 'asset').length;
+  const size = (Buffer.byteLength(html) / 1024).toFixed(0);
+  return `Built ${outPath}: ${size} KiB; ${count(slides, 'slide')}, ${count(assets, 'asset')}; all fonts embedded.`;
 }
 
 export async function compile({

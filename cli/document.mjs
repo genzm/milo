@@ -42,25 +42,31 @@ export function splitFrontmatter(source) {
   };
 }
 
-function visit(tokens, fn) {
+function visit(tokens, fn, map) {
   if (!tokens) return;
   for (const token of tokens) {
-    fn(token);
-    if (token.children) visit(token.children, fn);
+    const next = token.map || map;
+    fn(token, next);
+    if (token.children) visit(token.children, fn, next);
   }
 }
 
-function collectImageRef(token, refs) {
-  if (token.type === 'image') {
-    const src = token.attrGet('src');
-    if (src) refs.add(src);
-  }
+function collectImageRef(token, map, refs) {
+  const add = (src) => {
+    if (!src || refs.has(src)) return;
+    refs.set(src, map ? map[0] : undefined);
+  };
+  if (token.type === 'image') add(token.attrGet('src'));
   if (token.type === 'inline' || token.type === 'text') {
     for (const match of String(token.content || '').matchAll(/::image\{([^}]*)\}/g)) {
       const asset = /asset\s*=\s*"([^"]*)"/.exec(match[1]);
-      if (asset) refs.add(asset[1]);
+      if (asset) add(asset[1]);
     }
   }
+}
+
+function slideNumber(line, separators) {
+  return 1 + separators.filter((separator) => line > separator).length;
 }
 
 function makeSlides(lines, separators) {
@@ -73,7 +79,7 @@ function makeSlides(lines, separators) {
       .slice(start, end)
       .join('\n')
       .replace(/^\n+|\n+$/g, '');
-    if (!text.trim()) throw new Error(`空のスライドがあります: ${i + 1}`);
+    if (!text.trim()) throw new Error(`スライド ${i + 1} は空です。`);
     slides.push(text + '\n');
   }
   return slides;
@@ -129,11 +135,11 @@ export function parseTalkMarkdown(source) {
   const lines = body.split('\n');
   const tokens = md.parse(body, {});
   const separators = [];
-  const imageRefs = new Set();
+  const imageRefs = new Map();
   const canvases = canvasRanges(lines);
 
-  visit(tokens, (token) => {
-    collectImageRef(token, imageRefs);
+  visit(tokens, (token, map) => {
+    collectImageRef(token, map, imageRefs);
 
     if (
       token.type === 'hr' &&
@@ -150,6 +156,9 @@ export function parseTalkMarkdown(source) {
   return {
     meta,
     slides: makeSlides(lines, separators),
-    imageRefs: [...imageRefs],
+    imageRefs: [...imageRefs].map(([ref, line]) => ({
+      ref,
+      slide: line == null ? undefined : slideNumber(line, separators),
+    })),
   };
 }

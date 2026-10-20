@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
-import { compile, parseTalkMarkdown, loadDeck, slideLayout } from '../cli/compile.mjs';
+import { buildReport, compile, parseTalkMarkdown, loadDeck, slideLayout } from '../cli/compile.mjs';
 import { json } from '../src/source.ts';
 
 const exec = promisify(execFile);
@@ -155,4 +155,56 @@ description: |
 `);
   assert.equal(talk.meta.title, 'Foo: Bar');
   assert.equal(talk.meta.description, '複数行の\ndescription\n');
+});
+
+test('CLI names the slide when an image or layout cannot be compiled', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'milo-errors-'));
+  const file = join(dir, 'slides.md');
+  const cases = [
+    [
+      '# One\n\n---\n\n![gone](./missing.png)\n',
+      /スライド 2: 画像が見つかりません: \.\/missing\.png/,
+    ],
+    ['::image{asset="./missing.png"}\n', /スライド 1: 画像が見つかりません: \.\/missing\.png/],
+    ['![x](./notes.txt)\n', /スライド 1: 未対応の画像です: \.\/notes\.txt/],
+    ['![x](../outside.png)\n', /スライド 1: 画像パスが文書の外を指しています: \.\.\/outside\.png/],
+    [
+      '# One\n\n---\n\n<!-- milo: layout=nope -->\n\n# Two\n',
+      /スライド 2: 未対応のレイアウトです: nope/,
+    ],
+    ['# One\n\n---\n', /スライド 2 は空です。/],
+  ];
+  try {
+    for (const [source, pattern] of cases) {
+      await writeFile(file, source);
+      await assert.rejects(exec(process.execPath, ['cli/milo.mjs', file]), (error) => {
+        assert.equal(error.code, 1);
+        assert.match(error.stderr, pattern);
+        assert.doesNotMatch(error.stderr, /ENOENT|Error:/);
+        assert.equal(error.stdout, '');
+        return true;
+      });
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('build report counts slides and assets separately from other source blocks', () => {
+  assert.equal(
+    buildReport({
+      outPath: '/tmp/talk.html',
+      html: 'x'.repeat(2048),
+      blocks: [{ kind: 'manifest' }, { kind: 'slide' }, { kind: 'slide' }, { kind: 'asset' }],
+    }),
+    'Built /tmp/talk.html: 2 KiB; 2 slides, 1 asset; all fonts embedded.',
+  );
+  assert.equal(
+    buildReport({
+      outPath: '/tmp/talk.html',
+      html: 'x',
+      blocks: [{ kind: 'manifest' }, { kind: 'slide' }],
+    }),
+    'Built /tmp/talk.html: 0 KiB; 1 slide, 0 assets; all fonts embedded.',
+  );
 });

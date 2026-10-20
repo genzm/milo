@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { compile } from './compile.mjs';
+import { buildReport, compile } from './compile.mjs';
 
 const HELP = `milo — Markdown スライドを単一 HTML にコンパイルします。
 
@@ -52,10 +52,7 @@ async function main(argv) {
   }
   if (!input) return fail(HELP);
   const result = await compile({ input, out, writeNotices });
-  const size = Buffer.byteLength(result.html);
-  console.log(
-    `Built ${result.outPath}: ${(size / 1024).toFixed(0)} KiB; ${result.blocks.length} source blocks; all fonts embedded.`,
-  );
+  console.log(buildReport(result));
   if (pdf) {
     const { renderPdf, pdfOutputPath } = await import('./pdf.mjs');
     const path = await renderPdf({
