@@ -20,20 +20,21 @@ function normAssetPath(value: string) {
 export function resolveAssetRef(store: SourceStore, ref: string): string {
   const raw = ref.startsWith('asset:') ? ref.slice(6) : ref;
   if (!raw) throw new Error('画像の参照が空です。');
-  if (store.blocks.has(raw)) return raw;
+  if (store.blocks.get(raw)?.kind === 'asset') return raw;
   const prefixed = raw.startsWith('asset-') ? raw : `asset-${raw}`;
-  if (store.blocks.has(prefixed)) return prefixed;
+  if (store.blocks.get(prefixed)?.kind === 'asset') return prefixed;
   const n = normAssetPath(raw),
     base = n.split('/').pop() || n;
-  let found = '';
-  for (const b of store.list('asset')) {
-    const name = normAssetPath(b.name);
-    if (name === n || name.endsWith('/' + n) || name === base || name.split('/').pop() === base) {
-      if (found && found !== b.id) throw new Error(`画像の参照が複数に一致します: ${ref}`);
-      found = b.id;
-    }
-  }
-  if (found) return found;
+  const assets = store.list('asset');
+  const exact = assets.filter((b) => normAssetPath(b.name) === n);
+  const matches = exact.length
+    ? exact
+    : assets.filter((b) => {
+        const name = normAssetPath(b.name);
+        return name.endsWith('/' + n) || name.split('/').pop() === base;
+      });
+  if (matches.length > 1) throw new Error(`画像の参照が複数に一致します: ${ref}`);
+  if (matches.length === 1) return matches[0].id;
   throw new Error(`埋め込み画像が見つかりません: ${ref}`);
 }
 
