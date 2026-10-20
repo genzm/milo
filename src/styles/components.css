@@ -1,5 +1,4 @@
-/* 3-C. 中央スライド内 — Markdownから描画されるインタラクティブ部品 */
-.equation-block,
+/* 3-C. 中央スライド内 — Markdownから描画される図・画像・ボックス */
 .box-block {
   padding: 16px 12px 11px;
   background: var(--accent-pale);
@@ -7,9 +6,6 @@
   border-radius: 0;
   margin: 20px 0;
   overflow-x: auto;
-  cursor: pointer;
-}
-.box-block {
   cursor: default;
   color: var(--slide-ink);
   line-height: var(--slide-leading-body);
@@ -36,20 +32,6 @@
   background: var(--slide-surface-dark);
   color: var(--white);
 }
-.equation-block {
-  .katex-display {
-    margin: 0;
-    overflow: visible;
-    font-size: 1.02em;
-  }
-}
-.parameter-summary {
-  text-align: center;
-  font: var(--slide-text-parameter) var(--mono);
-  letter-spacing: 0.2px;
-  color: #8e5362;
-  margin-top: 12px;
-}
 .math-prose {
   overflow-x: auto;
 }
@@ -57,106 +39,6 @@
   text-decoration-line: underline;
   text-decoration-thickness: 0.09em;
   text-underline-offset: 0.12em;
-}
-.plot-block {
-  margin: 17px 0 10px;
-  border: 1px solid #e5d6da;
-  border-radius: 0;
-  background: var(--white);
-  padding: 10px 13px 8px;
-
-  > svg {
-    width: 100%;
-    height: auto;
-    max-height: 28.18cqw;
-    touch-action: pan-y;
-  }
-}
-.slide-content:has(.slider-block) .plot-block > svg {
-  max-height: 16cqw;
-}
-.chart-grid {
-  stroke: #eee3e6;
-  stroke-width: 1;
-}
-.chart-labels {
-  fill: var(--slide-muted);
-  font: var(--slide-text-chart-label) var(--mono);
-}
-.chart-line {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 2.8;
-  stroke-linejoin: round;
-}
-.chart-area {
-  fill: var(--accent-area);
-  stroke: none;
-}
-.chart-dot {
-  fill: var(--white);
-  stroke: var(--accent);
-  stroke-width: 2;
-}
-.chart-cursor {
-  stroke: var(--accent);
-  stroke-width: 1;
-  stroke-dasharray: 4 4;
-}
-.chart-caption {
-  position: relative;
-  height: 7px;
-  padding: 0 5px;
-  color: var(--accent-caption);
-  font: var(--slide-text-chart-caption) var(--mono);
-  letter-spacing: 0.7px;
-  pointer-events: none;
-
-  .probe-label {
-    position: absolute;
-    bottom: 0;
-    left: 5px;
-    max-width: calc(100% - 10px);
-    overflow: hidden;
-    font-family: inherit;
-    letter-spacing: 0;
-    line-height: 1;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: var(--slide-muted);
-  }
-}
-.slider-block {
-  margin: 18px 0 14px;
-  padding: 0 4px;
-
-  label {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    font: var(--slide-text-slider-label) var(--mono);
-  }
-  output {
-    font: var(--slide-text-slider-value) var(--mono);
-    min-width: 45px;
-    text-align: right;
-    color: var(--accent);
-  }
-}
-input[type='range'] {
-  accent-color: var(--accent);
-  height: 5px;
-  flex: 1;
-  min-width: 50px;
-  cursor: pointer;
-}
-.live-value {
-  font-family: var(--mono);
-  color: var(--accent-value);
-  background: var(--accent-pale);
-  border-radius: 0;
-  padding: 0 5px;
-  font-size: 0.92em;
 }
 .embedded-image {
   display: block;
@@ -236,9 +118,7 @@ input[type='range'] {
     blockquote {
       padding-left: 0.73cqw;
     }
-    .equation-block,
     .box-block,
-    .plot-block,
     .image-block {
       margin: 0.55cqw 0;
     }

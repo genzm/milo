@@ -7,7 +7,7 @@ const HELP = `milo — Markdown スライドを単一 HTML にコンパイルし
   milo <スライドのパス> [-o <出力.html>] [--pdf]
 
 <path> は slides.md、別の .md ファイル、またはそれらを含むディレクトリです。
-frontmatter・milo:model フェンス・Markdown 画像を取り込みます。models/ にあれば追加します。
+frontmatter・Markdown 画像を取り込みます。
 
 オプション:
   -o, --out <file>   出力先 HTML（省略時は Markdown と同じ場所の <名前>.html）

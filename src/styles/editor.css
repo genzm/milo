@@ -250,18 +250,6 @@
       background: var(--accent);
     }
   }
-  svg {
-    width: 100%;
-    height: 33px;
-    margin-top: 6px;
-    stroke: var(--accent);
-    fill: none;
-    stroke-width: 1.3;
-  }
-  .thumb-axis {
-    stroke: #eadce0;
-    stroke-width: 0.5;
-  }
 }
 .thumb-image {
   height: 32px;
@@ -277,13 +265,6 @@
   background: var(--accent);
   box-shadow: inset 0 0 0 6px var(--white);
   padding: 14px;
-
-  svg {
-    stroke: var(--white);
-  }
-  .thumb-axis {
-    stroke: #ffffff55;
-  }
 }
 :is(.thumb-cover, .thumb-section) {
   strong {

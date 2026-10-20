@@ -15,9 +15,6 @@
   --green: #030b09;
   --accent: #d42d5a;
   --accent-selection: #d42d5a22;
-  --accent-area: #d42d5a18;
-  --accent-caption: #b1264b;
-  --accent-value: #a91f45;
 
   --white: #fff;
   --paper: var(--white);
@@ -63,11 +60,6 @@
   --slide-text-node-body: clamp(9px, 0.86cqw, 14px);
   --slide-text-image-caption: 0.82cqw;
   --slide-text-series: 0.91cqw;
-  --slide-text-chart-label: 0.91cqw;
-  --slide-text-chart-caption: 0.73cqw;
-  --slide-text-slider-label: 11px;
-  --slide-text-slider-value: 1.36cqw;
-  --slide-text-parameter: 9px;
   --slide-text-edge-label: 12px;
   --slide-leading-body: 1.75;
   --slide-leading-title: 1.2;

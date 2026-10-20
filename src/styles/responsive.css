@@ -141,9 +141,6 @@
   .stage-topline {
     min-height: 48px;
   }
-  .slider-block label {
-    gap: 11px;
-  }
   .stage-bottom {
     min-height: 57px;
   }
@@ -174,8 +171,5 @@
   }
   dialog {
     padding: 20px;
-  }
-  .equation-block .katex-display {
-    font-size: 0.85em;
   }
 }

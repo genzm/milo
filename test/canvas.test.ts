@@ -85,8 +85,6 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
       {
         store: new SourceStore({ html: null, blocks: [] }),
         present: () => false,
-        parameters: () => ({}),
-        setParameter: () => {},
         inspect: () => {},
       },
     );
@@ -105,8 +103,6 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
     renderSlide(broken as unknown as HTMLElement, '@canvas\n### 閉じていない', {
       store: new SourceStore({ html: null, blocks: [] }),
       present: () => false,
-      parameters: () => ({}),
-      setParameter: () => {},
       inspect: () => {},
     });
     assert.match(broken.querySelector('.block-error')?.textContent || '', /閉じる/);
@@ -115,8 +111,6 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
     renderSlide(legacy as unknown as HTMLElement, ':::canvas\nold\n:::', {
       store: new SourceStore({ html: null, blocks: [] }),
       present: () => false,
-      parameters: () => ({}),
-      setParameter: () => {},
       inspect: () => {},
     });
     assert.equal(legacy.querySelector('.milo-canvas'), null);
@@ -128,8 +122,6 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
       {
         store: new SourceStore({ html: null, blocks: [] }),
         present: () => false,
-        parameters: () => ({}),
-        setParameter: () => {},
         inspect: () => {},
       },
     );
@@ -140,8 +132,6 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
     renderSlide(brokenBox as unknown as HTMLElement, '@box\n閉じていない', {
       store: new SourceStore({ html: null, blocks: [] }),
       present: () => false,
-      parameters: () => ({}),
-      setParameter: () => {},
       inspect: () => {},
     });
     assert.match(brokenBox.querySelector('.block-error')?.textContent || '', /@endbox/);
@@ -161,8 +151,6 @@ test('footer uses a paired @footer block and ignores markers in code fences', ()
   const context = {
     store: new SourceStore({ html: null, blocks: [] }),
     present: () => false,
-    parameters: () => ({}),
-    setParameter: () => {},
     inspect: () => {},
   };
   try {
@@ -213,8 +201,6 @@ test('columns render two or more Markdown columns with nested structural content
   const context = {
     store: new SourceStore({ html: null, blocks: [] }),
     present: () => false,
-    parameters: () => ({}),
-    setParameter: () => {},
     inspect: () => {},
   };
   try {
@@ -284,8 +270,6 @@ test('strong, accent emphasis and impact provide three distinct emphasis levels'
   const context = {
     store: new SourceStore({ html: null, blocks: [] }),
     present: () => false,
-    parameters: () => ({}),
-    setParameter: () => {},
     inspect: () => {},
   };
   try {
@@ -342,8 +326,6 @@ test('task items keep source offsets through structural Markdown and toggle one 
     const rendered = renderSlide(root as unknown as HTMLElement, source, {
       store: new SourceStore({ html: null, blocks: [] }),
       present: () => false,
-      parameters: () => ({}),
-      setParameter: () => {},
       patchSource: (from, to, replacement) => patches.push({ from, to, replacement }),
       inspect: () => {},
     });
@@ -375,8 +357,6 @@ test('align marks headings and paragraphs inside the slide, boxes, columns and n
   const context = {
     store: new SourceStore({ html: null, blocks: [] }),
     present: () => false,
-    parameters: () => ({}),
-    setParameter: () => {},
     inspect: () => {},
   };
   try {

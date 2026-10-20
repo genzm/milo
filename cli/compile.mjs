@@ -3,7 +3,6 @@ import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseJSONC } from 'jsonc-parser';
 import { parseTalkMarkdown } from './document.mjs';
 import { slideLayout } from '../src/slide-layout.mjs';
 export { slideLayout } from '../src/slide-layout.mjs';
@@ -38,16 +37,8 @@ ${escape(b.text)}
 const groups = [
   ['manifest', 'DOCUMENT SETTINGS', 'MILO SETTINGS'],
   ['slide', 'SLIDES', 'MILO SLIDES'],
-  ['model', 'MODELS', 'MILO MODELS'],
   ['asset', 'ASSETS / LARGE EMBEDDED DATA', 'MILO ASSETS'],
 ];
-
-function parseJSONCFile(text, label) {
-  const errors = [];
-  const result = parseJSONC(text, errors, { allowTrailingComma: true });
-  if (errors.length) throw new Error(`${label} の JSONC を確認してください。`);
-  return result;
-}
 
 function blockId(value, label) {
   if (typeof value !== 'string' || !/^[a-zA-Z][\w-]*$/.test(value)) {
@@ -115,27 +106,6 @@ function resolveInside(root, relPath) {
   return abs;
 }
 
-async function loadModelsDir(dir, existingIds) {
-  const root = join(dir, 'models');
-  let names;
-  try {
-    names = (await readdir(root)).filter((name) => /\.jsonc?$/i.test(name)).sort();
-  } catch (e) {
-    if (e.code === 'ENOENT') return [];
-    throw e;
-  }
-  const blocks = [];
-  for (const name of names) {
-    const text = await readFile(join(root, name), 'utf8');
-    parseJSONCFile(text, name);
-    const id = prefixedId(basename(name, extname(name)), 'model');
-    if (existingIds.has(id)) continue;
-    existingIds.add(id);
-    blocks.push({ id, kind: 'model', name, text });
-  }
-  return blocks;
-}
-
 function wrapAsset(mime, body) {
   if (mime === 'image/svg+xml') return `mime: ${mime}\n\n${body}`;
   const base64 = Buffer.isBuffer(body)
@@ -194,8 +164,6 @@ export async function loadDeck(inputPath) {
     text: JSON.stringify({ title }, null, 2) + '\n',
   };
 
-  const modelIds = new Set(talk.models.map((m) => m.id));
-  const fileModels = await loadModelsDir(dir, modelIds);
   const assets = await loadReferencedAssets(dir, talk.imageRefs);
   return {
     dir,
@@ -204,12 +172,12 @@ export async function loadDeck(inputPath) {
     description:
       typeof meta.description === 'string' && meta.description.trim()
         ? meta.description.trim()
-        : '原稿・数式・動く図・編集道具を内蔵する、自己編集可能な単一HTML。',
+        : '原稿・数式・画像・編集道具を内蔵する、自己編集可能な単一HTML。',
     documentId:
       typeof meta.documentId === 'string' && meta.documentId.trim()
         ? meta.documentId.trim()
         : 'milo',
-    blocks: [manifest, ...slides, ...talk.models, ...fileModels, ...assets],
+    blocks: [manifest, ...slides, ...assets],
   };
 }
 

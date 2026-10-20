@@ -1,19 +1,7 @@
 ---
 title: 小さな実験室
-description: 原稿・数式・動く図・編集道具を内蔵する、自己編集可能な単一HTML。
+description: 原稿・数式・画像・編集道具を内蔵する、自己編集可能な単一HTML。
 ---
-
-```milo:model wave
-{
-  "input": "t",
-  "parameters": {
-    "A": 1.0,
-    "gamma": 0.2,
-    "omega": 3.0
-  },
-  "expression": "A * exp(-gamma * t) * cos(omega * t)"
-}
-```
 
 <!-- milo: layout=cover -->
 
@@ -99,18 +87,15 @@ Markdownの見た目を保ったまま、ひとつの図になります。
 
 <!-- milo: layout=lab -->
 
-# Lean Analytics
+# 数式もそのまま
 
-減衰率は **{{wave.gamma}}**。係数を動かすと、同じモデルから図を描き直します。
+文章の中には $E = mc^2$ のように数式を書けます。
 
-::equation{model="wave"}
+$$
+f(t) = A e^{-\gamma t} \cos(\omega t)
+$$
 
-::plot{model="wave" from="0" to="10"}
-
-::slider{param="wave.gamma" label="減衰率 γ" min="0" max="1" step="0.01"}
-::slider{param="wave.omega" label="角振動数 ω" min="0.5" max="7" step="0.1"}
-
-式をクリックすると、元のモデルを編集できます。
+図やグラフは画像として貼り付けられます。
 
 ---
 

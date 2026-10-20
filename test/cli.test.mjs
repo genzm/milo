@@ -3,19 +3,11 @@ import assert from 'node:assert/strict';
 import { parseTalkMarkdown, loadDeck, slideLayout } from '../cli/compile.mjs';
 import { json } from '../src/source.ts';
 
-test('frontmatter, model fences and markdown images compile from a single talk file', async () => {
+test('frontmatter and markdown images compile from a single talk file', async () => {
   const talk = parseTalkMarkdown(`---
 title: Demo
 description: A deck
 ---
-
-\`\`\`milo:model wave
-{
-  "input": "t",
-  "parameters": { "gamma": 0.2 },
-  "expression": "exp(-gamma * t)"
-}
-\`\`\`
 
 <!-- milo: layout=cover -->
 
@@ -33,15 +25,10 @@ Hello
   assert.equal(talk.meta.description, 'A deck');
   assert.equal(slideLayout(talk.slides[0]), 'cover');
   assert.equal(slideLayout(talk.slides[1]), 'lab');
-  assert.equal(talk.models[0].id, 'model-wave');
   assert.equal(talk.slides.length, 2);
   assert.match(talk.slides[0], /<!-- milo: layout=cover -->/);
   assert.match(talk.slides[0], /# Cover\n/);
   assert.match(talk.slides[1], /!\[loop]\(\.\/assets\/flow\.gif\)/);
-  assert.equal(
-    talk.slides.some((s) => s.includes('milo:model')),
-    false,
-  );
 
   const deck = await loadDeck('content');
   assert.equal(deck.title, '小さな実験室');
@@ -52,7 +39,6 @@ Hello
   assert.deepEqual(json(deck.blocks.find((b) => b.id === 'manifest').text), {
     title: '小さな実験室',
   });
-  assert.ok(deck.blocks.some((b) => b.id === 'model-wave'));
   const asset = deck.blocks.find((b) => b.kind === 'asset');
   assert.equal(asset?.id, 'asset-flow');
   assert.equal(asset?.name, 'assets/flow.gif');
@@ -74,6 +60,13 @@ bar
   assert.equal(talk.slides.length, 2);
   assert.match(talk.slides[0], /```txt\nfoo\n---\nbar\n```/);
   assert.match(talk.slides[1], /^# Next\n/);
+});
+
+test('model fences remain ordinary code instead of being extracted from the source', () => {
+  const source = '# Code\n\n```milo:model wave\n{"input":"t"}\n```\n';
+  const talk = parseTalkMarkdown(source);
+  assert.equal(talk.slides[0], source);
+  assert.equal(Object.hasOwn(talk, 'models'), false);
 });
 
 test('a thematic break inside a canvas node is not a slide separator', () => {

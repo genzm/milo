@@ -44,49 +44,6 @@
   p:is(.align-center, .align-right) {
     max-width: none;
   }
-  .plot-block {
-    margin-top: 22px;
-    border: 0;
-    padding: 0;
-    background: #ffffff0d;
-
-    svg {
-      max-height: 16.36cqw;
-    }
-  }
-  .chart-caption {
-    height: 0;
-    padding-top: 0;
-
-    > span:last-child {
-      color: #ffffffb8;
-    }
-  }
-  .chart-grid {
-    stroke: #ffffff42;
-  }
-  .chart-labels,
-  .chart-caption {
-    fill: var(--white);
-    color: var(--white);
-  }
-  .chart-grid,
-  .chart-labels {
-    opacity: 0.55;
-  }
-  .chart-line {
-    stroke: var(--white);
-  }
-  .chart-area {
-    fill: #fff2;
-  }
-  .chart-dot {
-    fill: var(--accent);
-    stroke: var(--white);
-  }
-  .chart-cursor {
-    stroke: var(--white);
-  }
 }
 :is(.layout-cover, .layout-section) {
   .impact-block {

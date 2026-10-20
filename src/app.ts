@@ -36,8 +36,7 @@ import {
 } from '@codemirror/view';
 import { SourceStore, json, normalize, type Kind } from './source';
 import { Autosaver, readFile, type FileHandle } from './save';
-import { validateModel, type Model } from './expression';
-import { renderSlide, esc, fmt, assetURL, type Rendered } from './render';
+import { renderSlide, esc, assetURL, type Rendered } from './render';
 import { cacheGet, cacheSet } from './cache';
 import { DraftStore } from './drafts';
 
@@ -190,7 +189,7 @@ app.innerHTML = `
     <div class="stage-scroll" id="stage-scroll"><div class="slide-viewport" id="slide-viewport"><article class="slide" id="slide">${slideFrameMarkup(true)}</article></div></div>
     <div class="stage-bottom"><nav class="pagination" aria-label="ページ送り"><button id="previous" class="icon-button" aria-label="前のスライド">${icon('left')}</button><span id="page-number"></span><button id="next" class="icon-button" aria-label="次のスライド">${icon('right')}</button></nav></div>
   </main>
-  <aside class="inspector" aria-label="原稿とモデルの編集"><div class="inspector-tabs" role="tablist"><button data-tab="slide" role="tab">原稿</button><button data-tab="model" role="tab">モデル</button><button data-tab="asset" role="tab">素材</button><button data-tab="manifest" role="tab">設定</button></div>
+  <aside class="inspector" aria-label="原稿と素材の編集"><div class="inspector-tabs" role="tablist"><button data-tab="slide" role="tab">原稿</button><button data-tab="asset" role="tab">素材</button><button data-tab="manifest" role="tab">設定</button></div>
     <div class="inspector-heading"><div class="source-select"><select id="source-select" aria-label="編集するソース"></select><button id="add-source" class="icon-button" aria-label="ソースを追加">${icon('plus')}</button></div></div><div id="inspector-extra"></div><div id="source-editor" class="source-editor"></div><div class="inspector-footer"><span id="source-kind"></span><span>変更は自動で反映</span></div>
   </aside>
 </div><div id="toast" class="toast" role="status" hidden></div><input type="file" id="asset-input" accept="image/gif,image/png,image/jpeg,image/webp,image/svg+xml" hidden><dialog id="dialog"><div class="dialog-top"><h2 id="dialog-title"></h2><button id="dialog-close" class="icon-button" aria-label="閉じる">${icon('close')}</button></div><div id="dialog-content"></div></dialog>`;
@@ -251,19 +250,12 @@ function updateNav() {
   $('slides').innerHTML = manifest.slides
     .map((id, i) => {
       const text = store.get(id).text,
-        kind =
-          /!\[[^\]]*]\([^)]+\)/.test(text) || text.includes('::image')
-            ? 'image'
-            : text.includes('::plot')
-              ? 'plot'
-              : 'text',
+        kind = /!\[[^\]]*]\([^)]+\)/.test(text) || text.includes('::image') ? 'image' : 'text',
         layout = layoutOf(id);
       const art =
-        kind === 'plot'
-          ? '<svg viewBox="0 0 140 36"><path d="M0 18H140M0 32V3" class="thumb-axis"/><path d="M0 4C10 4 10 34 20 30S30 9 40 11 50 26 60 25 70 13 80 15 90 23 100 22 110 16 120 17 130 20 140 19"/></svg>'
-          : kind === 'image'
-            ? '<div class="thumb-image">GIF <span>↗</span></div>'
-            : '<div class="thumb-lines"><i></i><i></i><i></i></div>';
+        kind === 'image'
+          ? '<div class="thumb-image">GIF <span>↗</span></div>'
+          : '<div class="thumb-lines"><i></i><i></i><i></i></div>';
       return `<button class="slide-thumb ${i === current ? 'active' : ''}" data-index="${i}" aria-label="スライド ${i + 1}: ${esc(titleOf(id))}" ${i === current ? 'aria-current="page"' : ''}><span class="thumb-number">${String(i + 1).padStart(2, '0')}</span><span class="thumb-paper thumb-${esc(layout)}"><strong>${esc(titleOf(id))}</strong>${art}</span></button>`;
     })
     .join('');
@@ -284,9 +276,6 @@ function updateNav() {
     opening.blocks.filter((b) => !store.blocks.has(b.id)).length;
   $('change-count').textContent = changed ? String(changed) : '';
 }
-function parameters(id: string, m: Model) {
-  return m.parameters;
-}
 function refreshSlide() {
   if (renderTimer) {
     clearTimeout(renderTimer);
@@ -302,8 +291,6 @@ function refreshSlide() {
     rendered = renderSlide($('slide-content'), store.get(id).text, {
       store,
       present: () => present,
-      parameters,
-      setParameter,
       patchSource: (from, to, replacement) =>
         mutate(() => {
           const text = store.get(id).text;
@@ -335,34 +322,23 @@ function scheduleCache() {
     else void drafts.persist();
   }, 150);
 }
-function afterChange(kind: 'source' | 'parameter' | 'structure' = 'source') {
+function afterChange() {
   updateNav();
   updateSave();
   syncEditor();
-  if (kind === 'parameter') rendered?.update();
-  else scheduleRender();
+  scheduleRender();
   saver.schedule();
   scheduleCache();
 }
-function mutate(fn: () => void, kind: 'source' | 'parameter' | 'structure' = 'source') {
+function mutate(fn: () => void) {
   const before = store.snapshot(),
     revision = store.revision;
   try {
     fn();
     if (store.revision === revision) return;
-    afterChange(kind);
+    afterChange();
   } catch (e: any) {
     store.restore(before);
-    toast(e.message);
-  }
-}
-function setParameter(id: string, key: string, value: number) {
-  if (!Number.isFinite(value)) return;
-  try {
-    const m = validateModel(json(store.get(id).text));
-    if (!Object.hasOwn(m.parameters, key)) throw new Error(`係数がありません: ${key}`);
-    mutate(() => store.setJSON(id, ['parameters', key], value), 'parameter');
-  } catch (e: any) {
     toast(e.message);
   }
 }
@@ -391,7 +367,6 @@ function selectBlock(id: string) {
 }
 const langLabels: Partial<Record<Kind, string>> = {
   slide: 'MARKDOWN + TeX',
-  model: 'JSONC / MODEL',
   asset: 'EMBEDDED ASSET',
   manifest: 'JSONC / DOCUMENT',
 };
@@ -544,7 +519,7 @@ function addSlide(duplicate = false) {
       },
       before,
     );
-  }, 'structure');
+  });
   current = manifest.slides.indexOf(id);
   activeTab = 'slide';
   activeBlock = id;
@@ -557,7 +532,7 @@ function moveSlide(delta: number) {
   [ids[current], ids[to]] = [ids[to], ids[current]];
   const id = ids[to],
     before = ids[to + 1] || null;
-  mutate(() => store.moveBefore(id, before), 'structure');
+  mutate(() => store.moveBefore(id, before));
   current = to;
   go(to);
 }
@@ -565,7 +540,7 @@ function removeSlide() {
   if (manifest.slides.length <= 1) return;
   if (!confirm('このスライドを削除しますか？この操作は取り消せません。')) return;
   const id = currentId();
-  mutate(() => store.remove(id), 'structure');
+  mutate(() => store.remove(id));
   activeBlock = currentId();
   go(current);
 }
@@ -758,7 +733,7 @@ async function importAsset(file: File, replaceId: string | null) {
     mutate(() => {
       if (replaceId) store.setText(id, content);
       else store.add({ id, kind: 'asset', name: file.name, text: content });
-    }, 'structure');
+    });
     selectBlock(id);
     toast('画像をHTMLに埋め込みました。');
   } catch (e: any) {
@@ -777,14 +752,6 @@ $('add-source').onclick = () => {
   if (activeTab === 'asset') {
     chooseAsset();
     return;
-  }
-  if (activeTab === 'model') {
-    const kind = activeTab,
-      id = unique(kind);
-    const text =
-      '{\n  "input": "t",\n  "parameters": {\n    "a": 1\n  },\n  "expression": "a * sin(t)"\n}';
-    mutate(() => store.add({ id, kind, name: id + '.jsonc', text }), 'structure');
-    selectBlock(id);
   }
 };
 $('source-select').onchange = (e) => selectBlock((e.target as HTMLSelectElement).value);
@@ -883,7 +850,7 @@ async function restoreLocal() {
     };
     $('restore-draft').onclick = () => {
       void drafts.discard(recovery.storage);
-      mutate(() => drafts.restore(recovery.draft), 'structure');
+      mutate(() => drafts.restore(recovery.draft));
       refreshInspector();
       $<HTMLDialogElement>('dialog').close();
       void tryResume();

@@ -16,13 +16,15 @@ const exec = promisify(execFile);
 test('PDF runtime shares the renderer without bundling editor, storage or Playwright', async () => {
   const { metafile } = await bundleRuntime('pdf-entry.ts');
   const inputs = Object.keys(metafile.inputs);
-  for (const module of ['render.ts', 'directives.ts', 'canvas.ts', 'expression.ts']) {
+  for (const module of ['render.ts', 'directives.ts', 'canvas.ts']) {
     assert.ok(
       inputs.some((input) => input.endsWith(`/src/${module}`) || input === `src/${module}`),
     );
   }
   assert.ok(
-    !inputs.some((input) => /@codemirror|playwright|src\/(app|cache|drafts|save)\.ts/.test(input)),
+    !inputs.some((input) =>
+      /@codemirror|playwright|src\/(app|cache|drafts|save|expression)\.ts/.test(input),
+    ),
   );
 });
 

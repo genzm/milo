@@ -47,9 +47,6 @@
 .presenting .slide-viewport {
   box-shadow: none;
 }
-.presenting .equation-block {
-  cursor: default;
-}
 @media print {
   /* 6-C. 印刷 — 編集UIを隠してスライドだけを出力 */
   body {

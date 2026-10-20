@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SourceStore, serializeBlock, encode, decode, json, END_MARKER } from '../src/source.ts';
-import { parseExpression, evaluate, toTex } from '../src/expression.ts';
 import { Autosaver, type FileHandle } from '../src/save.ts';
 const fixture = (eol = '\n') =>
   (
@@ -11,7 +10,7 @@ const fixture = (eol = '\n') =>
       id: 'manifest',
       name: 'deck.jsonc',
       kind: 'manifest',
-      text: '{ "title": "Fixture" }',
+      text: '{\n  "title": "Fixture",\n  // this comment stays\n  "appearance": {\n    "scale": 0.2,\n    "spacing": 3.0\n  },\n  "description": "a < b"\n}',
     }) +
     '\n<!-- END MILO SETTINGS -->\n' +
     serializeBlock({
@@ -20,14 +19,7 @@ const fixture = (eol = '\n') =>
       kind: 'slide',
       text: '# こんにちは 🧪\n\nLiteral </script> <script> <!-- &lt; &amp; & <\n',
     }) +
-    '\n<!-- END MILO SLIDES -->\n' +
-    serializeBlock({
-      id: 'model-wave',
-      name: 'wave.jsonc',
-      kind: 'model',
-      text: '{\n  // this comment stays\n  "parameters": {\n    "gamma": 0.2,\n    "omega": 3.0\n  },\n  "expression": "exp(-gamma * t) < 1"\n}',
-    }) +
-    '\n<!-- END MILO MODELS -->\n<!-- END MILO ASSETS -->\n' +
+    '\n<!-- END MILO SLIDES -->\n<!-- END MILO ASSETS -->\n' +
     END_MARKER +
     '\n<script>const untouched = "A";</script>\n'
   ).replace(/\n/g, eol);
@@ -39,7 +31,7 @@ test('no-op loading and identity edits preserve every original byte, including B
     assert.equal(s.html, source);
     for (const b of s.list()) assert.equal(s.setText(b.id, b.text), false);
     assert.equal(Buffer.compare(Buffer.from(s.html!), Buffer.from(source)), 0);
-    assert.equal(s.setJSON('model-wave', ['parameters', 'gamma'], 0.2), false);
+    assert.equal(s.setJSON('manifest', ['appearance', 'scale'], 0.2), false);
     assert.equal(s.html, source);
   }
 });
@@ -49,14 +41,14 @@ test('documents without the current source sections are rejected instead of migr
     /milo形式/,
   );
 });
-test('a parameter edit changes only its token; comments, formatting, assets, runtime remain exact', () => {
+test('a settings edit changes only its token; comments, formatting, assets, runtime remain exact', () => {
   for (const eol of ['\n', '\r\n']) {
     const source = fixture(eol),
       s = SourceStore.fromHTML(source);
-    s.setJSON('model-wave', ['parameters', 'gamma'], 0.31);
-    assert.equal(s.html, source.replace('"gamma": 0.2', '"gamma": 0.31'));
+    s.setJSON('manifest', ['appearance', 'scale'], 0.31);
+    assert.equal(s.html, source.replace('"scale": 0.2', '"scale": 0.31'));
     const again = SourceStore.fromHTML(s.html!);
-    assert.equal(json(again.get('model-wave').text).parameters.gamma, 0.31);
+    assert.equal(json(again.get('manifest').text).appearance.scale, 0.31);
   }
 });
 test('codec round-trips dangerous HTML delimiters, literal entities, Unicode and NUL', () => {
@@ -76,13 +68,13 @@ test('codec round-trips dangerous HTML delimiters, literal entities, Unicode and
 });
 test('multiple source patches map decoded positions to encoded offsets without touching neighbors', () => {
   const s = SourceStore.fromHTML(fixture()),
-    before = s.get('model-wave').text;
+    before = s.get('manifest').text;
   s.setText('slide-a', '# 🧪 </script> &amp;');
   s.replace('slide-a', 5, 5, ' < ');
-  s.setJSON('model-wave', ['parameters', 'omega'], 7);
+  s.setJSON('manifest', ['appearance', 'spacing'], 7);
   const parsed = SourceStore.fromHTML(s.html!);
   assert.equal(parsed.get('slide-a').text, s.get('slide-a').text);
-  assert.equal(parsed.get('model-wave').text, before.replace('3.0', '7'));
+  assert.equal(parsed.get('manifest').text, before.replace('3.0', '7'));
   assert.match(s.html!, /const untouched = "A"/);
 });
 test('blocks can be added/removed and snapshots restored without DOM serialization', () => {
@@ -100,7 +92,7 @@ test('new sources stay inside their readable kind section when group markers exi
     s = SourceStore.fromHTML(html),
     original = s.list('slide').map((b) => b.id);
   s.add({ id: 'slide-new', kind: 'slide', name: 'new.md', text: '# New' }, 'slide-02');
-  s.add({ id: 'model-new', kind: 'model', name: 'new.jsonc', text: '{}' });
+  s.add({ id: 'asset-new', kind: 'asset', name: 'new.svg', text: 'mime: image/svg+xml\n\n<svg/>' });
   assert.deepEqual(
     s.list('slide').map((b) => b.id),
     [original[0], 'slide-new', ...original.slice(1)],
@@ -111,8 +103,8 @@ test('new sources stay inside their readable kind section when group markers exi
     [original[0], 'slide-new', 'slide-03', 'slide-02', ...original.slice(3)],
   );
   assert.ok(s.html!.indexOf('id="slide-new"') < s.html!.lastIndexOf('<!-- END MILO SLIDES -->'));
-  assert.ok(s.html!.indexOf('id="model-new"') > s.html!.lastIndexOf('<!-- END MILO SLIDES -->'));
-  assert.ok(s.html!.indexOf('id="model-new"') < s.html!.lastIndexOf('<!-- END MILO MODELS -->'));
+  assert.ok(s.html!.indexOf('id="asset-new"') > s.html!.lastIndexOf('<!-- END MILO SLIDES -->'));
+  assert.ok(s.html!.indexOf('id="asset-new"') < s.html!.lastIndexOf('<!-- END MILO ASSETS -->'));
 });
 test('binding preserves the selected raw file, replays drafts, and rejects a mismatching file', () => {
   const full = SourceStore.fromHTML(fixture()),
@@ -120,9 +112,9 @@ test('binding preserves the selected raw file, replays drafts, and rejects a mis
   boot.html = null;
   boot.blocks = boot.blocks.map(({ id, kind, name, text }) => ({ id, kind, name, text }));
   const draft = new SourceStore(boot);
-  draft.setJSON('model-wave', ['parameters', 'gamma'], 0.4);
+  draft.setJSON('manifest', ['appearance', 'scale'], 0.4);
   draft.attach(SourceStore.fromHTML(fixture()), boot);
-  assert.equal(draft.html, fixture().replace('"gamma": 0.2', '"gamma": 0.4'));
+  assert.equal(draft.html, fixture().replace('"scale": 0.2', '"scale": 0.4'));
   assert.throws(
     () => draft.attach(SourceStore.fromHTML(fixture().replace('3.0', '9.0')), boot),
     /異なります/,
@@ -151,33 +143,13 @@ test('binding replays the physical slide order edited before a file handle is co
 });
 test('malformed JSONC stays editable but cannot drive a semantic patch', () => {
   const s = SourceStore.fromHTML(fixture());
-  s.setText('model-wave', '{"parameters": {"gamma":');
+  s.setText('manifest', '{"appearance": {"scale":');
   const html = s.html;
-  assert.throws(() => s.setJSON('model-wave', ['parameters', 'gamma'], 1), /構文/);
+  assert.throws(() => s.setJSON('manifest', ['appearance', 'scale'], 1), /構文/);
   assert.equal(s.html, html);
-  s.setText('model-wave', '{"parameters":{"gamma":0.2}}');
-  assert.equal(json(SourceStore.fromHTML(s.html!).get('model-wave').text).parameters.gamma, 0.2);
+  s.setText('manifest', '{"appearance":{"scale":0.2}}');
+  assert.equal(json(SourceStore.fromHTML(s.html!).get('manifest').text).appearance.scale, 0.2);
 });
-test('expression precedence, right-associative powers and TeX agree', () => {
-  const check = (s: string, v: number) =>
-    assert.ok(Math.abs(evaluate(parseExpression(s), {}) - v) < 1e-10, s);
-  check('-2^2', -4);
-  check('2^3^2', 512);
-  check('2^-2', 0.25);
-  check('sin(pi/2)+sqrt(9)', 4);
-  check('max(2,3)*cos(0)', 3);
-  const ast = parseExpression('A * exp(-gamma * t) * cos(omega * t)');
-  assert.equal(evaluate(ast, { A: 1, gamma: 0.2, t: 0, omega: 3 }), 1);
-  assert.match(toTex(ast), /\\gamma/);
-  assert.match(toTex(ast), /\\operatorname\{cos\}/);
-  assert.match(toTex(parseExpression('(a^b)^c')), /\\left/);
-});
-test('expression language rejects JS access, unknown calls, partial expressions and unresolved variables', () => {
-  for (const s of ['window.alert(1)', 'constructor(1)', 'x=1', 'sin(1,2)', 'exp(', '1 2', ''])
-    assert.throws(() => parseExpression(s), s);
-  assert.throws(() => evaluate(parseExpression('notDefined'), {}), /未定義/);
-});
-
 function fakeFile(initial: string) {
   let disk = initial;
   let writes = 0;
@@ -356,10 +328,10 @@ test('a failed post-write verification never advances the baseline until a retry
   assert.equal(writes, 1);
   save.dispose();
 });
-test('built artifact contains one kernel and all dependencies; a model edit leaves it byte-identical', () => {
+test('built artifact contains one kernel and all dependencies; a source edit preserves the toolbox bytes', () => {
   const html = readFileSync('dist/milo.html', 'utf8'),
     s = SourceStore.fromHTML(html);
-  assert.equal(s.list().length, 8);
+  assert.equal(s.list().length, 7);
   assert.equal(s.list('slide').length, 5);
   assert.equal(html.includes('MILO COMPONENTS'), false);
   assert.equal(/<script[^>]+\bsrc\s*=/i.test(html), false);
@@ -379,13 +351,12 @@ test('built artifact contains one kernel and all dependencies; a model edit leav
   assert.match(s.get('slide-01').text, /<!-- milo: layout=cover -->/);
   assert.match(s.get('slide-01').text, /# 君とボク。/);
   assert.ok(s.get('slide-02').text.includes('@canvas'));
-  assert.ok(s.get('slide-03').text.includes('{{wave.gamma}}'));
+  assert.ok(s.get('slide-03').text.includes('$$'));
   assert.ok(s.get('slide-04').text.includes('./assets/flow.gif'));
   assert.ok(s.get('slide-05').text.includes('@impact'));
   assert.ok(s.get('slide-05').text.includes('- [ ]'));
   assert.equal(json(s.get('manifest').text).title, '小さな実験室');
   assert.equal(Object.hasOwn(json(s.get('manifest').text), 'layouts'), false);
-  assert.equal(s.get('model-wave').name, 'wave.jsonc');
   assert.equal(s.list('asset')[0]?.name, 'assets/flow.gif');
   assert.equal(Object.hasOwn(json(s.get('manifest').text), 'slides'), false);
   assert.ok(html.indexOf('MILO TOOLBOX') < html.indexOf('MILO DOCUMENT'));
@@ -393,6 +364,6 @@ test('built artifact contains one kernel and all dependencies; a model edit leav
   assert.ok(html.indexOf('id="milo-launcher"') > html.indexOf('<!-- END MILO DOCUMENT -->'));
   assert.equal(html.includes('component-phase'), false);
   assert.equal(html.includes('部品を起動中'), false);
-  s.setJSON('model-wave', ['parameters', 'gamma'], 0.3);
-  assert.equal(s.html, html.replace('"gamma": 0.2', '"gamma": 0.3'));
+  s.setText('slide-01', s.get('slide-01').text.replace('君とボク。', '新しいタイトル'));
+  assert.equal(s.html, html.replace('君とボク。', '新しいタイトル'));
 });

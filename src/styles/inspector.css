@@ -20,9 +20,9 @@
   margin-bottom: 15px;
 }
 /* ========================================================================
-   4. Inspector — source, model, asset and manifest editing
+   4. Inspector — source, asset and manifest editing
    ======================================================================== */
-/* 4. 右サイドバー — 原稿・モデル・素材の編集 */
+/* 4. 右サイドバー — 原稿・素材・設定の編集 */
 .inspector {
   display: flex;
   flex-direction: column;

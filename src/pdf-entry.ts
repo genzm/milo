@@ -30,8 +30,6 @@ async function renderPdf() {
       renderSlide(slide.querySelector<HTMLElement>('.slide-content')!, block.text, {
         store,
         present: () => true,
-        parameters: (_, model) => model.parameters,
-        setParameter: () => {},
         inspect: () => {},
       }),
     );
@@ -64,11 +62,7 @@ async function renderPdf() {
     previous = geometry;
     if (stable >= 2) {
       const error = document.querySelector('.block-error, .inline-error');
-      const missingValue = [...document.querySelectorAll('.live-value')].some(
-        (value) => value.textContent === '?',
-      );
-      if (error || missingValue)
-        throw new Error(error?.textContent || 'モデルの値を表示できません。');
+      if (error) throw new Error(error.textContent || 'スライドを描画できません。');
       rendered.forEach((slide) => slide.dispose());
       window.__miloPdfReady = true;
       return;

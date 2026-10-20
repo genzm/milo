@@ -18,7 +18,7 @@ function appFixture(html: string) {
     {
       id: 'slide-02',
       name: 'fixture.md#2',
-      text: `<!-- milo: layout=lab -->\n\n# Lean Analytics\n\n減衰率は **{{wave.gamma}}**。\n\n::equation{model="wave"}\n\n::plot{model="wave" from="0" to="10"}\n\n::slider{param="wave.gamma" label="減衰率 γ" min="0" max="1" step="0.01"}\n::slider{param="wave.omega" label="角振動数 ω" min="0.5" max="7" step="0.1"}\n`,
+      text: '<!-- milo: layout=lab -->\n\n# Notes\n\n数式 $E=mc^2$ とチェックリスト。\n\n- [ ] 内容を確認する\n',
     },
     {
       id: 'slide-03',
@@ -27,10 +27,6 @@ function appFixture(html: string) {
     },
   ];
   for (const slide of slides) store.add({ ...slide, kind: 'slide' });
-  store.setText(
-    'model-wave',
-    '{\n  "input": "t",\n  "parameters": {\n    "A": 1.0,\n    "gamma": 0.2,\n    "omega": 3.0\n  },\n  "expression": "A * exp(-gamma * t) * cos(omega * t)"\n}\n',
-  );
   store.setText('manifest', '{\n  "title": "Fixture"\n}\n');
   return store.html!;
 }
@@ -116,12 +112,6 @@ async function launch(html = initial, file = createFile(html)) {
       assert.ok(query(s), `Missing ${s}`);
       query(s).click();
     },
-    input: (s: string, value: string) => {
-      const el = query(s);
-      assert.ok(el, `Missing input ${s}`);
-      el.value = value;
-      el.dispatchEvent(new w.Event('input', { bubbles: true }));
-    },
     code: () => EditorView.findFromDOM(query('.cm-content'))!,
     close: async () => {
       await w.happyDOM.abort();
@@ -136,10 +126,10 @@ test('standalone app boots and all three slides render without network dependenc
     assert.equal(app.query('#slide-content h1').textContent, '君とボク。');
     assert.ok(app.query('#slide').className.includes('layout-cover'));
     app.click('[data-index="1"]');
-    assert.ok(app.query('.chart-line').getAttribute('d').length > 1000);
+    assert.ok(app.query('.task-marker'));
     assert.ok(app.query('.katex'));
-    assert.equal(app.query('.live-value')?.textContent, '0.2');
-    assert.equal(app.query('input[aria-label="gamma"]').value, '0.2');
+    assert.equal(app.query('[data-tab="model"]'), null);
+    assert.equal(app.query('input[type="range"]'), null);
     app.click('[data-index="2"]');
     assert.ok(app.query('.embedded-image').src.startsWith('data:image/gif;base64,'));
     assert.ok(app.query('.katex'));
@@ -207,7 +197,7 @@ test('editor and presentation keep one logical slide layout and only change scal
     assert.equal(app.query('#slide-viewport').style.width, '800px');
     assert.equal(stage.scrollLeft, 0);
     app.click('[data-index="1"]');
-    assert.equal(app.w.document.querySelectorAll('.slider-block').length, 2);
+    assert.equal(app.w.document.querySelectorAll('.task-marker').length, 1);
     const content = app.query('#slide-content').innerHTML;
 
     width = 3200;
@@ -215,7 +205,7 @@ test('editor and presentation keep one logical slide layout and only change scal
     app.click('#present');
     assert.equal(app.query('#slide').dataset.scale, '2');
     assert.equal(app.query('#slide-viewport').style.width, '3200px');
-    assert.equal(app.w.document.querySelectorAll('.slider-block').length, 2);
+    assert.equal(app.w.document.querySelectorAll('.task-marker').length, 1);
     assert.equal(app.query('#slide-content').innerHTML, content);
     assert.ok(app.query('body').classList.contains('presenting'));
     assert.deepEqual(app.errors, []);
@@ -274,31 +264,25 @@ test('clicking a task item patches the Markdown source and editor', async () => 
   }
 });
 
-test('connect → authored slider → autosave → reopen keeps the exact one-token diff and editor', async () => {
+test('connect → task toggle → autosave → reopen preserves the exact source patch', async () => {
   const app = await launch();
   try {
     app.click('#connect');
     await until(() => app.query('#save-label').textContent === '保存済み', 'File did not connect');
     assert.equal(app.file.writes, 0);
     app.click('[data-index="1"]');
-    const originalPath = app.query('.chart-line').getAttribute('d');
-    app.input('input[aria-label="gamma"]', '0.35');
-    assert.equal(app.query('.live-value').textContent, '0.35');
-    assert.notEqual(app.query('.chart-line').getAttribute('d'), originalPath);
+    app.click('.task-marker');
+    assert.match(app.code().state.doc.toString(), /- \[x\] 内容を確認する/);
     await until(
       () => app.file.writes === 1 && app.query('#save-label').textContent === '保存済み',
       'Autosave did not complete',
     );
-    assert.equal(
-      app.file.disk === initial.replace('"gamma": 0.2', '"gamma": 0.35'),
-      true,
-      'Only gamma should change',
-    );
+    assert.equal(app.file.disk, initial.replace('- [ ] 内容を確認する', '- [x] 内容を確認する'));
     const reopened = await launch(app.file.disk);
     try {
       reopened.click('[data-index="1"]');
-      assert.equal(reopened.query('.live-value').textContent, '0.35');
-      assert.ok(reopened.query('.cm-content'));
+      assert.equal(reopened.query('.task-marker').getAttribute('aria-checked'), 'true');
+      assert.match(reopened.code().state.doc.toString(), /- \[x\] 内容を確認する/);
     } finally {
       await reopened.close();
     }
@@ -345,20 +329,19 @@ test('Cmd+S suppresses browser save, connects when needed, and flushes from the 
   }
 });
 
-test('presentation slider edits update the source and code-editor transactions update the source', async () => {
+test('presentation task toggles and code-editor transactions update the source', async () => {
   const app = await launch();
   try {
     app.click('#connect');
     await until(() => app.query('#save-label').textContent === '保存済み', 'No connection');
     app.click('[data-index="1"]');
     app.click('#present');
-    app.input('input[aria-label="gamma"]', '0.6');
-    assert.equal(app.query('.live-value').textContent, '0.6');
-    await pause(650);
-    await until(() => app.file.writes === 1, 'Presentation slider did not save');
-    assert.equal(
-      json(SourceStore.fromHTML(app.file.disk).get('model-wave').text).parameters.gamma,
-      0.6,
+    app.click('.task-marker');
+    assert.equal(app.query('.task-marker').getAttribute('aria-checked'), 'true');
+    await until(() => app.file.writes === 1, 'Presentation task toggle did not save');
+    assert.match(
+      SourceStore.fromHTML(app.file.disk).get('slide-02').text,
+      /- \[x\] 内容を確認する/,
     );
     app.click('#present');
     app.click('[data-tab="slide"]');

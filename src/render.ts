@@ -5,15 +5,13 @@ import {
   assetURL,
   directiveRenderer,
   esc,
-  fmt,
-  model,
   resolveAssetRef,
   showError,
   type Directive,
   type RenderContext,
 } from './directives';
 
-export { assetURL, esc, fmt, type RenderContext } from './directives';
+export { assetURL, esc, type RenderContext } from './directives';
 export interface Rendered {
   update: () => void;
   dispose: () => void;
@@ -311,13 +309,6 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   );
   md.renderer.rules.milo_directive = (tokens, index) =>
     `<div class="live-block" data-live="${tokens[index].meta!.index}"></div>\n`;
-  const fence = md.renderer.rules.fence;
-  md.renderer.rules.fence = (tokens, index, options, env, self) => {
-    if (/^milo:model\b/.test(tokens[index].info.trim())) return '';
-    return fence
-      ? fence(tokens, index, options, env, self)
-      : self.renderToken(tokens, index, options);
-  };
   md.block.ruler.before('fence', 'math_block', mathBlock, {
     alt: ['paragraph', 'reference', 'blockquote', 'list'],
   });
@@ -386,18 +377,6 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
     return true;
   });
   md.renderer.rules.underline = (tokens, index) => `<u>${esc(tokens[index].content)}</u>`;
-  md.inline.ruler.before('text', 'live_value', (s: any, silent: boolean) => {
-    const match = /^\{\{([\w-]+)\.([\w]+)\}\}/.exec(s.src.slice(s.pos));
-    if (!match) return false;
-    if (!silent) {
-      const token = s.push('live_value', '', 0);
-      token.meta = { id: match[1], key: match[2] };
-    }
-    s.pos += match[0].length;
-    return true;
-  });
-  md.renderer.rules.live_value = (tokens, index) =>
-    `<span class="live-value" data-model="${esc(tokens[index].meta!.id)}" data-key="${esc(tokens[index].meta!.key)}"></span>`;
   md.inline.ruler.before('text', 'task_item', (s: any, silent: boolean) => {
     const match = /^\uE000(\d+)\uE001/.exec(s.src.slice(s.pos));
     if (!match) return false;
@@ -518,15 +497,6 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
       showError(element, e);
     }
   }
-  for (const label of root.querySelectorAll<HTMLElement>('.live-value'))
-    updates.push(() => {
-      try {
-        const { p } = model(ctx, label.dataset.model!);
-        label.textContent = fmt(p[label.dataset.key!]);
-      } catch {
-        label.textContent = '?';
-      }
-    });
   const toggleTask = (event: Event) => {
     const target = event.target as Element | null,
       button = target?.closest<HTMLButtonElement>('.task-marker');

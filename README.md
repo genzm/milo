@@ -11,7 +11,7 @@ npm ci
 npx milo talk.md
 ```
 
-`<パス>` は `.md` か、`slides.md` を含むディレクトリです。同じ場所の `models/` にある JSONC も取り込まれます。出力は Markdown と同じ場所の `<名前>.html` で、`-o` で変更できます。
+`<パス>` は `.md` か、`slides.md` を含むディレクトリです。出力は Markdown と同じ場所の `<名前>.html` で、`-o` で変更できます。
 
 ```sh
 npx milo content -o dist/milo.html
@@ -32,7 +32,7 @@ npx milo content --pdf -o dist/slides.html
 PDFはスライド1枚につき1ページで、寸法は `src/slide-size.json` に従います。
 HTMLと同じレンダラー・CSS・フォントを使い、編集UIは含みません。
 
-グラフとスライダーはモデルの初期値、チェックリストは原稿の状態で表示します。
+チェックリストは原稿の状態で表示します。
 GIFは印刷時の静止フレームになります。PDFの基準はコンパイル時点のMarkdownで、
 生成後にHTML内で編集した内容は反映されません。PDF出力に失敗した場合も、生成済みのHTMLは残ります。
 
@@ -46,14 +46,6 @@ title: 小さな実験室
 description: 数式と図の実験
 ---
 
-```milo:model wave
-{
-  "input": "t",
-  "parameters": { "gamma": 0.2 },
-  "expression": "exp(-gamma * t)"
-}
-```
-
 <!-- milo: layout=cover -->
 
 # 表紙
@@ -62,9 +54,11 @@ description: 数式と図の実験
 
 <!-- milo: layout=lab -->
 
-減衰率は **{{wave.gamma}}**。
+数式は $E = mc^2$ のように書けます。
 
-::plot{model="wave" from="0" to="10"}
+$$
+f(t) = A e^{-\gamma t} \cos(\omega t)
+$$
 
 ---
 
@@ -75,6 +69,7 @@ description: 数式と図の実験
 
 ## 記法
 
+- 数式は `$...$`（文中）か `$$...$$`（独立した行）で書けます。グラフは画像として貼り付けます。
 - `**太字**` は本文色、`==語句==` はアクセント色です。
 - `@impact` から `@endimpact` は、短いメッセージを大きく表示します。
 - 見出しと段落の末尾に `@align=center` または `@align=right` を付けると、その行を揃えます。省略時は左寄せです。
