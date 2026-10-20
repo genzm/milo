@@ -8,13 +8,14 @@ Node.js v22 以降で次を実行します。
 
 ```sh
 npm ci
-npx milo talk.md
+npm link
+milo talk.md
 ```
 
 `<パス>` は `.md` か、`slides.md` を含むディレクトリです。出力は Markdown と同じ場所の `<名前>.html` で、`-o` で変更できます。
 
 ```sh
-npx milo content -o dist/milo.html
+milo content -o dist/milo.html
 ```
 
 生成した HTML をデスクトップ版 Chrome または Edge で開きます。右上の「自動保存を接続」で、その HTML を選んで書き込みを許可してください。右側の原稿を編集すると、入力が止まって約 500ms 後に保存します。入力中も約 2 秒ごとに保存を試みます。`Cmd+S` / `Ctrl+S` は即時保存です。閉じる前に「保存済み」を確認してください。
@@ -25,7 +26,7 @@ PDFを作る場合だけ、PlaywrightのChromiumを導入します。
 
 ```sh
 npx playwright install chromium
-npx milo content --pdf -o dist/slides.html
+milo content --pdf -o dist/slides.html
 ```
 
 `dist/slides.html` と `dist/slides.pdf` を生成します。通常のHTML出力にはChromiumは不要です。
