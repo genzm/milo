@@ -85,8 +85,14 @@ function layoutOf(id: string) {
     return 'lab';
   }
 }
+function slideOrderChanged() {
+  const before = opening.blocks.filter((b) => b.kind === 'slide');
+  const after = store.list('slide');
+  return before.length !== after.length || before.some((b, i) => b.id !== after[i].id);
+}
 function sourceChanged() {
   return (
+    slideOrderChanged() ||
     store.list().length !== opening.blocks.length ||
     opening.blocks.some(
       (b) => !store.blocks.has(b.id) || normalize(store.get(b.id).text) !== normalize(b.text),
@@ -200,7 +206,8 @@ function updateNav() {
     layoutSelect.value = layoutOf(activeBlock);
   const changed =
     store.list().filter((b) => opening.blocks.find((o) => o.id === b.id)?.text !== b.text).length +
-    opening.blocks.filter((b) => !store.blocks.has(b.id)).length;
+    opening.blocks.filter((b) => !store.blocks.has(b.id)).length +
+    Number(slideOrderChanged());
   $('change-count').textContent = changed ? String(changed) : '';
 }
 function refreshSlide() {
@@ -542,6 +549,13 @@ async function resolveSave() {
 function showDiff() {
   const ids = new Set([...opening.blocks.map((b) => b.id), ...store.blocks.keys()]);
   let html = '';
+  if (slideOrderChanged()) {
+    const before = opening.blocks
+      .filter((b) => b.kind === 'slide')
+      .map((b) => b.text.match(/^#\s+(.+)$/m)?.[1] || b.name);
+    const after = store.list('slide').map((b) => titleOf(b.id));
+    html += `<section class="diff-section"><h3>スライドの順序</h3><p>変更前: ${esc(before.join(' → '))}</p><p>変更後: ${esc(after.join(' → '))}</p></section>`;
+  }
   for (const id of ids) {
     const old = opening.blocks.find((b) => b.id === id),
       b = store.blocks.get(id);

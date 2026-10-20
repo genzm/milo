@@ -50,6 +50,23 @@ test('draft recovery restores edits, additions, deletions and physical slide ord
   assert.equal(await drafts.recovery(), null);
 });
 
+test('a draft containing only a slide reorder remains recoverable', async () => {
+  const { store, baseline, drafts } = fixture();
+  store.moveBefore('slide-b', 'slide-a');
+  await drafts.persist();
+  store.restore(baseline);
+  const recovery = await drafts.recovery();
+  assert.ok(recovery);
+  assert.equal(recovery.changedBase, false);
+  drafts.restore(recovery.draft);
+  assert.deepEqual(
+    store.list('slide').map((b) => b.id),
+    ['slide-b', 'slide-a'],
+  );
+  assert.equal(store.get('slide-a').text, '# A');
+  assert.equal(store.get('slide-b').text, '# B');
+});
+
 test('archiving requires saved, matching content and a successful archive write', async () => {
   const { store, drafts, values, failures } = fixture();
   const saved = { state: 'saved' as const, dirty: () => false };

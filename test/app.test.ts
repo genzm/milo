@@ -403,6 +403,35 @@ test('importing and inserting an SVG asset saves a reopenable embedded image', a
   }
 });
 
+test('reordering before connecting marks unsaved changes and warns on exit until reverted', async () => {
+  const app = await launch();
+  const leaving = () => {
+    const event = new app.w.Event('beforeunload', { cancelable: true });
+    app.w.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  try {
+    assert.equal(leaving(), false);
+    app.click('#move-down');
+    assert.equal(app.query('#save-label').textContent, '未接続 · 未保存');
+    assert.equal(app.query('#change-count').textContent, '1');
+    assert.equal(leaving(), true);
+    app.click('#diff');
+    assert.match(app.query('#dialog-content').textContent, /スライドの順序/);
+    assert.match(app.query('#dialog-content').textContent, /変更後: Notes → 君とボク。 → Media/);
+    assert.equal(app.query('.empty-diff'), null);
+    app.click('#dialog-close');
+    app.click('#move-up');
+    assert.equal(app.query('#save-label').textContent, '自動保存 未接続');
+    assert.equal(app.query('#change-count').textContent, '');
+    assert.equal(leaving(), false);
+    assert.equal(app.file.writes, 0);
+    assert.deepEqual(app.errors, []);
+  } finally {
+    await app.close();
+  }
+});
+
 test('adding, reordering and deleting slides preserves a reopenable deck', async () => {
   const app = await launch();
   try {
