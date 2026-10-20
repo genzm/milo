@@ -348,6 +348,23 @@ export async function compile({
 } = {}) {
   if (!input && !loadedDeck) throw new Error('コンパイルするスライドのパスを指定してください。');
   const deck = loadedDeck ?? (await loadDeck(input));
+  const outPath = resolve(out || defaultOutPath(deck.slidesFile));
+  if (deck.slidesFile) {
+    const sourcePath = resolve(deck.slidesFile);
+    const message = '出力先が元のMarkdownと同じファイルです。別のHTML出力先を指定してください。';
+    if (outPath === sourcePath) throw new Error(message);
+    const fileStat = async (path) => {
+      try {
+        return await stat(path);
+      } catch (error) {
+        if (error.code === 'ENOENT') return null;
+        throw error;
+      }
+    };
+    const [source, output] = await Promise.all([fileStat(sourcePath), fileStat(outPath)]);
+    if (source && output && source.dev === output.dev && source.ino === output.ino)
+      throw new Error(message);
+  }
   const [toolboxParts, shared] = await Promise.all([toolbox(), resources ?? loadBuildResources()]);
   const fonts = await embedSlideFonts(shared.fonts);
   const parts = {
@@ -356,7 +373,6 @@ export async function compile({
     notices: toolboxParts.notices + fonts.notice,
   };
   const html = renderHtml(deck, parts);
-  const outPath = resolve(out || defaultOutPath(deck.slidesFile));
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, html);
   if (writeNotices) await writeFile(join(packageRoot, 'THIRD_PARTY_NOTICES.txt'), parts.notices);

@@ -1,7 +1,60 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTalkMarkdown, loadDeck, slideLayout } from '../cli/compile.mjs';
+import { mkdtemp, readFile, writeFile, symlink, link, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
+import { execFile } from 'node:child_process';
+import { compile, parseTalkMarkdown, loadDeck, slideLayout } from '../cli/compile.mjs';
 import { json } from '../src/source.ts';
+
+const exec = promisify(execFile);
+
+test('CLI refuses to overwrite the input Markdown, including directory input and normalized paths', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'milo-source-'));
+  const source = '# Original\n\nKeep this source.\n';
+  const file = join(dir, 'slides.md');
+  try {
+    await writeFile(file, source);
+    for (const input of [file, dir]) {
+      for (const pdf of [[], ['--pdf']]) {
+        await assert.rejects(
+          exec(process.execPath, ['cli/milo.mjs', input, '-o', `${dir}/./slides.md`, ...pdf]),
+          (error) => {
+            assert.equal(error.code, 1);
+            assert.match(error.stderr, /元のMarkdownと同じファイル/);
+            assert.equal(error.stdout, '');
+            return true;
+          },
+        );
+        assert.equal(await readFile(file, 'utf8'), source);
+      }
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('compilation rejects symbolic and hard links to the original Markdown as output', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'milo-source-links-'));
+  const source = '# Preserve me\n';
+  const input = join(dir, 'slides.md');
+  try {
+    await writeFile(input, source);
+    for (const [name, createLink] of [
+      ['symbolic.html', symlink],
+      ['hard.html', link],
+    ]) {
+      const out = join(dir, name);
+      await createLink(input, out);
+      await assert.rejects(compile({ input, out }), /元のMarkdownと同じファイル/);
+      assert.equal(await readFile(input, 'utf8'), source);
+      assert.equal(await readFile(out, 'utf8'), source);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 test('frontmatter and markdown images compile from a single talk file', async () => {
   const talk = parseTalkMarkdown(`---
