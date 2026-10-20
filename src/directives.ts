@@ -42,48 +42,31 @@ export interface RenderContext {
   present: () => boolean;
   patchSource?: (from: number, to: number, replacement: string) => void;
   inspect: (id: string) => void;
-  renderInline?: (source: string) => string;
   renderMarkdown?: (source: string) => string;
 }
 export interface Directive {
   name: string;
   attrs: Record<string, string>;
 }
-export interface MountedDirective {
-  update?: () => void;
-  dispose?: () => void;
-}
-export interface DirectiveRenderer {
-  mount: (element: HTMLElement, directive: Directive, context: RenderContext) => MountedDirective;
-}
-
 export function showError(el: HTMLElement, e: any) {
   el.classList.add('block-error');
   el.textContent = e.message || String(e);
 }
-const imageRenderer: DirectiveRenderer = {
-  mount(el, d, ctx) {
-    const id = resolveAssetRef(ctx.store, d.attrs.asset || '');
-    const img = document.createElement('img');
-    img.src = assetURL(ctx.store.get(id).text);
-    img.alt = d.attrs.alt || ctx.store.get(id).name;
-    img.className = 'embedded-image';
-    el.classList.add('image-block');
-    el.append(img);
-    if (d.attrs.caption) {
-      const c = document.createElement('p');
-      c.className = 'image-caption';
-      c.textContent = d.attrs.caption;
-      el.append(c);
-    }
-    img.addEventListener('dblclick', () => {
-      if (!ctx.present()) ctx.inspect(id);
-    });
-    return {};
-  },
-};
-
-const directiveRenderers = new Map<string, DirectiveRenderer>([['image', imageRenderer]]);
-export function directiveRenderer(name: string) {
-  return directiveRenderers.get(name);
+export function mountImage(el: HTMLElement, attrs: Record<string, string>, ctx: RenderContext) {
+  const id = resolveAssetRef(ctx.store, attrs.asset || '');
+  const img = document.createElement('img');
+  img.src = assetURL(ctx.store.get(id).text);
+  img.alt = attrs.alt || ctx.store.get(id).name;
+  img.className = 'embedded-image';
+  el.classList.add('image-block');
+  el.append(img);
+  if (attrs.caption) {
+    const c = document.createElement('p');
+    c.className = 'image-caption';
+    c.textContent = attrs.caption;
+    el.append(c);
+  }
+  img.addEventListener('dblclick', () => {
+    if (!ctx.present()) ctx.inspect(id);
+  });
 }

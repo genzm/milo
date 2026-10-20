@@ -1,14 +1,7 @@
 import { parse as parseHTML } from 'parse5';
-import {
-  parse as parseJSON,
-  parseTree,
-  findNodeAtLocation,
-  modify,
-  applyEdits,
-  type ParseError,
-} from 'jsonc-parser';
-
-export const SOURCE_TYPE = 'application/x-milo-source';
+import { parse as parseJSON, type ParseError } from 'jsonc-parser';
+import { SOURCE_TYPE, decode, encode, serializeBlock } from './source-format.mjs';
+export { SOURCE_TYPE, decode, encode, serializeBlock } from './source-format.mjs';
 export const END_MARKER = '<!-- END MILO SOURCES -->';
 export type Kind = 'manifest' | 'slide' | 'asset';
 export const GROUP_END_MARKERS: Record<Kind, string> = {
@@ -30,26 +23,12 @@ export interface Snapshot {
   html: string | null;
   blocks: Block[];
 }
-export const encode = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\0/g, '&#0;');
-export const decode = (s: string) =>
-  s.replace(/&(?:amp|lt|#0);/g, (s) => (s === '&amp;' ? '&' : s === '&lt;' ? '<' : '\0'));
 export const normalize = (s: string) => s.replace(/\r\n?/g, '\n');
 export function json<T = any>(text: string): T {
   const errors: ParseError[] = [];
   const result = parseJSON(text, errors, { allowTrailingComma: true });
   if (errors.length) throw new Error(`JSONCの構文を確認してください（位置 ${errors[0].offset}）。`);
   return result;
-}
-function attrEscape(s: string) {
-  return s.replace(
-    /[&"<>]/g,
-    (c) => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' })[c]!,
-  );
-}
-export function serializeBlock(b: Block, eol = '\n'): string {
-  if (!/^[a-zA-Z][\w-]*$/.test(b.id)) throw new Error('不正なブロックIDです。');
-  return `<script${eol}  type="${SOURCE_TYPE}"${eol}  id="${b.id}"${eol}  data-kind="${b.kind}"${eol}  data-name="${attrEscape(b.name)}"${eol}  data-codec="amp-lt-v1">${eol}${encode(b.text)}${eol}</script>`;
 }
 function contentBounds(html: string, start: number, end: number) {
   if (html.slice(start, start + 2) === '\r\n') start += 2;
@@ -195,29 +174,6 @@ export class SourceStore {
       n--;
     }
     return this.replace(id, a, z, next.slice(a, n));
-  }
-  setJSON(id: string, path: (string | number)[], value: any): boolean {
-    const text = this.get(id).text;
-    json(text); // Never edit a partially parsed document.
-    const tree = parseTree(text, [], { allowTrailingComma: true });
-    const node = tree && findNodeAtLocation(tree, path);
-    if (node && (value === null || ['number', 'string', 'boolean'].includes(typeof value))) {
-      if (node.value === value) return false;
-      if (typeof value === 'number' && !Number.isFinite(value))
-        throw new Error('有限の数値を入力してください。');
-      return this.replace(id, node.offset, node.offset + node.length, JSON.stringify(value));
-    }
-    const edited = applyEdits(
-      text,
-      modify(text, path, value, {
-        formattingOptions: {
-          insertSpaces: true,
-          tabSize: 2,
-          eol: text.includes('\r\n') ? '\r\n' : '\n',
-        },
-      }),
-    );
-    return this.setText(id, edited);
   }
   add(b: Block, beforeId?: string | null) {
     if (this.blocks.has(b.id)) throw new Error('IDが重複しています。');

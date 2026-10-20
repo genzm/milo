@@ -3,9 +3,7 @@ export interface FileHandle {
   getFile: () => Promise<{ arrayBuffer: () => Promise<ArrayBuffer>; text?: () => Promise<string> }>;
   queryPermission?: (o: any) => Promise<string>;
   requestPermission?: (o: any) => Promise<string>;
-  createWritable: (
-    o?: any,
-  ) => Promise<{
+  createWritable: (o?: any) => Promise<{
     write: (data: string) => Promise<void>;
     close: () => Promise<void>;
     abort?: () => Promise<void>;

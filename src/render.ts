@@ -3,7 +3,7 @@ import katex from 'katex';
 import { atAttributes, mountCanvas } from './canvas';
 import {
   assetURL,
-  directiveRenderer,
+  mountImage,
   esc,
   resolveAssetRef,
   showError,
@@ -208,8 +208,7 @@ function prepareTaskItems(source: string, tasks: TaskItem[]) {
 }
 
 export function renderSlide(root: HTMLElement, source: string, ctx: RenderContext): Rendered {
-  const updates: (() => void)[] = [],
-    layoutUpdates: (() => void)[] = [],
+  const layoutUpdates: (() => void)[] = [],
     disposals: (() => void)[] = [];
   const directives: ParsedDirective[] = [];
   const canvases: { source: string; options: string; error?: string }[] = [];
@@ -284,7 +283,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   md.block.ruler.before(
     'fence',
     'milo-directive',
-    (s: any, line: number, end: number, silent: boolean) => {
+    (s: any, line: number, _end: number, silent: boolean) => {
       const text = s.src.slice(s.bMarks[line] + s.tShift[line], s.eMarks[line]);
       const match = /^::([a-z]+)\{(.*)\}\s*$/.exec(text);
       let name = match?.[1] || '',
@@ -416,7 +415,6 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   };
   const renderContext: RenderContext = {
     ...ctx,
-    renderInline: (text) => md.renderInline(text),
     renderMarkdown: (text) => md.render(text),
   };
   root.dataset.markdown = 'slide';
@@ -460,8 +458,8 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
       try {
         if (canvas.error) throw new Error(canvas.error);
         const mounted = mountCanvas(element, canvas.source, canvas.options, renderContext);
-        if (mounted.update) layoutUpdates.push(mounted.update);
-        if (mounted.dispose) disposals.push(mounted.dispose);
+        layoutUpdates.push(mounted.update);
+        disposals.push(mounted.dispose);
       } catch (e) {
         showError(element, e);
       }
@@ -488,11 +486,9 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
     const directive = directives[Number(element.dataset.live)];
     try {
       if (directive.error) throw new Error(directive.error);
-      const renderer = directiveRenderer(directive.name);
-      if (!renderer) throw new Error(`未対応のディレクティブです: ${directive.name}`);
-      const mounted = renderer.mount(element, directive, renderContext);
-      if (mounted.update) updates.push(mounted.update);
-      if (mounted.dispose) disposals.push(mounted.dispose);
+      if (directive.name !== 'image')
+        throw new Error(`未対応のディレクティブです: ${directive.name}`);
+      mountImage(element, directive.attrs, renderContext);
     } catch (e) {
       showError(element, e);
     }
@@ -516,7 +512,6 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   root.addEventListener('click', toggleTask);
   disposals.push(() => root.removeEventListener('click', toggleTask));
   const update = () => {
-    updates.forEach((run) => run());
     layoutUpdates.forEach((run) => run());
   };
   update();

@@ -160,9 +160,6 @@
   .source-editor {
     min-height: 200px;
   }
-  .sidebar {
-    display: none;
-  }
   .save-notice {
     position: fixed;
     top: var(--app-header-height);

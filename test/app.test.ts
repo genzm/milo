@@ -369,6 +369,40 @@ test('presentation task toggles and code-editor transactions update the source',
   }
 });
 
+test('importing and inserting an SVG asset saves a reopenable embedded image', async () => {
+  const app = await launch();
+  try {
+    app.click('#connect');
+    await until(() => app.query('#save-label').textContent === '保存済み', 'No connection');
+    app.click('[data-tab="asset"]');
+    app.click('#add-source');
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 0h10v10Z"/></svg>';
+    const file = new app.w.File([svg], 'shape.svg', { type: 'image/svg+xml' });
+    Object.defineProperty(app.query('#asset-input'), 'files', { value: [file] });
+    app.query('#asset-input').dispatchEvent(new app.w.Event('change', { bubbles: true }));
+    await until(
+      () => !!app.query('.asset-preview img[src^="data:image/svg+xml"]'),
+      'SVG import failed',
+    );
+    const id = app.query('#source-select').value;
+    app.click('#insert-asset');
+    await until(() => app.query('#save-label').textContent === '保存済み', 'SVG did not save');
+    const saved = SourceStore.fromHTML(app.file.disk);
+    assert.equal(saved.get(id).text, `mime: image/svg+xml\n\n${svg}`);
+    assert.match(saved.get('slide-01').text, /!\[画像\]\(shape\.svg\)/);
+    const reopened = await launch(app.file.disk);
+    try {
+      assert.ok(reopened.query('#slide-content img[src^="data:image/svg+xml"]'));
+      assert.deepEqual(reopened.errors, []);
+    } finally {
+      await reopened.close();
+    }
+  } finally {
+    await app.close();
+  }
+});
+
 test('adding, reordering and deleting slides preserves a reopenable deck', async () => {
   const app = await launch();
   try {

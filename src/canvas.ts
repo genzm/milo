@@ -1,4 +1,4 @@
-import type { MountedDirective, RenderContext } from './directives';
+import type { RenderContext } from './directives';
 
 export type CanvasDirection = 'right' | 'left' | 'down' | 'up';
 export type CanvasLayout = 'flow' | 'free';
@@ -417,7 +417,7 @@ export function mountCanvas(
   source: string,
   rawOptions: string,
   context: RenderContext,
-): MountedDirective {
+): { update: () => void; dispose: () => void } {
   const scene = parseCanvas(source, rawOptions),
     uid = `milo-canvas-${++canvasSequence}`;
   element.className = `milo-canvas canvas-layout-${scene.options.layout}`;

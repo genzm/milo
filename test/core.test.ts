@@ -31,7 +31,6 @@ test('no-op loading and identity edits preserve every original byte, including B
     assert.equal(s.html, source);
     for (const b of s.list()) assert.equal(s.setText(b.id, b.text), false);
     assert.equal(Buffer.compare(Buffer.from(s.html!), Buffer.from(source)), 0);
-    assert.equal(s.setJSON('manifest', ['appearance', 'scale'], 0.2), false);
     assert.equal(s.html, source);
   }
 });
@@ -45,7 +44,7 @@ test('a settings edit changes only its token; comments, formatting, assets, runt
   for (const eol of ['\n', '\r\n']) {
     const source = fixture(eol),
       s = SourceStore.fromHTML(source);
-    s.setJSON('manifest', ['appearance', 'scale'], 0.31);
+    s.setText('manifest', s.get('manifest').text.replace('"scale": 0.2', '"scale": 0.31'));
     assert.equal(s.html, source.replace('"scale": 0.2', '"scale": 0.31'));
     const again = SourceStore.fromHTML(s.html!);
     assert.equal(json(again.get('manifest').text).appearance.scale, 0.31);
@@ -71,7 +70,7 @@ test('multiple source patches map decoded positions to encoded offsets without t
     before = s.get('manifest').text;
   s.setText('slide-a', '# 🧪 </script> &amp;');
   s.replace('slide-a', 5, 5, ' < ');
-  s.setJSON('manifest', ['appearance', 'spacing'], 7);
+  s.setText('manifest', before.replace('3.0', '7'));
   const parsed = SourceStore.fromHTML(s.html!);
   assert.equal(parsed.get('slide-a').text, s.get('slide-a').text);
   assert.equal(parsed.get('manifest').text, before.replace('3.0', '7'));
@@ -112,7 +111,7 @@ test('binding preserves the selected raw file, replays drafts, and rejects a mis
   boot.html = null;
   boot.blocks = boot.blocks.map(({ id, kind, name, text }) => ({ id, kind, name, text }));
   const draft = new SourceStore(boot);
-  draft.setJSON('manifest', ['appearance', 'scale'], 0.4);
+  draft.setText('manifest', draft.get('manifest').text.replace('"scale": 0.2', '"scale": 0.4'));
   draft.attach(SourceStore.fromHTML(fixture()), boot);
   assert.equal(draft.html, fixture().replace('"scale": 0.2', '"scale": 0.4'));
   assert.throws(
@@ -141,15 +140,16 @@ test('binding replays the physical slide order edited before a file handle is co
     [original[0], 'slide-03', 'slide-02', ...original.slice(3)],
   );
 });
-test('malformed JSONC stays editable but cannot drive a semantic patch', () => {
-  const s = SourceStore.fromHTML(fixture());
-  s.setText('manifest', '{"appearance": {"scale":');
-  const html = s.html;
-  assert.throws(() => s.setJSON('manifest', ['appearance', 'scale'], 1), /構文/);
-  assert.equal(s.html, html);
-  s.setText('manifest', '{"appearance":{"scale":0.2}}');
-  assert.equal(json(SourceStore.fromHTML(s.html!).get('manifest').text).appearance.scale, 0.2);
+test('malformed JSONC remains editable and parsing reports the error', () => {
+  const store = SourceStore.fromHTML(fixture());
+  const invalid = '{"title":';
+  store.setText('manifest', invalid);
+  assert.equal(SourceStore.fromHTML(store.html!).get('manifest').text, invalid);
+  assert.throws(() => json(store.get('manifest').text), /構文/);
+  store.setText('manifest', '{"title":"Recovered"}');
+  assert.equal(json(SourceStore.fromHTML(store.html!).get('manifest').text).title, 'Recovered');
 });
+
 function fakeFile(initial: string) {
   let disk = initial;
   let writes = 0;

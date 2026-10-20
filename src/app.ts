@@ -1,90 +1,18 @@
 import slideSize from './slide-size.json';
 import { slideFrameMarkup, slideNumber } from './slide-frame';
 import { LAYOUTS, slideLayout, setSlideLayout, type SlideLayout } from './slide-layout.mjs';
-import {
-  autocompletion,
-  closeBrackets,
-  closeBracketsKeymap,
-  completionKeymap,
-} from '@codemirror/autocomplete';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { json as jsonLanguage } from '@codemirror/lang-json';
-import { markdown } from '@codemirror/lang-markdown';
-import {
-  bracketMatching,
-  defaultHighlightStyle,
-  foldGutter,
-  foldKeymap,
-  indentOnInput,
-  syntaxHighlighting,
-} from '@codemirror/language';
-import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
-import { EditorState, StateField, type Text } from '@codemirror/state';
-import {
-  crosshairCursor,
-  Decoration,
-  drawSelection,
-  dropCursor,
-  EditorView,
-  highlightActiveLine,
-  highlightActiveLineGutter,
-  highlightSpecialChars,
-  keymap,
-  lineNumbers,
-  rectangularSelection,
-  type DecorationSet,
-} from '@codemirror/view';
 import { SourceStore, json, normalize, type Kind } from './source';
 import { Autosaver, readFile, type FileHandle } from './save';
 import { renderSlide, esc, assetURL, type Rendered } from './render';
 import { cacheGet, cacheSet } from './cache';
 import { DraftStore } from './drafts';
+import { SourceEditor } from './editor';
+import { readImageAsset } from './assets';
 
 interface Manifest {
   title: string;
   slides: string[];
 }
-function hiddenSlideMetadata(doc: Text): DecorationSet {
-  const match = /^(?:\s*<!--\s*milo:[\s\S]*?-->[ \t]*(?:\r?\n)?)/.exec(doc.toString());
-  return match
-    ? Decoration.set([Decoration.replace({}).range(0, match[0].length)])
-    : Decoration.none;
-}
-
-const editorSetup = [
-  lineNumbers(),
-  highlightActiveLineGutter(),
-  highlightSpecialChars(),
-  history(),
-  foldGutter(),
-  drawSelection(),
-  dropCursor(),
-  EditorState.allowMultipleSelections.of(true),
-  indentOnInput(),
-  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-  bracketMatching(),
-  closeBrackets(),
-  autocompletion(),
-  rectangularSelection(),
-  crosshairCursor(),
-  highlightActiveLine(),
-  highlightSelectionMatches(),
-  keymap.of([
-    ...closeBracketsKeymap,
-    ...defaultKeymap,
-    ...searchKeymap,
-    ...historyKeymap,
-    ...foldKeymap,
-    ...completionKeymap,
-  ]),
-];
-const slideMarkdown = markdown({ completeHTMLTags: false });
-const hiddenSlideMetadataField = StateField.define<DecorationSet>({
-  create: (state) => hiddenSlideMetadata(state.doc),
-  update: (decorations, transaction) =>
-    transaction.docChanged ? hiddenSlideMetadata(transaction.newDoc) : decorations,
-  provide: (field) => EditorView.decorations.from(field),
-});
 const { width: SLIDE_WIDTH, height: SLIDE_HEIGHT } = slideSize;
 document.documentElement.style.setProperty('--slide-width', `${SLIDE_WIDTH}px`);
 document.documentElement.style.setProperty('--slide-height', `${SLIDE_HEIGHT}px`);
@@ -107,14 +35,13 @@ const paths: Record<string, string> = {
 const icon = (name: string) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.file}"/></svg>`;
 const app = $('app');
+const sourceEditor = new SourceEditor();
 let store = SourceStore.fromDOM(document),
   boot = store.snapshot(),
   opening = store.snapshot();
 let current = 0,
   present = false,
   activeBlock = '',
-  editor: EditorView | null = null,
-  editorSync = false,
   rendered: Rendered | null = null;
 let activeTab: Kind = 'slide',
   remembered: FileHandle | null = null,
@@ -343,21 +270,7 @@ function mutate(fn: () => void) {
   }
 }
 function syncEditor() {
-  if (!editor || !store.blocks.has(activeBlock)) return;
-  const next = normalize(store.get(activeBlock).text),
-    old = editor.state.doc.toString();
-  if (next === old) return;
-  let a = 0;
-  while (a < old.length && a < next.length && old[a] === next[a]) a++;
-  let z = old.length,
-    n = next.length;
-  while (z > a && n > a && old[z - 1] === next[n - 1]) {
-    z--;
-    n--;
-  }
-  editorSync = true;
-  editor.dispatch({ changes: { from: a, to: z, insert: next.slice(a, n) } });
-  editorSync = false;
+  if (store.blocks.has(activeBlock)) sourceEditor.sync(store.get(activeBlock).text);
 }
 function selectBlock(id: string) {
   if (!store.blocks.has(id)) return;
@@ -371,8 +284,7 @@ const langLabels: Partial<Record<Kind, string>> = {
   manifest: 'JSONC / DOCUMENT',
 };
 function refreshInspector() {
-  editor?.destroy();
-  editor = null;
+  sourceEditor.destroy();
   if (!store.blocks.has(activeBlock) || store.get(activeBlock).kind !== activeTab)
     activeBlock = activeTab === 'slide' ? currentId() : store.list(activeTab)[0]?.id || '';
   document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => {
@@ -437,28 +349,11 @@ function refreshInspector() {
   }
   $('source-editor').ondragover = null;
   $('source-editor').ondrop = null;
-  const lang = activeTab === 'slide' ? slideMarkdown : jsonLanguage();
-  const state = EditorState.create({
-    doc: b.text,
-    extensions: [
-      editorSetup,
-      lang,
-      keymap.of([indentWithTab]),
-      EditorView.lineWrapping,
-      ...(activeTab === 'slide' ? [hiddenSlideMetadataField] : []),
-      EditorState.lineSeparator.of(b.text.includes('\r\n') ? '\r\n' : '\n'),
-      EditorView.contentAttributes.of({ 'aria-label': b.name + ' のソース' }),
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged && !editorSync) {
-          const id = activeBlock,
-            next = update.state.sliceDoc();
-          mutate(() => store.setText(id, next));
-        }
-      }),
-    ],
+  sourceEditor.mount($('source-editor'), b, (text) => {
+    mutate(() => store.setText(b.id, text));
   });
-  editor = new EditorView({ state, parent: $('source-editor') });
 }
+
 function go(index: number) {
   current = Math.max(0, Math.min(index, manifest.slides.length - 1));
   updateNav();
@@ -544,10 +439,10 @@ function removeSlide() {
   activeBlock = currentId();
   go(current);
 }
-async function connect(useRemembered = true) {
+async function connect() {
   if (binding) return;
   try {
-    if (!remembered || !useRemembered) {
+    if (!remembered) {
       if (!('showOpenFilePicker' in window))
         throw new Error(
           'ダウンロードしたHTMLをデスクトップ版ChromeまたはEdgeで開いて接続してください。',
@@ -556,15 +451,14 @@ async function connect(useRemembered = true) {
     binding = true;
     updateSave();
     // Open the picker directly inside the user's gesture, before file reading.
-    const handle: FileHandle =
-      remembered && useRemembered
-        ? remembered
-        : (
-            await (window as any).showOpenFilePicker({
-              multiple: false,
-              types: [{ description: 'milo HTML', accept: { 'text/html': ['.html'] } }],
-            })
-          )[0];
+    const handle: FileHandle = remembered
+      ? remembered
+      : (
+          await (window as any).showOpenFilePicker({
+            multiple: false,
+            types: [{ description: 'milo HTML', accept: { 'text/html': ['.html'] } }],
+          })
+        )[0];
     if (
       handle.requestPermission &&
       (await handle.requestPermission({ mode: 'readwrite' })) !== 'granted'
@@ -687,48 +581,7 @@ function chooseAsset(id: string | null = null) {
 }
 async function importAsset(file: File, replaceId: string | null) {
   try {
-    if (file.size > 12 * 1024 * 1024) throw new Error('初版では12MB以下の画像を使ってください。');
-    const allowed = ['image/gif', 'image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
-    let mime = file.type;
-    if (!mime && /\.svg$/i.test(file.name)) mime = 'image/svg+xml';
-    if (!allowed.includes(mime)) throw new Error('GIF・PNG・JPEG・WebP・SVGを選んでください。');
-    let content: string;
-    if (mime === 'image/svg+xml') {
-      const text = await file.text(),
-        doc = new DOMParser().parseFromString(text, 'image/svg+xml');
-      if (doc.querySelector('parsererror') || doc.documentElement.localName !== 'svg')
-        throw new Error('SVGを読み込めませんでした。');
-      if (
-        doc.querySelector('script,foreignObject') ||
-        /@import|url\s*\(\s*['"]?(?!#)/i.test(text) ||
-        [...doc.querySelectorAll('*')].some((el) =>
-          [...el.attributes].some(
-            (a) =>
-              /^on/i.test(a.name) ||
-              (/(?:^|:)href$/i.test(a.name) && a.value && !a.value.startsWith('#')),
-          ),
-        )
-      )
-        throw new Error('SVGは外部参照やスクリプトを含まない画像を使ってください。');
-      content = `mime: ${mime}\n\n${text}`;
-    } else {
-      const uri = await new Promise<string>((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result));
-        r.onerror = () => reject(r.error);
-        r.readAsDataURL(file);
-      });
-      await new Promise<void>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('画像を読み込めませんでした。'));
-        img.src = uri;
-      });
-      content = `mime: ${mime}\n\n${uri
-        .split(',')[1]
-        .match(/.{1,76}/g)!
-        .join('\n')}`;
-    }
+    const content = await readImageAsset(file);
     const id = replaceId || unique('asset');
     mutate(() => {
       if (replaceId) store.setText(id, content);

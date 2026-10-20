@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { compile } from '../cli/compile.mjs';
+import { compile, renderHtml } from '../cli/compile.mjs';
+import { SourceStore } from '../src/source.ts';
 import { compileMarpTheme } from '../cli/marp-theme.mjs';
 import { loadBuildResources } from '../cli/resources.mjs';
 import { embedSlideFonts, linkedSlideFonts } from '../cli/fonts.mjs';
@@ -56,4 +57,32 @@ test('HTML and Marp consume supplied resources and subsequent builds use current
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('compiled and editor-added blocks share escaping and survive a raw HTML round-trip', () => {
+  const block = {
+    id: 'slide-escaped',
+    kind: 'slide',
+    name: '図 "A" & <B>.md',
+    text: '# </script>\n\n&lt; &amp; 日本語 🧪\u0000',
+  };
+  const html = renderHtml(
+    {
+      documentId: 'test',
+      title: 'Test',
+      description: '',
+      blocks: [
+        { id: 'manifest', kind: 'manifest', name: 'settings', text: '{"title":"Test"}' },
+        block,
+      ],
+    },
+    { runtime: '', mathCSS: '', css: '' },
+  );
+  const store = SourceStore.fromHTML(html);
+  assert.equal(store.get(block.id).text, block.text);
+  assert.equal(store.get(block.id).name, block.name);
+  store.add({ ...block, id: 'slide-added' });
+  const added = SourceStore.fromHTML(store.html).get('slide-added');
+  assert.equal(added.text, block.text);
+  assert.equal(added.name, block.name);
 });

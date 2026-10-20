@@ -1,4 +1,5 @@
 import { build } from 'esbuild';
+import { encode, serializeBlock } from '../src/source-format.mjs';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
@@ -23,16 +24,9 @@ const IMAGE_MIME = {
   '.svg': 'image/svg+xml',
 };
 
-const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\0/g, '&#0;');
+const escape = encode;
 const attrs = (s) => escape(s).replace(/"/g, '&quot;');
-export const sourceBlock = (b) => `<script
-  type="application/x-milo-source"
-  id="${b.id}"
-  data-kind="${b.kind}"
-  data-name="${attrs(b.name)}"
-  data-codec="amp-lt-v1">
-${escape(b.text)}
-</script>`;
+export const sourceBlock = (block) => serializeBlock(block);
 
 const groups = [
   ['manifest', 'DOCUMENT SETTINGS', 'MILO SETTINGS'],
