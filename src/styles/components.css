@@ -34,6 +34,7 @@
 }
 .math-prose {
   overflow-x: auto;
+  font-size: var(--slide-text-body);
 }
 .slide u {
   text-decoration-line: underline;

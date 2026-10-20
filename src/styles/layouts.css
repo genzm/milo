@@ -105,7 +105,8 @@
 }
 .layout-essay {
   p,
-  li {
+  li,
+  .math-prose {
     font-size: var(--slide-text-essay-body);
   }
   h1 {

@@ -4958,6 +4958,7 @@ section {
   }
   .math-prose {
     overflow-x: auto;
+    font-size: var(--slide-text-body);
   }
   &:has(> footer) {
     padding-bottom: calc(var(--slide-pad-bottom) + var(--slide-space-footer));
@@ -5075,7 +5076,8 @@ section.media {
 
 section.essay {
   p,
-  li {
+  li,
+  .math-prose {
     font-size: var(--slide-text-essay-body);
   }
   h1 {
