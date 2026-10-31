@@ -3,6 +3,7 @@ import type { RenderContext } from './directives';
 export type CanvasDirection = 'right' | 'left' | 'down' | 'up';
 export type CanvasLayout = 'flow' | 'free';
 export type CanvasRoute = 'curve' | 'straight' | 'elbow';
+export type CanvasArrows = 'none' | 'start' | 'end' | 'both';
 
 interface CanvasOptions {
   layout: CanvasLayout;
@@ -35,6 +36,7 @@ interface CanvasEdge {
   route?: CanvasRoute;
   tone: 'default' | 'accent' | 'muted';
   dashed: boolean;
+  arrows: CanvasArrows;
 }
 
 export interface CanvasScene {
@@ -53,14 +55,14 @@ export interface CanvasFrame {
 const NS = 'http://www.w3.org/2000/svg';
 let canvasSequence = 0;
 
-function finite(value: string | undefined, fallback?: number): number | undefined {
+export function finite(value: string | undefined, fallback?: number): number | undefined {
   if (value === undefined || value === '') return fallback;
   const number = Number(value);
   if (!Number.isFinite(number)) throw new Error(`数値を確認してください: ${value}`);
   return number;
 }
 
-function choice<T extends string>(
+export function choice<T extends string>(
   value: string | undefined,
   choices: readonly T[],
   fallback: T,
@@ -126,6 +128,7 @@ function edgeFrom(attrs: Record<string, string>): CanvasEdge {
       : undefined,
     tone: choice(attrs.tone, ['default', 'accent', 'muted'], 'default', 'tone'),
     dashed: attrs.dashed === 'true',
+    arrows: choice(attrs.arrows, ['none', 'start', 'end', 'both'], 'end', 'arrows'),
   };
 }
 
@@ -382,7 +385,7 @@ function svgElement(tag: string, attrs: Record<string, string | number>, text?: 
   return element;
 }
 
-function connection(from: CanvasFrame, to: CanvasFrame, route: CanvasRoute) {
+export function connection(from: CanvasFrame, to: CanvasFrame, route: CanvasRoute) {
   const a = { x: from.x + from.width / 2, y: from.y + from.height / 2 },
     b = { x: to.x + to.width / 2, y: to.y + to.height / 2 },
     dx = b.x - a.x,
@@ -411,16 +414,14 @@ function connection(from: CanvasFrame, to: CanvasFrame, route: CanvasRoute) {
   return { path, label: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 - 8 } };
 }
 
-/** Mount an HTML-in-Canvas scene and keep its SVG connection layer in sync. */
-export function mountCanvas(
+/** Mount an already-parsed canvas scene and keep its SVG connection layer in sync. */
+export function mountCanvasScene(
   element: HTMLElement,
-  source: string,
-  rawOptions: string,
+  scene: CanvasScene,
   context: RenderContext,
 ): { update: () => void; dispose: () => void } {
-  const scene = parseCanvas(source, rawOptions),
-    uid = `milo-canvas-${++canvasSequence}`;
-  element.className = `milo-canvas canvas-layout-${scene.options.layout}`;
+  const uid = `milo-canvas-${++canvasSequence}`;
+  element.classList.add('milo-canvas', `canvas-layout-${scene.options.layout}`);
   element.style.aspectRatio = `${scene.options.width} / ${scene.options.height}`;
   const svg = svgElement('svg', {
     class: 'canvas-connections',
@@ -488,13 +489,15 @@ export function mountCanvas(
         byId.get(edge.to)!,
         edge.route || scene.options.route,
       );
-      layer.append(
-        svgElement('path', {
-          d: geometry.path,
-          class: `canvas-edge canvas-edge-${edge.tone}${edge.dashed ? ' is-dashed' : ''}`,
-          'marker-end': `url(#${uid}-arrow)`,
-        }),
-      );
+      const attrs: Record<string, string | number> = {
+        d: geometry.path,
+        class: `canvas-edge canvas-edge-${edge.tone}${edge.dashed ? ' is-dashed' : ''}`,
+      };
+      if (edge.arrows === 'end' || edge.arrows === 'both')
+        attrs['marker-end'] = `url(#${uid}-arrow)`;
+      if (edge.arrows === 'start' || edge.arrows === 'both')
+        attrs['marker-start'] = `url(#${uid}-arrow)`;
+      layer.append(svgElement('path', attrs));
       if (edge.label)
         layer.append(
           svgElement(
@@ -522,4 +525,14 @@ export function mountCanvas(
       observer?.disconnect();
     },
   };
+}
+
+/** Mount an HTML-in-Canvas scene and keep its SVG connection layer in sync. */
+export function mountCanvas(
+  element: HTMLElement,
+  source: string,
+  rawOptions: string,
+  context: RenderContext,
+): { update: () => void; dispose: () => void } {
+  return mountCanvasScene(element, parseCanvas(source, rawOptions), context);
 }

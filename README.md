@@ -81,6 +81,15 @@ $$
 - `@panel` と `@box` は角丸カードです。`tone` は `muted`（グレー）、`default`（白）、`accent`（ピンクの輪郭）、`dark` です。広い面は白とグレー、ピンクは強調に使います。
 - `@steps highlight=2` は番号付きの横並びカードです。いまのステップだけピンクの輪郭になります。
 - `@canvas` は、`-->` で区切ったまとまりを矢印でつなぎます。分岐するときは `@node` と `@edge` を使います。
+- `@diagram` は要素と関係を宣言し、配置だけ切り替えます。`layout=ring` は項目数で三角形や四角形になり、`connect=cycle` で頂点を線で結びます。`@link a -- b` は関係、`a -> b` は方向、`a <-> b` は双方向です。`level=high|medium|low` は評価で、色はテーマが決めます。
+
+```markdown
+@diagram layout=ring connect=cycle
+@item access title="誰でも引ける" badge=1 level=high
+@item speed title="速く引ける" badge=2 level=high
+@item history title="遡って引ける" badge=3 level=low
+@enddiagram
+```
 
 ```markdown
 @steps highlight=2

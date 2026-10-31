@@ -96,8 +96,8 @@ grid が揃える
 @panel
 ### 線
 
-分岐や座標は
-canvas のまま
+関係は diagram
+分岐は canvas
 
 @box tone=default
 SVGでつなぐ
@@ -224,3 +224,65 @@ GIFも、画像も、ひとつのHTMLの中へ。
 - [x] データを集める
 @endpanel
 @endgrid
+
+---
+
+<!-- milo: layout=lab -->
+
+# 関係と状態は、項目を書くだけ
+
+@diagram layout=ring connect=cycle start=top order=ccw
+@item access title="誰でも引ける" badge=1 level=high
+@item speed title="速く引ける" badge=2 level=high
+@item history title="遡って引ける" badge=3 level=low
+@enddiagram
+
+`level` は評価。色はテーマが決める。
+
+---
+
+<!-- milo: layout=lab -->
+
+# 項目数で、形が決まる
+
+@grid columns=2
+@panel
+### 3項目 → 三角形
+
+@diagram layout=ring connect=cycle
+@item a title="品質" badge=1
+@item b title="速度" badge=2
+@item c title="コスト" badge=3
+@enddiagram
+@endpanel
+@panel
+### 4項目 → 四角形
+
+@diagram layout=ring connect=cycle
+@item a title="品質" badge=1
+@item b title="速度" badge=2
+@item c title="コスト" badge=3
+@item d title="安全性" badge=4
+@enddiagram
+@endpanel
+@endgrid
+
+---
+
+<!-- milo: layout=lab -->
+
+# 中心から広げる
+
+@diagram layout=radial center=problem
+@item problem title="顧客の課題"
+@item cost title="コスト"
+@item time title="時間"
+@item quality title="品質"
+@item support title="サポート"
+@link problem -- cost
+@link problem -- time
+@link problem -- quality
+@link problem -- support
+@enddiagram
+
+同じ `@item` と `@link` で、放射状の図にもできる。

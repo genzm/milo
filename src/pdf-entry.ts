@@ -53,7 +53,11 @@ async function renderPdf() {
     rendered.forEach((slide) => slide.update());
     await frame();
     const geometry = JSON.stringify(
-      [...document.querySelectorAll('.milo-canvas, .canvas-node')].map((element) => {
+      [
+        ...document.querySelectorAll(
+          '.milo-canvas, .canvas-node, .milo-diagram, .diagram-vertex, .diagram-card',
+        ),
+      ].map((element) => {
         const rect = element.getBoundingClientRect();
         return [rect.x, rect.y, rect.width, rect.height, element.scrollHeight];
       }),

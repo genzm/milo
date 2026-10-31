@@ -290,3 +290,160 @@
     font: var(--slide-text-edge-label) var(--mono);
   }
 }
+.milo-diagram {
+  position: relative;
+  width: min(100%, 900px);
+  max-height: 500px;
+  aspect-ratio: 1000 / 500;
+  margin: 1.2cqw auto 0.4cqw;
+  overflow: visible;
+  isolation: isolate;
+
+  .diagram-connections,
+  .diagram-content {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .diagram-connections {
+    z-index: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .diagram-content {
+    z-index: 1;
+    pointer-events: none;
+  }
+  .diagram-vertex,
+  .diagram-card,
+  .diagram-label {
+    position: absolute;
+    box-sizing: border-box;
+  }
+  .diagram-vertex {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 4px solid var(--accent);
+    color: var(--white);
+    font-size: var(--slide-text-body);
+    font-weight: 800;
+    line-height: 1;
+  }
+  .diagram-badge {
+    font-size: inherit;
+  }
+  .diagram-vertex.diagram-level-medium {
+    background: var(--slide-card);
+    border-color: transparent;
+    color: var(--slide-ink);
+  }
+  .diagram-vertex.diagram-level-low {
+    background: var(--white);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .diagram-label {
+    color: var(--slide-ink);
+    text-align: center;
+    pointer-events: none;
+    max-width: 8.2em;
+  }
+  .diagram-label-title {
+    font-size: var(--slide-text-body);
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+  }
+  .diagram-label-note {
+    margin-top: 4px;
+    color: var(--slide-muted);
+    font-size: var(--slide-text-label);
+    font-weight: 400;
+    line-height: 1.45;
+  }
+  .diagram-label-note :is(h1, h2, h3, h4, h5, h6, p, ul, ol) {
+    margin: 0;
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+    font-weight: inherit;
+  }
+  .diagram-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 14px 28px;
+    border-radius: 999px;
+    background: var(--slide-card);
+    color: var(--slide-ink);
+    text-align: center;
+    white-space: nowrap;
+    overflow: visible;
+  }
+  .diagram-card-title {
+    font-size: var(--slide-text-body);
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+  }
+  .diagram-card.is-center .diagram-card-title {
+    font-size: var(--slide-text-subheading);
+  }
+  .diagram-card-body {
+    color: var(--slide-muted);
+    font-size: var(--slide-text-label);
+    line-height: 1.4;
+  }
+  .diagram-card-body :is(h1, h2, h3, h4, h5, h6, p, ul, ol) {
+    margin: 0;
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+  }
+  .diagram-card.is-center,
+  .diagram-card.diagram-level-high {
+    background: var(--accent);
+    color: var(--white);
+  }
+  .diagram-card.is-center .diagram-card-body,
+  .diagram-card.diagram-level-high .diagram-card-body {
+    color: color-mix(in srgb, var(--white) 84%, var(--accent));
+  }
+  .diagram-card.diagram-level-medium {
+    background: var(--slide-card);
+    color: var(--slide-ink);
+  }
+  .diagram-card.diagram-level-low {
+    background: var(--white);
+    box-shadow: inset 0 0 0 3px var(--accent);
+    color: var(--slide-ink);
+  }
+  .diagram-edge {
+    fill: none;
+    stroke: var(--slide-ink);
+    stroke-width: 3;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .diagram-arrow-head {
+    fill: context-stroke;
+  }
+  .diagram-edge-label {
+    fill: var(--slide-muted);
+    paint-order: stroke;
+    stroke: var(--white);
+    stroke-width: 5px;
+    stroke-linejoin: round;
+    font-family: YakuHanJP, 'Noto Sans JP', sans-serif;
+    font-size: var(--slide-text-label);
+    font-weight: 700;
+  }
+}

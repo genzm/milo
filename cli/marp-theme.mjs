@@ -10,7 +10,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const themePath = join(root, 'marp/milo.css');
 
 const EXCLUDED =
-  /(?:^|[^\w-])(impact-block|columns-block|column-block|task-marker|box-block|panel-block|grid-block|stack-block|steps-block|step-[\w-]*|slide-card|card-tone-[\w-]*|box-tone-[\w-]*|milo-canvas|canvas-[\w-]*)(?![\w-])/;
+  /(?:^|[^\w-])(impact-block|columns-block|column-block|task-marker|box-block|panel-block|grid-block|stack-block|steps-block|step-[\w-]*|slide-card|card-tone-[\w-]*|box-tone-[\w-]*|milo-canvas|canvas-[\w-]*|milo-diagram|diagram-[\w-]*)(?![\w-])/;
 
 const SLIDE_BOX = new Set([
   'section',

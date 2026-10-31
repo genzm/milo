@@ -16,7 +16,7 @@ const exec = promisify(execFile);
 test('PDF runtime shares the renderer without bundling editor, storage or Playwright', async () => {
   const { metafile } = await bundleRuntime('pdf-entry.ts');
   const inputs = Object.keys(metafile.inputs);
-  for (const module of ['render.ts', 'directives.ts', 'canvas.ts']) {
+  for (const module of ['render.ts', 'directives.ts', 'canvas.ts', 'diagram.ts']) {
     assert.ok(
       inputs.some((input) => input.endsWith(`/src/${module}`) || input === `src/${module}`),
     );
@@ -39,7 +39,7 @@ test('PDF document embeds the same sources and styles with the configured page s
     window.document.write(html);
     const sources = SourceStore.fromDOM(window.document);
     assert.deepEqual(sources.list(), result.blocks);
-    assert.equal(sources.list('slide').length, 9);
+    assert.equal(sources.list('slide').length, 12);
     const styles = [...window.document.querySelectorAll('style')].map((style) => style.textContent);
     assert.equal(styles[0], result.parts.mathCSS);
     assert.equal(styles[1], result.parts.css);

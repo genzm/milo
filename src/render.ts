@@ -1,6 +1,7 @@
 import MarkdownIt from 'markdown-it';
 import katex from 'katex';
 import { atAttributes, mountCanvas } from './canvas';
+import { mountDiagram } from './diagram';
 import {
   assetURL,
   mountImage,
@@ -328,6 +329,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
     disposals: (() => void)[] = [];
   const directives: ParsedDirective[] = [];
   const canvases: { source: string; options: string; error?: string }[] = [];
+  const diagrams: { source: string; options: string; error?: string }[] = [];
   const boxes: { source: string; options: string; error?: string }[] = [];
   const panels: PairedBlock[] = [];
   const grids: PairedBlock[] = [];
@@ -424,6 +426,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   registerPairedBlock(md, 'impact', impacts, { className: 'impact-block' });
   registerPairedBlock(md, 'footer', footers, { className: 'slide-footer-content', tag: 'footer' });
   registerPairedBlock(md, 'canvas', canvases, { className: 'milo-canvas', attributes: true });
+  registerPairedBlock(md, 'diagram', diagrams, { className: 'milo-diagram', attributes: true });
   md.block.ruler.before(
     'fence',
     'milo-directive',
@@ -656,6 +659,21 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
       try {
         if (canvas.error) throw new Error(canvas.error);
         const mounted = mountCanvas(element, canvas.source, canvas.options, renderContext);
+        layoutUpdates.push(mounted.update);
+        disposals.push(mounted.dispose);
+      } catch (e) {
+        showError(element, e);
+      }
+    }
+    for (const element of root.querySelectorAll<HTMLElement>(
+      '[data-diagram]:not([data-mounted])',
+    )) {
+      structuralBlocks = true;
+      element.dataset.mounted = 'true';
+      const diagram = diagrams[Number(element.dataset.diagram)];
+      try {
+        if (diagram.error) throw new Error(diagram.error);
+        const mounted = mountDiagram(element, diagram.source, diagram.options, renderContext);
         layoutUpdates.push(mounted.update);
         disposals.push(mounted.dispose);
       } catch (e) {
