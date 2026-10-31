@@ -331,8 +331,8 @@ test('a failed post-write verification never advances the baseline until a retry
 test('built artifact contains one kernel and all dependencies; a source edit preserves the toolbox bytes', () => {
   const html = readFileSync('dist/milo.html', 'utf8'),
     s = SourceStore.fromHTML(html);
-  assert.equal(s.list().length, 7);
-  assert.equal(s.list('slide').length, 5);
+  assert.equal(s.list().length, 11);
+  assert.equal(s.list('slide').length, 9);
   assert.equal(html.includes('MILO COMPONENTS'), false);
   assert.equal(/<script[^>]+\bsrc\s*=/i.test(html), false);
   assert.equal(/<link[^>]+rel="stylesheet"/i.test(html), false);
@@ -350,11 +350,13 @@ test('built artifact contains one kernel and all dependencies; a source edit pre
   assert.equal(html.includes('id="third-party-notices"'), false);
   assert.match(s.get('slide-01').text, /<!-- milo: layout=cover -->/);
   assert.match(s.get('slide-01').text, /# 君とボク。/);
-  assert.ok(s.get('slide-02').text.includes('@canvas'));
-  assert.ok(s.get('slide-03').text.includes('$$'));
-  assert.ok(s.get('slide-04').text.includes('./assets/flow.gif'));
-  assert.ok(s.get('slide-05').text.includes('@impact'));
-  assert.ok(s.get('slide-05').text.includes('- [ ]'));
+  assert.ok(s.get('slide-02').text.includes('@columns'));
+  assert.ok(s.get('slide-03').text.includes('@steps'));
+  assert.ok(s.get('slide-06').text.includes('@canvas'));
+  assert.ok(s.get('slide-07').text.includes('$$'));
+  assert.ok(s.get('slide-08').text.includes('./assets/flow.gif'));
+  assert.ok(s.get('slide-09').text.includes('@impact'));
+  assert.ok(s.get('slide-09').text.includes('- [ ]'));
   assert.equal(json(s.get('manifest').text).title, '小さな実験室');
   assert.equal(Object.hasOwn(json(s.get('manifest').text), 'layouts'), false);
   assert.equal(s.list('asset')[0]?.name, 'assets/flow.gif');

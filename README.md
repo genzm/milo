@@ -41,7 +41,7 @@ GIFは印刷時の静止フレームになります。PDFの基準はコンパ�
 
 先頭の frontmatter にタイトル、各スライド先頭のコメントにレイアウトを書きます。レイアウトは `cover`、`section`、`lab`、`media`、`essay` です。
 
-````markdown
+```markdown
 ---
 title: 小さな実験室
 description: 数式と図の実験
@@ -66,7 +66,7 @@ $$
 <!-- milo: layout=media -->
 
 ![図](./assets/flow.gif)
-````
+```
 
 ## 記法
 
@@ -76,8 +76,23 @@ $$
 - 見出しと段落の末尾に `@align=center` または `@align=right` を付けると、その行を揃えます。省略時は左寄せです。
 - 箇条書きの `[ ]` と `[x]` は、クリックできるチェック項目です。状態は原稿に保存されます。
 - `@columns` の中に `@column` を置くと、等幅の列になります。
-- `@box tone=accent` は、囲んだ Markdown をボックスにします。`tone` は `accent`、`default`、`muted`、`dark` です。
+- `@grid` は子要素を同じ高さの列に並べます。`columns=2` で列数を指定できます。
+- `@stack` は子要素を縦に隙間を空けて重ねます。
+- `@panel` と `@box` は角丸カードです。`tone` は `muted`（グレー）、`default`（白）、`accent`（ピンクの輪郭）、`dark` です。広い面は白とグレー、ピンクは強調に使います。
+- `@steps highlight=2` は番号付きの横並びカードです。いまのステップだけピンクの輪郭になります。
 - `@canvas` は、`-->` で区切ったまとまりを矢印でつなぎます。分岐するときは `@node` と `@edge` を使います。
+
+```markdown
+@steps highlight=2
+@step title="考え方"
+目的と制約
+トレードオフ・決め方
+@step title="3つのケース"
+アプリ / セキュリティ / Runnerログ
+@step title="まとめ"
+全体像と持ち帰ってほしいこと
+@endsteps
+```
 
 ## 見た目
 
@@ -86,6 +101,7 @@ $$
 ```css
 --slide-text-body: 30px;
 --slide-leading-body: 1.55;
+--slide-radius: 24px;
 ```
 
 `npm run build` で単一 HTML と Marp テーマを再生成します。`marp/milo.css` は生成物なので、直接編集しません。

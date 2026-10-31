@@ -126,7 +126,7 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
       },
     );
     assert.equal(boxes.querySelectorAll('.box-block').length, 2);
-    assert.ok(boxes.querySelector('.box-tone-dark .box-tone-muted'));
+    assert.ok(boxes.querySelector('.card-tone-dark .card-tone-muted'));
 
     const brokenBox = window.document.createElement('div');
     renderSlide(brokenBox as unknown as HTMLElement, '@box\n閉じていない', {

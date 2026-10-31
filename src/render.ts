@@ -49,6 +49,36 @@ interface PairedBlock {
   error?: string;
 }
 
+const CARD_TONES = ['accent', 'default', 'muted', 'dark'] as const;
+type CardTone = (typeof CARD_TONES)[number];
+
+interface StepItem {
+  attrs: Record<string, string>;
+  source: string;
+}
+
+interface StepGroup {
+  options: string;
+  steps: StepItem[];
+  error?: string;
+}
+
+function parseTone(kind: string, raw: string | undefined, fallback: CardTone) {
+  const attrs = atAttributes(raw || '');
+  const tone = (attrs.tone as CardTone) || fallback;
+  if (!CARD_TONES.includes(tone))
+    throw new Error(`${kind}のtoneは ${CARD_TONES.join(' / ')} から選んでください。`);
+  return { attrs, tone };
+}
+
+function integerOption(name: string, value: string | undefined, fallback: number, min = 1) {
+  if (value === undefined || value === '') return fallback;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < min)
+    throw new Error(`${name} は${min}以上の整数にしてください。`);
+  return n;
+}
+
 function registerPairedBlock(
   md: InstanceType<typeof MarkdownIt>,
   name: string,
@@ -95,6 +125,92 @@ function registerPairedBlock(
   const tag = config.tag ?? 'div';
   md.renderer.rules[`milo_${name}`] = (tokens, index) =>
     `<${tag} class="${config.className}" data-${name}="${tokens[index].meta!.index}"></${tag}>\n`;
+}
+
+function parseSteps(groups: StepGroup[]) {
+  return (state: any, line: number, end: number, silent: boolean) => {
+    const header = /^@steps(?:\s+([\s\S]*))?$/.exec(lineText(state, line).trim());
+    if (state.sCount[line] - state.blkIndent >= 4 || !header) return false;
+    let cursor = line + 1,
+      depth = 1,
+      stepStart = -1,
+      stepAttrs: Record<string, string> = {},
+      error = '';
+    const steps: StepItem[] = [];
+    const flush = (at: number) => {
+      if (stepStart < 0) return;
+      steps.push({
+        attrs: stepAttrs,
+        source: state.src.slice(state.bMarks[stepStart], state.bMarks[at]),
+      });
+      stepStart = -1;
+    };
+    for (const [structuralLine, text] of structuralLines(state, line + 1, end)) {
+      cursor = structuralLine;
+      if (/^@steps(?:\s|$)/.test(text)) {
+        depth++;
+        continue;
+      }
+      if (text === '@endsteps') {
+        if (--depth === 0) {
+          flush(cursor);
+          break;
+        }
+        continue;
+      }
+      if (depth !== 1) continue;
+      const step = /^@step(?:\s+([\s\S]*))?$/.exec(text);
+      if (step) {
+        flush(cursor);
+        try {
+          stepAttrs = atAttributes(step[1] || '');
+        } catch (e: any) {
+          error = e.message;
+          break;
+        }
+        stepStart = cursor + 1;
+      } else if (stepStart < 0 && text) {
+        error = 'steps の内容は @step で囲んでください。';
+        break;
+      }
+    }
+    if (!error && depth > 0) cursor = end;
+    if (silent) return true;
+    if (!error && cursor >= end) error = 'stepsを閉じる @endsteps がありません。';
+    if (!error && !steps.length) error = 'steps には1つ以上の @step が必要です。';
+    const token = state.push('milo_steps', '', 0);
+    token.meta = {
+      index:
+        groups.push({
+          options: header[1] || '',
+          steps,
+          error: error || undefined,
+        }) - 1,
+    };
+    token.map = [line, cursor < end ? cursor + 1 : end];
+    state.line = cursor < end ? cursor + 1 : end;
+    return true;
+  };
+}
+
+function renderSteps(group: StepGroup, md: InstanceType<typeof MarkdownIt>) {
+  const attrs = atAttributes(group.options);
+  const style = attrs.style || 'cards';
+  if (style !== 'cards') throw new Error('steps の style は cards です。');
+  const highlight = integerOption('highlight', attrs.highlight, 0, 0);
+  if (highlight > group.steps.length)
+    throw new Error(`highlight は 1〜${group.steps.length} にしてください。`);
+  return group.steps
+    .map((step, index) => {
+      const title = step.attrs.title?.trim();
+      if (!title) throw new Error(`@step ${index + 1} には title が必要です。`);
+      const on = highlight === index + 1;
+      const card = `<article class="step-card${on ? ' is-highlight' : ''}"><h3 class="step-heading"><span class="step-badge">${index + 1}</span><span class="step-title">${esc(title)}</span></h3><div class="step-body">${md.render(step.source.replace(/([^\n])\n(?!\n)/g, '$1  \n'))}</div></article>`;
+      const arrow =
+        index < group.steps.length - 1 ? '<span class="step-arrow" aria-hidden="true"></span>' : '';
+      return card + arrow;
+    })
+    .join('');
 }
 
 function mathBlock(state: any, line: number, end: number, silent: boolean) {
@@ -213,6 +329,10 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   const directives: ParsedDirective[] = [];
   const canvases: { source: string; options: string; error?: string }[] = [];
   const boxes: { source: string; options: string; error?: string }[] = [];
+  const panels: PairedBlock[] = [];
+  const grids: PairedBlock[] = [];
+  const stacks: PairedBlock[] = [];
+  const steps: StepGroup[] = [];
   const columns: { sources: string[]; error?: string }[] = [];
   const impacts: { source: string; error?: string }[] = [];
   const footers: { source: string; error?: string }[] = [];
@@ -220,7 +340,26 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   const display = prepareTaskItems(maskMiloComments(source), tasks);
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
   md.core.ruler.before('inline', 'milo_align', alignBlocks);
-  registerPairedBlock(md, 'box', boxes, { className: 'box-block', attributes: true, nested: true });
+  registerPairedBlock(md, 'box', boxes, {
+    className: 'box-block slide-card',
+    attributes: true,
+    nested: true,
+  });
+  registerPairedBlock(md, 'panel', panels, {
+    className: 'panel-block slide-card',
+    attributes: true,
+    nested: true,
+  });
+  registerPairedBlock(md, 'grid', grids, {
+    className: 'grid-block',
+    attributes: true,
+    nested: true,
+  });
+  registerPairedBlock(md, 'stack', stacks, {
+    className: 'stack-block',
+    attributes: true,
+    nested: true,
+  });
   md.block.ruler.before(
     'fence',
     'milo-columns',
@@ -277,6 +416,11 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   );
   md.renderer.rules.milo_columns = (tokens, index) =>
     `<div class="columns-block" data-columns="${tokens[index].meta!.index}"></div>\n`;
+  md.block.ruler.before('fence', 'milo-steps', parseSteps(steps), {
+    alt: ['paragraph', 'reference', 'blockquote', 'list'],
+  });
+  md.renderer.rules.milo_steps = (tokens, index) =>
+    `<div class="steps-block" data-steps="${tokens[index].meta!.index}"></div>\n`;
   registerPairedBlock(md, 'impact', impacts, { className: 'impact-block' });
   registerPairedBlock(md, 'footer', footers, { className: 'slide-footer-content', tag: 'footer' });
   registerPairedBlock(md, 'canvas', canvases, { className: 'milo-canvas', attributes: true });
@@ -444,6 +588,60 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
         .map((column) => `<section class="column-block">${md.render(column)}</section>`)
         .join('');
     }
+    for (const element of root.querySelectorAll<HTMLElement>('[data-grid]:not([data-mounted])')) {
+      structuralBlocks = true;
+      element.dataset.mounted = 'true';
+      const grid = grids[Number(element.dataset.grid)];
+      try {
+        if (grid.error) throw new Error(grid.error);
+        const attrs = atAttributes(grid.options || '');
+        element.innerHTML = md.render(grid.source);
+        const columns = integerOption('columns', attrs.columns, element.childElementCount || 1);
+        element.style.setProperty('--grid-columns', String(columns));
+        if (attrs.gap !== undefined)
+          element.style.gap = `${integerOption('gap', attrs.gap, 0, 0)}px`;
+      } catch (e) {
+        showError(element, e);
+      }
+    }
+    for (const element of root.querySelectorAll<HTMLElement>('[data-stack]:not([data-mounted])')) {
+      structuralBlocks = true;
+      element.dataset.mounted = 'true';
+      const stack = stacks[Number(element.dataset.stack)];
+      try {
+        if (stack.error) throw new Error(stack.error);
+        const attrs = atAttributes(stack.options || '');
+        element.innerHTML = md.render(stack.source);
+        if (attrs.gap !== undefined)
+          element.style.gap = `${integerOption('gap', attrs.gap, 0, 0)}px`;
+      } catch (e) {
+        showError(element, e);
+      }
+    }
+    for (const element of root.querySelectorAll<HTMLElement>('[data-panel]:not([data-mounted])')) {
+      structuralBlocks = true;
+      element.dataset.mounted = 'true';
+      const panel = panels[Number(element.dataset.panel)];
+      try {
+        if (panel.error) throw new Error(panel.error);
+        const { tone } = parseTone('panel', panel.options, 'muted');
+        element.className = `panel-block slide-card card-tone-${tone}`;
+        element.innerHTML = md.render(panel.source);
+      } catch (e) {
+        showError(element, e);
+      }
+    }
+    for (const element of root.querySelectorAll<HTMLElement>('[data-steps]:not([data-mounted])')) {
+      structuralBlocks = true;
+      element.dataset.mounted = 'true';
+      const group = steps[Number(element.dataset.steps)];
+      try {
+        if (group.error) throw new Error(group.error);
+        element.innerHTML = renderSteps(group, md);
+      } catch (e) {
+        showError(element, e);
+      }
+    }
     for (const element of root.querySelectorAll<HTMLElement>('[data-impact]:not([data-mounted])')) {
       structuralBlocks = true;
       element.dataset.mounted = 'true';
@@ -470,11 +668,8 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
       const box = boxes[Number(element.dataset.box)];
       try {
         if (box.error) throw new Error(box.error);
-        const attrs = atAttributes(box.options),
-          tone = attrs.tone || 'accent';
-        if (!['accent', 'default', 'muted', 'dark'].includes(tone))
-          throw new Error('boxのtoneは accent / default / muted / dark から選んでください。');
-        element.className = `box-block box-tone-${tone}`;
+        const { tone } = parseTone('box', box.options, 'default');
+        element.className = `box-block slide-card card-tone-${tone}`;
         element.innerHTML = md.render(box.source);
       } catch (e) {
         showError(element, e);

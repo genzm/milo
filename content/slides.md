@@ -33,7 +33,6 @@ description: 原稿・数式・画像・編集道具を内蔵する、自己編�
 通常のMarkdownを書けます。
 通常のMarkdownを書けます。
 
-
 @endcolumn
 @column
 
@@ -49,20 +48,117 @@ print()
 @endcolumn
 @endcolumns
 
+---
 
+<!-- milo: layout=lab -->
 
-@canvas direction=right route=curve
+# ひとつの図で話す
 
-@node markdown tone=accent
+@steps highlight=2
+@step title="書く"
+Markdownのまま
+カードと矢印に
+@step title="置く"
+同じ高さの列
+入れ子の箱
+@step title="出す"
+ひとつのHTML
+PDFも同時に
+@endsteps
 
+---
+
+<!-- milo: layout=lab -->
+
+# 3つの置き方
+
+@grid columns=3
+@panel tone=accent
+### カード
+
+番号付きの流れは
+steps に任せる
+
+@box tone=default
+中身だけ書く
+@endbox
+@endpanel
+@panel
+### 列
+
+同じ高さの比較は
+grid が揃える
+
+@box tone=default
+入れ子もできる
+@endbox
+@endpanel
+@panel
+### 線
+
+分岐や座標は
+canvas のまま
+
+@box tone=default
+SVGでつなぐ
+@endbox
+@endpanel
+@endgrid
+
+---
+
+<!-- milo: layout=lab -->
+
+# ばらばら / まとまり
+
+@grid columns=2
+@panel
+### × ばらばら
+@stack
+@box tone=default
+座標と線を毎回書く
+@endbox
+@box tone=default
+カードの高さが揃わない
+@endbox
+@box tone=dark
+図に時間がとられる
+@endbox
+@endstack
+@endpanel
+@panel tone=accent
+### ○ まとまり
+@stack
+@box tone=default
+中身だけ書けばいい
+@endbox
+@box tone=default
+miloが並べて揃える
+@endbox
+@box tone=dark
+話に集中できる
+@endbox
+@endstack
+@endpanel
+@endgrid
+
+---
+
+<!-- milo: layout=lab -->
+
+# HTML-in-Canvas
+
+@canvas direction=right route=straight
+
+@node markdown tone=muted
 ### Markdown
 
-文章、**強調**、数式 $x^2$ を、そのままHTMLとして描画します。
+文章、**強調**、数式 $x^2$ を
+そのまま描画します。
 
 -->
 
-@node layout shape=round
-
+@node layout tone=accent
 ### Canvas
 
 - flowで自動配置
@@ -72,16 +168,12 @@ print()
 -->
 
 @node slide tone=dark
-
 ### Slide
 
-Markdownの見た目を保ったまま、ひとつの図になります。
+Markdownの見た目を保ったまま、
+ひとつの図になります。
 
 @endcanvas
-
-@impact
-死ぬほど使いやすい @align=center
-@endimpact
 
 ---
 
@@ -116,23 +208,19 @@ GIFも、画像も、ひとつのHTMLの中へ。
 
 # Emphasis & Tasks
 
-@columns
-@column
-
+@grid columns=2
+@panel
 通常の **黒字強調** と ==アクセント強調== を使い分けられます。
 
 @impact
 73%
 @endimpact
-
-@endcolumn
-@column
-
+@endpanel
+@panel tone=accent
 ### 次に進めること
 
 - 通常の項目
 - [ ] 仮説を確認する
 - [x] データを集める
-
-@endcolumn
-@endcolumns
+@endpanel
+@endgrid

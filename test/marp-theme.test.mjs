@@ -34,6 +34,9 @@ test('marp theme is compiled from the current milo slide settings', async () => 
     assert.ok(defined.has(name), `Missing Marp token: ${name}`);
   }
   assert.equal((css.match(/&:has\(> footer\)/g) ?? []).length, 3);
-  assert.doesNotMatch(css, /task-marker|plot-block|impact-block|columns-block|slider-block/);
+  assert.doesNotMatch(
+    css,
+    /task-marker|plot-block|impact-block|columns-block|slider-block|steps-block|grid-block/,
+  );
   assert.doesNotMatch(css, /\.layout-|source-editor|slide-thumb|#d8d8d8/);
 });

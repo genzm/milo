@@ -44,7 +44,7 @@ test('paired blocks ignore closing markers inside long fences and report missing
     inspect: () => {},
   };
   try {
-    for (const name of ['box', 'impact', 'footer', 'canvas']) {
+    for (const name of ['box', 'panel', 'grid', 'stack', 'impact', 'footer', 'canvas']) {
       const root = window.document.createElement('div');
       const rendered = renderSlide(
         root as unknown as HTMLElement,

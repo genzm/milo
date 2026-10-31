@@ -1,15 +1,15 @@
 /* 3-C. 中央スライド内 — Markdownから描画される図・画像・ボックス */
-.box-block {
-  padding: 16px 12px 11px;
-  background: var(--accent-pale);
-  border: 1px solid var(--accent);
-  border-radius: 0;
-  margin: 20px 0;
-  overflow-x: auto;
-  cursor: default;
+.slide-card {
+  box-sizing: border-box;
+  padding: 22px 24px 20px;
+  background: var(--white);
+  border: 2px solid var(--slide-box-border);
+  border-radius: var(--slide-radius);
   color: var(--slide-ink);
   line-height: var(--slide-leading-body);
   white-space: normal;
+  overflow-x: auto;
+  cursor: default;
 
   > :first-child {
     margin-top: 0;
@@ -18,19 +18,126 @@
     margin-bottom: 0;
   }
 }
-.box-tone-default {
-  border-color: var(--slide-box-border);
+.box-block {
+  margin: var(--slide-space-block) 0;
+}
+.panel-block {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.card-tone-default {
   background: var(--white);
+  border-color: var(--slide-box-border);
 }
-.box-tone-muted {
-  border-color: var(--slide-border-muted);
-  background: var(--slide-surface-muted);
-  color: var(--slide-muted);
+.card-tone-muted {
+  background: var(--slide-card);
+  border-color: transparent;
 }
-.box-tone-dark {
+.card-tone-accent {
+  background: var(--white);
+  border-color: var(--accent);
+}
+.card-tone-dark {
+  background: var(--slide-surface-dark);
   border-color: var(--slide-surface-dark);
+  color: var(--white);
+}
+.grid-block {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns, 2), minmax(0, 1fr));
+  gap: var(--slide-space-grid);
+  align-items: stretch;
+  margin: var(--slide-space-block) 0;
+}
+.stack-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--slide-space-stack);
+  align-items: stretch;
+}
+.grid-block > :is(.box-block, .panel-block, .stack-block, .steps-block),
+.stack-block > :is(.box-block, .panel-block, .stack-block, .steps-block),
+.panel-block > :is(.box-block, .stack-block, .grid-block, .steps-block) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.steps-block {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  margin: var(--slide-space-block) 0;
+}
+.step-card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 24px 20px;
+  border: 2px solid transparent;
+  border-radius: var(--slide-radius);
+  background: var(--slide-card);
+  color: var(--slide-ink);
+}
+.step-card.is-highlight {
+  background: var(--white);
+  border-color: var(--accent);
+}
+.slide .step-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: var(--slide-ink);
+}
+.step-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   background: var(--slide-surface-dark);
   color: var(--white);
+  font-size: 18px;
+  font-weight: 800;
+  flex: none;
+}
+.step-card.is-highlight .step-badge {
+  background: var(--accent);
+}
+.step-title {
+  min-width: 0;
+}
+.slide .step-body,
+.slide .step-body :is(h1, h2, h3, h4, h5, h6, p, ul, ol) {
+  margin: 0;
+  color: var(--slide-muted);
+  font-size: 20px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+.step-arrow {
+  flex: none;
+  align-self: center;
+  width: 28px;
+  height: 2px;
+  background: #c8c8c8;
+  position: relative;
+}
+.step-arrow::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  border: 6px solid transparent;
+  border-left-color: #c8c8c8;
+  transform: translateY(-50%);
 }
 .math-prose {
   overflow-x: auto;
@@ -86,7 +193,8 @@
     position: absolute;
     box-sizing: border-box;
     padding: var(--slide-space-node-y) var(--slide-space-node-x);
-    border: 1px solid #ddcdd1;
+    border: 2px solid var(--slide-box-border);
+    border-radius: var(--slide-radius);
     background: var(--canvas-node-bg);
     color: var(--slide-ink);
     overflow: hidden;
@@ -125,7 +233,7 @@
     }
   }
   .canvas-shape-round {
-    border-radius: 1.45cqw;
+    border-radius: var(--slide-radius);
   }
   .canvas-shape-ellipse {
     border-radius: 50%;
@@ -143,13 +251,12 @@
     background: transparent;
   }
   .canvas-tone-accent {
-    --canvas-node-bg: var(--accent-pale);
+    --canvas-node-bg: var(--white);
     border-color: var(--accent);
   }
   .canvas-tone-muted {
-    --canvas-node-bg: var(--slide-surface-muted);
-    border-color: var(--slide-border-muted);
-    color: var(--slide-muted);
+    --canvas-node-bg: var(--slide-card);
+    border-color: transparent;
   }
   .canvas-tone-dark {
     --canvas-node-bg: var(--slide-surface-dark);
