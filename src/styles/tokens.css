@@ -40,31 +40,32 @@
     sans-serif;
   font-size: var(--ui-text-base);
 
-  /* Slide roles. Keep defaults here; layout and component rules only consume them.
-   cqw values retain the original container geometry during this refactor. */
+  /* Slide type scale in px so padding and container queries don't drift sizes.
+     70 title / 40 cover tagline / 32 card heading / 27 body / 24 node heading / 18 node body */
   --slide-text-title: 70px;
-  --slide-text-heading: 30px;
-  --slide-text-subheading: 21px;
+  --slide-text-heading: 32px;
+  --slide-text-subheading: 32px;
   --slide-text-label: 18px;
   --slide-text-body: 27px;
-  --slide-text-footer: clamp(9px, 0.72cqw, 12px);
-  --slide-text-impact: clamp(52px, 6.25cqw, 100px);
-  --slide-text-quote: clamp(19px, 2.36cqw, 38px);
-  --slide-text-table: clamp(15px, 1.9cqw, 30px);
-  --slide-text-cover-title: clamp(35px, 4.2cqw, 68px);
-  --slide-text-cover-subtitle: clamp(15px, 2.54cqw, 28px);
-  --slide-text-section-title: clamp(38px, 4.7cqw, 76px);
-  --slide-text-essay-title: clamp(22px, 2.82cqw, 31px);
-  --slide-text-essay-body: clamp(15px, 2.54cqw, 28px);
-  --slide-text-node-heading: clamp(12px, 1.25cqw, 20px);
-  --slide-text-node-body: clamp(9px, 0.86cqw, 14px);
-  --slide-text-image-caption: 0.82cqw;
-  --slide-text-series: 0.91cqw;
-  --slide-text-edge-label: 12px;
+  --slide-text-footer: 12px;
+  --slide-text-impact: 80px;
+  --slide-text-cover-impact: 40px;
+  --slide-text-quote: 32px;
+  --slide-text-table: 27px;
+  --slide-text-cover-title: 70px;
+  --slide-text-cover-subtitle: 27px;
+  --slide-text-section-title: 70px;
+  --slide-text-essay-title: 32px;
+  --slide-text-essay-body: 27px;
+  --slide-text-node-heading: 24px;
+  --slide-text-node-body: 18px;
+  --slide-text-image-caption: 14px;
+  --slide-text-series: 14px;
+  --slide-text-edge-label: 14px;
   --slide-leading-body: 1.75;
   --slide-leading-title: 1.2;
   --slide-leading-heading: 1.35;
-  --slide-leading-subheading: 1.6;
+  --slide-leading-subheading: 1.35;
   --slide-leading-node: 1.5;
   --slide-pad-top: 60px;
   --slide-pad-x: 82.4px;

@@ -105,7 +105,9 @@
   }
   h3 {
     font-size: var(--slide-text-subheading);
+    font-weight: 800;
     line-height: var(--slide-leading-subheading);
+    letter-spacing: -0.03em;
     margin: 1.45cqw 0 0.73cqw;
     color: var(--slide-ink);
   }

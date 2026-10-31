@@ -37,9 +37,13 @@
   blockquote {
     border-left-color: var(--white);
   }
-  p:first-of-type {
+  .impact-block {
+    font-size: var(--slide-text-cover-impact);
+    margin: 1.2% 0 2.6%;
+  }
+  .slide-content > p {
     font-size: var(--slide-text-cover-subtitle);
-    max-width: 580px;
+    max-width: 720px;
   }
   p:is(.align-center, .align-right) {
     max-width: none;
