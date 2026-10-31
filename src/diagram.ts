@@ -142,7 +142,7 @@ export function estimateCardSize(item: DiagramItem, center: boolean) {
   let units = 0;
   for (const ch of item.title) units += /[\u3000-\u9fff]/.test(ch) ? 1 : 0.55;
   return {
-    width: Math.max(center ? 260 : 168, units * font + 64),
+    width: Math.max(center ? 280 : 168, units * font + (center ? 80 : 64)),
     height: font * 1.3 + 40,
   };
 }
@@ -382,10 +382,9 @@ function layoutRadial(
   const satellites = scene.items
     .map((item, i) => ({ item, i }))
     .filter((entry) => entry.i !== centerIndex);
-  let scale = 1;
   const sizeAt = (index: number, hub: boolean) => {
     const raw = cardSizes[index] || estimateCardSize(scene.items[index], hub);
-    return { width: raw.width * scale, height: raw.height * scale };
+    return { width: raw.width, height: raw.height };
   };
   const placed: DiagramPlacedItem[] = scene.items.map((item) => ({
     id: item.id,
@@ -431,15 +430,10 @@ function layoutRadial(
     return { minR, maxR };
   };
 
-  let hub = placeHub();
-  let { minR, maxR } = metrics(hub);
-  while (minR > maxR && scale > 0.62) {
-    scale *= 0.9;
-    hub = placeHub();
-    ({ minR, maxR } = metrics(hub));
-  }
+  const hub = placeHub();
+  const { minR, maxR } = metrics(hub);
   const radius =
-    Number.isFinite(maxR) && maxR > 0 ? Math.max(minR, Math.min(maxR, minR + 36)) : minR;
+    Number.isFinite(maxR) && maxR > minR ? Math.min(maxR, Math.max(minR, minR + 36)) : minR;
   satellites.forEach((entry, orbit) => {
     const size = sizeAt(entry.i, false);
     const phi = angle(orbit, satellites.length, start, order);
@@ -555,10 +549,25 @@ function toCanvasScene(scene: DiagramScene): CanvasScene {
   };
 }
 
-function applyBox(element: HTMLElement, box: DiagramBox, width: number, height: number) {
+function applyBox(
+  element: HTMLElement,
+  box: DiagramBox,
+  width: number,
+  height: number,
+  mode: 'size' | 'center' = 'size',
+) {
+  if (mode === 'center') {
+    element.style.left = `${((box.x + box.width / 2) / width) * 100}%`;
+    element.style.top = `${((box.y + box.height / 2) / height) * 100}%`;
+    element.style.width = 'max-content';
+    element.style.height = 'auto';
+    element.style.transform = 'translate(-50%, -50%)';
+    return;
+  }
   element.style.left = `${(box.x / width) * 100}%`;
   element.style.top = `${(box.y / height) * 100}%`;
   element.style.width = `${(box.width / width) * 100}%`;
+  element.style.transform = '';
 }
 
 /** Mount @diagram as HTML nodes plus an SVG connection layer. */
@@ -661,6 +670,11 @@ export function mountDiagram(
       return width > 1 ? { width, height } : estimateLabelSize(scene.items[i]);
     });
     const measuredCards = nodes.map((node, i) => {
+      if (node.classList.contains('diagram-card')) {
+        node.style.width = 'max-content';
+        node.style.height = 'auto';
+        node.style.transform = 'none';
+      }
       const width = node.scrollWidth * ratio;
       const height = node.scrollHeight * ratio;
       return width > 1
@@ -671,8 +685,7 @@ export function mountDiagram(
     const byId = new Map(layout.items.map((item) => [item.id, item]));
     nodes.forEach((node, i) => {
       const box = byId.get(scene.items[i].id)!;
-      applyBox(node, box, layout.width, layout.height);
-      if (box.kind === 'card') node.style.height = 'auto';
+      applyBox(node, box, layout.width, layout.height, box.kind === 'card' ? 'center' : 'size');
     });
     labels.forEach((label, i) => {
       const box = byId.get(scene.items[i].id)?.label;

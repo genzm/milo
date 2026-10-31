@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
-import { layoutDiagram, parseDiagram, resolvedLinks } from '../src/diagram.ts';
+import { estimateCardSize, layoutDiagram, parseDiagram, resolvedLinks } from '../src/diagram.ts';
 import { renderSlide } from '../src/render.ts';
 import { SourceStore } from '../src/source.ts';
 
@@ -134,6 +134,24 @@ test('ring labels sit outside vertices and stay inside the frame', () => {
     assert.ok(item.label.x >= 0 && item.label.x + item.label.width <= layout.width);
     assert.ok(item.label.y >= 0 && item.label.y + item.label.height <= layout.height);
   }
+});
+
+test('radial hub stays wide enough for a long Japanese title', () => {
+  const scene = parseDiagram(
+    `@item issue title="醤油がおいしくない"
+@item material title="原料の質"
+@item fermentation title="発酵不足"
+@item oxidation title="酸化・保存"
+@link issue -- material
+@link issue -- fermentation
+@link issue -- oxidation`,
+    'layout=radial center=issue width=1000 height=590',
+  );
+  const layout = layoutDiagram(scene);
+  const hub = layout.items.find((item) => item.id === 'issue')!;
+  const needed = estimateCardSize(scene.items[0], true);
+  assert.ok(hub.width >= needed.width);
+  assert.equal(hub.width, needed.width);
 });
 
 test('radial keeps the center item inward of its satellites', () => {

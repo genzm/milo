@@ -382,6 +382,8 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
+    width: max-content;
+    min-width: max-content;
     padding: 14px 28px;
     border-radius: 999px;
     background: var(--slide-card);
@@ -391,6 +393,8 @@
     overflow: visible;
   }
   .diagram-card-title {
+    flex: none;
+    min-width: max-content;
     font-size: var(--slide-text-body);
     font-weight: 800;
     line-height: 1.25;
@@ -410,6 +414,9 @@
     font-size: inherit;
     line-height: inherit;
     color: inherit;
+  }
+  .diagram-card.is-center {
+    padding: 16px 36px;
   }
   .diagram-card.is-center,
   .diagram-card.diagram-level-high {
