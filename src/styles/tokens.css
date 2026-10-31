@@ -42,7 +42,7 @@
 
   /* Slide roles. Keep defaults here; layout and component rules only consume them.
    cqw values retain the original container geometry during this refactor. */
-  --slide-text-title: 50px;
+  --slide-text-title: 70px;
   --slide-text-heading: 30px;
   --slide-text-subheading: 21px;
   --slide-text-label: 18px;
