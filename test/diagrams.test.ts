@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Window } from 'happy-dom';
 import { renderSlide } from '../src/render.ts';
 import { SourceStore } from '../src/source.ts';
@@ -24,6 +25,13 @@ function render(source: string) {
     },
   };
 }
+
+test('dark cards keep markdown text on the card color instead of .slide p ink', () => {
+  const slides = readFileSync(new URL('../src/styles/slides.css', import.meta.url), 'utf8');
+  const components = readFileSync(new URL('../src/styles/components.css', import.meta.url), 'utf8');
+  assert.match(components, /\.card-tone-dark \{[^}]*color: var\(--white\)/s);
+  assert.match(slides, /\.slide-card :is\([^)]*\bp\b[^)]*\) \{\s*color: inherit;/);
+});
 
 test('rounded cards use white, gray and pink outline instead of a pale pink fill', () => {
   const { root, close } = render(

@@ -130,6 +130,19 @@
     line-height: var(--slide-leading-body);
     color: var(--slide-ink);
   }
+  /* Cards own their text color. .slide p/h* would otherwise paint ink on dark cards. */
+  .slide-card :is(h1, h2, h3, h4, h5, h6, p, ul, ol, li, blockquote) {
+    color: inherit;
+  }
+  .card-tone-dark :is(em, del) {
+    color: inherit;
+  }
+  .card-tone-dark :is(ul, ol) li::marker {
+    color: currentColor;
+  }
+  .card-tone-dark :is(code, pre) {
+    color: var(--slide-ink);
+  }
   p {
     margin: var(--slide-space-paragraph) 0;
     word-break: normal;

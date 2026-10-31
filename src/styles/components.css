@@ -30,14 +30,17 @@
 .card-tone-default {
   background: var(--white);
   border-color: var(--slide-box-border);
+  color: var(--slide-ink);
 }
 .card-tone-muted {
   background: var(--slide-card);
   border-color: transparent;
+  color: var(--slide-ink);
 }
 .card-tone-accent {
   background: var(--white);
   border-color: var(--accent);
+  color: var(--slide-ink);
 }
 .card-tone-dark {
   background: var(--slide-surface-dark);
