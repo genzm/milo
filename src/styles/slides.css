@@ -212,7 +212,7 @@
   }
   ul,
   ol {
-    padding-left: 22px;
+    padding-left: 1em;
 
     li::marker {
       color: var(--ink);
@@ -238,27 +238,28 @@
     list-style: none;
   }
   .task-marker {
+    appearance: none;
     display: inline-grid;
     place-items: center;
-    width: 1em;
-    height: 1em;
-    margin: 0 0.48em 0 -1.48em;
+    width: 0.7em;
+    height: 0.7em;
+    margin: 0.08em 0.12em 0 -0.82em;
     padding: 0;
-    vertical-align: -0.1em;
+    vertical-align: 0.06em;
     color: inherit;
     background: transparent;
-    border: 0.1em solid currentColor;
-    border-radius: 0.18em;
+    border: 0.08em solid currentColor;
+    border-radius: 0.14em;
     cursor: pointer;
 
     &::after {
       content: '';
-      width: 0.48em;
-      height: 0.26em;
-      border-bottom: 0.12em solid var(--white);
-      border-left: 0.12em solid var(--white);
+      width: 0.18em;
+      height: 0.32em;
+      border-right: 0.085em solid var(--white);
+      border-bottom: 0.085em solid var(--white);
       opacity: 0;
-      transform: translateY(-0.05em) rotate(-45deg);
+      transform: translateY(-0.05em) rotate(45deg);
     }
     &[aria-checked='true'] {
       color: var(--accent);

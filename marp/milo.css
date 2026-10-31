@@ -4847,7 +4847,7 @@ section {
   }
   ul,
   ol {
-    padding-left: 22px;
+    padding-left: 1em;
     li::marker {
       color: var(--ink);
       font-family: var(--mono);
