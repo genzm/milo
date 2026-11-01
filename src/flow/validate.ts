@@ -1,6 +1,8 @@
+import { estimateEdgeLabel } from './measure.ts';
 import { edgeHitsNode } from './route.ts';
 import {
   diagnostic,
+  edgeKey,
   type FlowDiagnostic,
   type FlowEdgePath,
   type FlowFrame,
@@ -76,14 +78,22 @@ export function validateFlow(
       }
     }
   }
-  const labels = paths
-    .filter((path) =>
-      graph.edges.some((edge) => edge.from === path.from && edge.to === path.to && edge.label),
-    )
-    .map((path) => ({
-      id: `${path.from}->${path.to}`,
-      box: { x: path.label.x - 24, y: path.label.y - 10, width: 48, height: 18 },
-    }));
+  const labels = paths.flatMap((path) => {
+    const edge = graph.edges[path.index] || graph.edges.find((item) => item.index === path.index);
+    if (!edge?.label) return [];
+    const size = estimateEdgeLabel(edge.label);
+    return [
+      {
+        id: edgeKey(path.from, path.to, path.index),
+        box: {
+          x: path.label.x - size.width / 2,
+          y: path.label.y - size.height + 4,
+          width: size.width,
+          height: size.height,
+        },
+      },
+    ];
+  });
   for (const label of labels) {
     for (const node of graph.nodes) {
       const box = frames.get(node.id);

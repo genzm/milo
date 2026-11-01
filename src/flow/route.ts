@@ -312,7 +312,11 @@ function pickRoute(
     return pathOf(straight, route === 'elbow' ? 'straight' : route, obstacles);
   }
   if (feedback)
-    return pathOf(around(start, end, bounds, side), route === 'curve' ? 'curve' : 'elbow', obstacles);
+    return pathOf(
+      around(start, end, bounds, side),
+      route === 'curve' ? 'curve' : 'elbow',
+      obstacles,
+    );
   const candidates = [
     elbow(start, end, true),
     elbow(start, end, false),
@@ -342,10 +346,11 @@ export function routeEdges(graph: FlowGraph, frames: Map<string, FlowFrame>): Fl
     totals.set(`${edge.from}:${sides.out}`, (totals.get(`${edge.from}:${sides.out}`) || 0) + 1);
     totals.set(`${edge.to}:${sides.inn}`, (totals.get(`${edge.to}:${sides.inn}`) || 0) + 1);
   }
-  return graph.edges.flatMap((edge) => {
+  return graph.edges.flatMap((edge, index) => {
     const from = frames.get(edge.from);
     const to = frames.get(edge.to);
     if (!from || !to) return [];
+    const edgeIndex = edge.index ?? index;
     const sides = sidesFor(graph, Boolean(edge.feedback));
     const outTotal = totals.get(`${edge.from}:${sides.out}`) || 1;
     const inTotal = totals.get(`${edge.to}:${sides.inn}`) || 1;
@@ -365,7 +370,7 @@ export function routeEdges(graph: FlowGraph, frames: Map<string, FlowFrame>): Fl
       bounds,
       sides.out,
     );
-    return [{ from: edge.from, to: edge.to, ...geometry }];
+    return [{ index: edgeIndex, from: edge.from, to: edge.to, ...geometry }];
   });
 }
 

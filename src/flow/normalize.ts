@@ -21,7 +21,8 @@ export function fromCanvasScene(scene: FlowSceneInput): FlowGraph {
       dy: node.dy,
       pinned: node.pinned,
     })),
-    edges: scene.edges.map((edge) => ({
+    edges: scene.edges.map((edge, index) => ({
+      index,
       from: edge.from,
       to: edge.to,
       label: edge.label,

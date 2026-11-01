@@ -17,6 +17,7 @@ export interface FlowNode {
 }
 
 export interface FlowEdge {
+  index: number;
   from: string;
   to: string;
   label: string;
@@ -82,6 +83,7 @@ export interface FlowFrame {
 }
 
 export interface FlowEdgePath {
+  index: number;
   from: string;
   to: string;
   path: string;
@@ -130,6 +132,7 @@ export const FLOW = {
   PADDING: 34,
   TITLE_PX: 24,
   BODY_PX: 18,
+  LABEL_PX: 14,
   MIN_HEIGHT: 160,
   HEIGHT_PAD: 68,
   FEEDBACK_PAD: 56,
@@ -145,8 +148,8 @@ export const FLOW_DIAGNOSTIC_MESSAGE: Record<FlowDiagnosticCode, string> = {
   INSUFFICIENT_SPACE: '配置できる余白が足りません',
 };
 
-export function edgeKey(from: string, to: string) {
-  return `${from}->${to}`;
+export function edgeKey(from: string, to: string, index?: number) {
+  return index === undefined ? `${from}->${to}` : `${from}->${to}#${index}`;
 }
 
 export function diagnostic(

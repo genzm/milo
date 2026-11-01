@@ -99,6 +99,13 @@ function textUnits(text: string) {
   return [...text].reduce((sum, ch) => sum + (/[\u3000-\u9fff]/.test(ch) ? 1 : 0.55), 0);
 }
 
+export function estimateEdgeLabel(text: string) {
+  const value = text.trim();
+  if (!value) return { width: 0, height: 0 };
+  const width = Math.max(20, Math.round(textUnits(value) * FLOW.LABEL_PX + 8));
+  return { width, height: Math.round(FLOW.LABEL_PX * 1.3) };
+}
+
 export function estimatePreferredWidth(markdown: string) {
   const lines = markdown
     .replace(/```[\s\S]*?```/g, 'コード')

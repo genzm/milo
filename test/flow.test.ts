@@ -4,8 +4,10 @@ import { Window } from 'happy-dom';
 import { canvasDiagnostics, canvasHeight, layoutCanvas, parseCanvas } from '../src/canvas.ts';
 import { parseDiagram } from '../src/diagram.ts';
 import { layoutFlowFromCanvas } from '../src/flow/layout.ts';
-import { estimateHeightAtWidth } from '../src/flow/measure.ts';
+import { estimateEdgeLabel, estimateHeightAtWidth } from '../src/flow/measure.ts';
+import { fromCanvasScene } from '../src/flow/normalize.ts';
 import { FLOW } from '../src/flow/types.ts';
+import { validateFlow } from '../src/flow/validate.ts';
 import { renderSlide } from '../src/render.ts';
 import { SourceStore } from '../src/source.ts';
 
@@ -295,6 +297,55 @@ test('feedback edges travel around the figure instead of through nodes', () => {
   );
   assert.ok(Math.max(...ys) > mid.y + mid.height + 24);
   assert.ok(back.label.y > mid.y + mid.height);
+});
+
+test('edge labels collide using their measured text size', () => {
+  const long = estimateEdgeLabel('フィードバック');
+  const short = estimateEdgeLabel('戻');
+  assert.ok(long.width > 48);
+  assert.ok(long.width > short.width);
+  const scene = parseCanvas(
+    `@node a\n### A\n@node b\n### B\n@edge a --> b label="フィードバック"\n@edge a --> b label="フィードバック"`,
+    'layout=flow',
+  );
+  const graph = fromCanvasScene(scene);
+  const frames = layoutFlowFromCanvas(scene).nodeFrames;
+  const diagnostics = validateFlow(
+    graph,
+    frames,
+    [
+      { index: 0, from: 'a', to: 'b', path: 'M 0 0 L 10 0', label: { x: 200, y: 80 } },
+      { index: 1, from: 'a', to: 'b', path: 'M 0 10 L 10 10', label: { x: 260, y: 80 } },
+    ],
+    [],
+  );
+  assert.ok(diagnostics.some((item) => item.code === 'EDGE_LABEL_COLLISION'));
+});
+
+test('parallel edges between the same nodes keep distinct paths', () => {
+  const scene = parseCanvas(
+    `@node a\n### 入力\n@node b\n### 実行\n@edge a --> b label="通常"\n@edge a --> b label="例外"`,
+    'layout=flow direction=right',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  assert.equal(layout.edgePaths.length, 2);
+  assert.equal(layout.edgePaths[0].index, 0);
+  assert.equal(layout.edgePaths[1].index, 1);
+  assert.notEqual(layout.edgePaths[0].path, layout.edgePaths[1].path);
+  const { root, close } = render(`@canvas layout=flow
+@node a
+### 入力
+@node b
+### 実行
+@edge a --> b label="通常"
+@edge a --> b label="例外"
+@endcanvas`);
+  try {
+    assert.equal(root.querySelectorAll('.canvas-edge').length, 2);
+    assert.equal(root.querySelectorAll('.canvas-edge-label').length, 2);
+  } finally {
+    close();
+  }
 });
 
 test('free canvas placement is unchanged by the flow engine', () => {
