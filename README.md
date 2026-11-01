@@ -80,8 +80,8 @@ $$
 - `@stack` は子要素を縦に隙間を空けて重ねます。
 - `@panel` と `@box` は角丸カードです。`tone` は `muted`（グレー）、`default`（白）、`accent`（ピンクの輪郭）、`dark` です。広い面は白とグレー、ピンクは強調に使います。
 - `@steps highlight=2` は番号付きの横並びカードです。いまのステップだけピンクの輪郭になります。
-- `@canvas` は、`-->` で区切ったまとまりを矢印でつなぎます。分岐するときは `@node` と `@edge` を使います。
-- `@diagram` は要素と関係を宣言し、配置だけ切り替えます。`layout=ring` は項目数で三角形や四角形になり、`connect=cycle` で頂点を線で結びます。`@link a -- b` は関係、`a -> b` は方向、`a <-> b` は双方向です。`level=high|medium|low` は評価で、色はテーマが決めます。`note=outside` は頂点を動かさず、枠なしの説明を外側に置き、細い矢印でつなぎます。
+- `@canvas` は、`-->` で区切ったまとまりを矢印でつなぎます。分岐するときは `@node` と `@edge` を使います。`layout=flow` は関係から配置し、`layout=free` は座標指定のままです。`direction` は `right` / `left` / `down` / `up` です。`height` を省略するか `height=auto` にすると内容に合わせて伸び、`height=480` のように数値を書くとその高さを維持してはみ出しを警告します。
+- `@diagram` は要素と関係を宣言し、配置だけ切り替えます。`layout=flow` も同じ高さの指定を使います。`layout=ring` は項目数で三角形や四角形になり、`connect=cycle` で頂点を線で結びます。`@link a -- b` は関係、`a -> b` は方向、`a <-> b` は双方向です。`level=high|medium|low` は評価で、色はテーマが決めます。`note=outside` は頂点を動かさず、枠なしの説明を外側に置き、細い矢印でつなぎます。
 
 ```markdown
 @diagram layout=ring connect=cycle
@@ -101,6 +101,33 @@ $$
 独自の洞察がある
 @enddiagram
 ```
+
+```markdown
+@diagram layout=flow direction=right
+@item in title="入力"
+@item analyze title="分析"
+@item judge title="判断"
+@item run title="実行"
+@link in -> analyze
+@link analyze -> judge
+@link judge -> run
+@enddiagram
+```
+
+```markdown
+@diagram layout=flow direction=right
+@item start title="入力"
+@item a title="経路A"
+@item b title="経路B"
+@item join title="統合"
+@link start -> a
+@link start -> b
+@link a -> join
+@link b -> join
+@enddiagram
+```
+
+横に収まらないときは `direction=down` を明示します。循環は戻り線になり、ノードを不規則に並べ直しません。
 
 `layout=radial` に `side` と `distance` を付けると、中心からの方向と距離を宣言できます。`layout=field` は `-1` から `1` の意味座標で分布図を描きます。`@zone` は領域、`cluster=` は所属です。
 
