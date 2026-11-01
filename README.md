@@ -164,3 +164,5 @@ $$
 `npm run build` で単一 HTML と Marp テーマを再生成します。`marp/milo.css` は生成物なので、直接編集しません。
 
 ビルドは `cli/build.mjs` でまとめて実行し、CSSとフォント定義を両方の出力で共有します。フォント処理は `cli/fonts.mjs` にあります。
+
+記法の一覧、編集画面、単一HTMLの構造、開発時に直す場所は [docs](docs/README.md) にあります。
