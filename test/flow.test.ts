@@ -348,6 +348,48 @@ test('parallel edges between the same nodes keep distinct paths', () => {
   }
 });
 
+test('three-rank branch-merge and a long return stay layered', () => {
+  const scene = parseCanvas(
+    `@node in\n### 入力
+@node a1\n### 経路A
+@node a2\n### 経路B
+@node mid\n### 一次統合
+@node b1\n### 詳細A
+@node b2\n### 詳細B
+@node out\n### 最終統合
+@edge in --> a1
+@edge in --> a2
+@edge a1 --> mid
+@edge a2 --> mid
+@edge mid --> b1
+@edge mid --> b2
+@edge b1 --> out
+@edge b2 --> out
+@edge out --> in label="計画を見直して入力条件を更新する"`,
+    'layout=flow direction=right route=curve width=1280',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  const frame = (id: string) => layout.nodeFrames.get(id)!;
+  assert.ok(frame('in').x < frame('a1').x);
+  assert.ok(Math.abs(frame('a1').x - frame('a2').x) < 1);
+  assert.ok(frame('a1').x < frame('mid').x);
+  assert.ok(Math.abs(frame('b1').x - frame('b2').x) < 1);
+  assert.ok(frame('mid').x < frame('b1').x);
+  assert.ok(frame('b1').x < frame('out').x);
+  const back = layout.edgePaths.find((path) => path.from === 'out' && path.to === 'in')!;
+  assert.ok(back.label.y > frame('mid').y + frame('mid').height);
+  assert.match(layout.edgePaths[0].path, / C | L /);
+  assert.equal(
+    layout.diagnostics.some(
+      (item) =>
+        item.code === 'NODE_OVERLAP' ||
+        item.code === 'EDGE_COLLISION' ||
+        item.code === 'FRAME_OVERFLOW',
+    ),
+    false,
+  );
+});
+
 test('free canvas placement is unchanged by the flow engine', () => {
   const free = parseCanvas(
     '@node a frame=10,20,210,100\nA\n@node b x=300 y=40 pinned\nB',

@@ -37,6 +37,31 @@ title: Flow v2
 
 <!-- milo: layout=lab -->
 
+# 多段の分岐合流
+
+@diagram layout=flow direction=right route=curve
+@item in title="入力"
+@item a1 title="経路A"
+@item a2 title="経路B"
+@item mid title="一次統合"
+@item b1 title="詳細A"
+@item b2 title="詳細B"
+@item out title="最終統合"
+@link in -> a1
+@link in -> a2
+@link a1 -> mid
+@link a2 -> mid
+@link mid -> b1
+@link mid -> b2
+@link b1 -> out
+@link b2 -> out
+@link out -> in label="計画を見直して入力条件を更新する"
+@enddiagram
+
+---
+
+<!-- milo: layout=lab -->
+
 # 固定高さ
 
 @canvas layout=flow direction=right height=80

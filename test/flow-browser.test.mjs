@@ -79,11 +79,27 @@ test('flow v2 stays readable and stable in Chromium', { timeout: 60_000 }, async
     assert.equal(node.inlineFont, '');
     assert.ok(Number.parseFloat(node.fontSize) >= 18);
   }
+  assert.ok(serial.paths.every((path) => path.includes(' C ')));
+  const flow = await page.evaluate(() => {
+    const slide = document.querySelector('.slide');
+    const diagram = document.querySelector('.diagram-layout-flow');
+    if (!slide || !diagram) return { slide: 0, diagram: 0 };
+    return {
+      slide: slide.getBoundingClientRect().width,
+      diagram: diagram.getBoundingClientRect().width,
+    };
+  });
+  assert.ok(flow.diagram >= 1100, `flow diagram width ${flow.diagram}`);
+  assert.ok(flow.diagram / flow.slide >= 0.7);
   const branch = measured[1];
   assert.equal(branch.nodes.length, 4);
   assert.equal(branch.nodeOverlap, false);
   assert.ok(branch.paths.every((path) => path.startsWith('M ')));
-  const fixed = measured[2];
+  const deep = measured[2];
+  assert.equal(deep.nodes.length, 7);
+  assert.equal(deep.nodeOverlap, false);
+  assert.equal(deep.overflow.includes('NODE_OVERLAP') || deep.overflow.includes('EDGE_COLLISION'), false);
+  const fixed = measured[3];
   assert.ok(fixed.overflow);
   assert.match(fixed.hint, /収まりません|切れています|余白が足りません/);
 });
