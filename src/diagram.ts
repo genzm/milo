@@ -12,7 +12,11 @@ import { parseSemanticSpan, parseSemanticValue } from './diagram/coords.ts';
 import { perimeterLink } from './diagram/geometry.ts';
 import { estimateFieldLabel } from './diagram/labels.ts';
 import { layoutField } from './diagram/layout-field.ts';
-import { layoutRadialSpatial, usesSpatialRadial } from './diagram/layout-radial.ts';
+import {
+  layoutRadialSpatial,
+  usesSpatialRadial,
+  type RadialOverflowReason,
+} from './diagram/layout-radial.ts';
 import { regionRect, spatialSignature } from './diagram/render-spatial.ts';
 
 export type DiagramLayoutKind = 'ring' | 'flow' | 'radial' | 'field';
@@ -167,6 +171,7 @@ export interface DiagramLayout {
   links: DiagramPlacedLink[];
   noteLinks: DiagramNoteLink[];
   overflow: boolean;
+  overflowReason?: RadialOverflowReason;
   fitScale?: number;
   regions: DiagramRegion[];
   guides: DiagramGuideMark[];
@@ -1113,6 +1118,7 @@ export function layoutDiagram(
       links,
       noteLinks: [],
       overflow,
+      overflowReason: radial?.overflowReason,
       fitScale: radial?.fitScale,
       ...emptySpatial(),
     };
@@ -1463,6 +1469,14 @@ export function mountDiagram(
     svg.style.transform = layerScale;
     content.style.transformOrigin = '50% 50%';
     svg.style.transformOrigin = '50% 50%';
+    overflowHint.textContent =
+      layout.overflowReason === 'read'
+        ? '文字が小さくて読めません'
+        : layout.overflowReason === 'overlap'
+          ? '同じ方向のカードが重なっています'
+          : scene.options.layout === 'ring'
+            ? '注釈が領域に収まりません'
+            : '図が領域に収まりません';
     overflowHint.hidden = !layout.overflow;
     element.classList.toggle('is-overflow', layout.overflow);
     if (layout.overflow) element.setAttribute('data-diagram-overflow', 'true');

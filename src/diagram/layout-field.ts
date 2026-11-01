@@ -1,4 +1,10 @@
-import { clusterHaloPath, leaderPath, overlaps, perimeterLink } from './geometry.ts';
+import {
+  clusterHaloContains,
+  clusterHaloPath,
+  leaderPath,
+  overlaps,
+  perimeterLink,
+} from './geometry.ts';
 import {
   estimateFieldLabel,
   estimateZoneLabel,
@@ -177,17 +183,18 @@ export function layoutField(
     const path = leaderPath(item, item.label, item.kind !== 'card');
     return path ? [{ itemId: item.id, path, kind: 'leader' as const }] : [];
   });
+  const clusterHalos =
+    clusterRegion === 'halo'
+      ? layoutClusterHalos(placed, scene.clusters)
+      : { regions: [] as FieldRegion[], overflow: false };
 
   return {
     items: placed,
     links,
     noteLinks,
-    overflow,
+    overflow: overflow || clusterHalos.overflow,
     frame,
-    regions: [
-      ...zones,
-      ...(clusterRegion === 'halo' ? layoutClusterHalos(placed, scene.clusters) : []),
-    ],
+    regions: [...zones, ...clusterHalos.regions],
     guides,
     legend: legendFor(scene),
   };
@@ -217,26 +224,40 @@ export function layoutClusterHalos(
     height: number;
   }[],
   clusters: FieldCluster[],
-): FieldRegion[] {
+): { regions: FieldRegion[]; overflow: boolean } {
   const titles = new Map(clusters.map((cluster) => [cluster.id, cluster]));
   const groups = new Map<string, { x: number; y: number }[]>();
-  for (const item of items) {
+  const membership = items.map((item) => ({
+    cluster: item.cluster,
+    point: { x: item.x + item.width / 2, y: item.y + item.height / 2 },
+  }));
+  for (const item of membership) {
     if (!item.cluster) continue;
     const points = groups.get(item.cluster) || [];
-    points.push({ x: item.x + item.width / 2, y: item.y + item.height / 2 });
+    points.push(item.point);
     groups.set(item.cluster, points);
   }
-  return [...groups.entries()].map(([id, points]) => {
+  const regions: FieldRegion[] = [];
+  let overflow = false;
+  for (const [id, points] of groups) {
+    const swallowed = membership.some(
+      (item) => item.cluster && item.cluster !== id && clusterHaloContains(item.point, points),
+    );
+    if (swallowed) {
+      overflow = true;
+      continue;
+    }
     const blob = clusterHaloPath(points);
-    return {
+    regions.push({
       id,
-      kind: 'cluster' as const,
+      kind: 'cluster',
       label: titles.get(id)?.title || id,
       tone: titles.get(id)?.tone || 'muted',
       box: blob.box,
       path: blob.path,
-    };
-  });
+    });
+  }
+  return { regions, overflow };
 }
 
 export function layoutAxes(

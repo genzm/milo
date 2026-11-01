@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
 import { DIAGRAM_FRAME, layoutDiagram, parseDiagram, usesSpatialRadial } from '../src/diagram.ts';
-import { leaderPath, overlaps } from '../src/diagram/geometry.ts';
+import { clusterHaloContains, leaderPath, overlaps } from '../src/diagram/geometry.ts';
 import { textBox } from '../src/diagram/labels.ts';
-import { semanticToDisplay, spatialFrame } from '../src/diagram/spatial.ts';
+import { semanticToDisplay, spatialFrame, unreadablySmall } from '../src/diagram/spatial.ts';
 import { renderSlide } from '../src/render.ts';
 import { SourceStore } from '../src/source.ts';
 
@@ -108,6 +108,44 @@ test('slide 14 keeps a shared near < mid < far scale across axes', () => {
   assert.ok(timeBox.x + timeBox.width <= hubBox.x + 1);
   assert.ok((layout.fitScale ?? 1) <= 1);
   assert.ok((layout.fitScale ?? 1) > 0.5);
+});
+
+test('same-side radial uses card size and warns when cards cannot fan out', () => {
+  const layout = layoutDiagram(
+    parseDiagram(
+      `@item problem title="中心"
+@item a title="非常に長い原因カードA" side=top distance=near
+@item b title="非常に長い原因カードB" side=top distance=near
+@item c title="非常に長い原因カードC" side=top distance=near
+@item d title="非常に長い原因カードD" side=top distance=near`,
+      'layout=radial center=problem',
+    ),
+  );
+  const hub = centerOf(layout.items.find((item) => item.id === 'problem')!);
+  const cards = ['a', 'b', 'c', 'd'].map((id) => layout.items.find((item) => item.id === id)!);
+  for (const card of cards) {
+    assert.ok(centerOf(card).y < hub.y, `${card.id} left the top side`);
+  }
+  const xs = cards.map((card) => centerOf(card).x);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 20);
+  assert.equal(layout.overflow, true);
+  assert.equal(layout.overflowReason, 'overlap');
+  const { root, close } = render(`@diagram layout=radial center=problem
+@item problem title="中心"
+@item a title="非常に長い原因カードA" side=top distance=near
+@item b title="非常に長い原因カードB" side=top distance=near
+@item c title="非常に長い原因カードC" side=top distance=near
+@item d title="非常に長い原因カードD" side=top distance=near
+@enddiagram`);
+  try {
+    assert.equal(
+      root.querySelector('.milo-diagram')?.getAttribute('data-diagram-overflow'),
+      'true',
+    );
+    assert.match(root.querySelector('.diagram-overflow-hint')?.textContent || '', /重なって/);
+  } finally {
+    close();
+  }
 });
 
 test('same-side radial items stay on that side and spread apart', () => {
@@ -295,6 +333,73 @@ test('each diagram layout can set its own display frame', () => {
     const diagram = root.querySelector('.milo-diagram') as unknown as HTMLElement;
     assert.equal(diagram.style.getPropertyValue('--diagram-display-width'), '1400px');
     assert.equal(diagram.style.getPropertyValue('--diagram-display-height'), '700px');
+  } finally {
+    close();
+  }
+});
+
+test('cluster halo drops a hull that swallows another group point', () => {
+  assert.equal(
+    clusterHaloContains({ x: 0, y: 0 }, [
+      { x: -80, y: 0 },
+      { x: 80, y: 0 },
+    ]),
+    true,
+  );
+  assert.equal(
+    clusterHaloContains({ x: 0, y: 80 }, [
+      { x: -80, y: 0 },
+      { x: 80, y: 0 },
+    ]),
+    false,
+  );
+  const layout = layoutDiagram(
+    parseDiagram(
+      `@cluster business title="事業"
+@cluster product title="プロダクト"
+@item a title="コスト" x=-0.8 y=0.7 cluster=business
+@item b title="時間" x=0.8 y=0.7 cluster=business
+@item c title="品質" x=0 y=0.7 cluster=product`,
+      'layout=field cluster-region=halo',
+    ),
+  );
+  const clusters = layout.regions.filter((region) => region.kind === 'cluster');
+  assert.equal(
+    clusters.some((region) => region.id === 'business'),
+    false,
+  );
+  assert.equal(
+    clusters.some((region) => region.id === 'product'),
+    true,
+  );
+  assert.equal(layout.overflow, true);
+});
+
+test('shrunk radial warns when titles become unreadable', () => {
+  assert.equal(unreadablySmall(0.6), true);
+  assert.equal(unreadablySmall(0.7), false);
+  const layout = layoutDiagram(
+    parseDiagram(
+      `@item problem title="顧客の課題"
+@item a title="とても長いカードのタイトルです" side=top distance=far
+@item b title="とても長いカードのタイトルです" side=right distance=far
+@item c title="とても長いカードのタイトルです" side=bottom distance=far
+@item d title="とても長いカードのタイトルです" side=left distance=far`,
+      'layout=radial center=problem width=360 height=200',
+    ),
+  );
+  assert.ok((layout.fitScale ?? 1) * 27 < 18);
+  assert.equal(layout.overflow, true);
+  assert.equal(layout.overflowReason, 'read');
+  const { root, close } = render(`@diagram layout=radial center=problem width=360 height=200
+@item problem title="顧客の課題"
+@item a title="とても長いカードのタイトルです" side=top distance=far
+@item b title="とても長いカードのタイトルです" side=right distance=far
+@item c title="とても長いカードのタイトルです" side=bottom distance=far
+@item d title="とても長いカードのタイトルです" side=left distance=far
+@enddiagram`);
+  try {
+    assert.match(root.querySelector('.diagram-overflow-hint')?.textContent || '', /読めません/);
   } finally {
     close();
   }

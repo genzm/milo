@@ -29,6 +29,8 @@ export interface SemanticPoint {
 
 export const SPATIAL_PAD = 56;
 export const DOT = 12;
+export const CARD_TITLE_PX = 27;
+export const MIN_READABLE_PX = 18;
 export const DISTANCE_RANK: Record<SpatialDistance, number> = {
   near: 0.5,
   mid: 0.72,
@@ -111,6 +113,10 @@ export function rotate(point: Vec, radians: number): Vec {
 export function normalize(x: number, y: number): Vec {
   const dist = Math.hypot(x, y) || 1;
   return { x: x / dist, y: y / dist };
+}
+
+export function unreadablySmall(fitScale: number, font = CARD_TITLE_PX, min = MIN_READABLE_PX) {
+  return fitScale * font < min;
 }
 
 export function frameFitScale(boxes: Box[], frame: SpatialFrame, pad = 6) {

@@ -170,6 +170,40 @@ function roundedOffset(hull: Vec[], radius: number): string {
     .join('')} Z`;
 }
 
+function distToSeg(point: Vec, a: Vec, b: Vec) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 < 1e-8) return Math.hypot(point.x - a.x, point.y - a.y);
+  const t = Math.min(1, Math.max(0, ((point.x - a.x) * dx + (point.y - a.y) * dy) / len2));
+  return Math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy));
+}
+
+function pointInConvex(point: Vec, hull: Vec[]) {
+  if (hull.length < 3) return false;
+  let sign = 0;
+  for (let i = 0; i < hull.length; i += 1) {
+    const a = hull[i];
+    const b = hull[(i + 1) % hull.length];
+    const cross = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x);
+    if (Math.abs(cross) < 1e-6) continue;
+    const next = cross > 0 ? 1 : -1;
+    if (sign && next !== sign) return false;
+    sign = next;
+  }
+  return true;
+}
+
+export function clusterHaloContains(point: Vec, centers: Vec[], pad = CLUSTER_PAD) {
+  const points = uniquePoints(centers);
+  if (!points.length) return false;
+  if (points.length === 1) return Math.hypot(point.x - points[0].x, point.y - points[0].y) < pad;
+  if (points.length === 2) return distToSeg(point, points[0], points[1]) < pad;
+  const hull = convexHull(points);
+  if (pointInConvex(point, hull)) return true;
+  return hull.some((a, i) => distToSeg(point, a, hull[(i + 1) % hull.length]) < pad);
+}
+
 export function clusterHaloPath(centers: Vec[], pad = CLUSTER_PAD): { path: string; box: Box } {
   const points = uniquePoints(centers);
   if (!points.length) return { path: '', box: { x: 0, y: 0, width: 1, height: 1 } };
