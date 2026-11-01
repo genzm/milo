@@ -365,19 +365,25 @@
     border: 2px solid var(--accent);
     box-shadow: 0 0 0 3px var(--white);
   }
-  .diagram-dot.diagram-level-medium,
-  .diagram-dot.is-cluster-muted {
+  .diagram-dot.diagram-level-medium {
     background: var(--slide-card);
     border-color: var(--slide-muted);
   }
-  .diagram-dot.diagram-level-low,
-  .diagram-dot.is-cluster-ink {
+  .diagram-dot.diagram-level-low {
     background: var(--white);
     border-color: var(--slide-ink);
   }
+  .diagram-dot.is-cluster-muted {
+    background: var(--slide-muted);
+    border-color: var(--slide-muted);
+  }
+  .diagram-dot.is-cluster-ink {
+    background: var(--slide-ink);
+    border-color: var(--slide-ink);
+  }
   .diagram-dot.is-cluster-soft {
-    background: var(--white);
-    border-color: color-mix(in srgb, var(--slide-muted) 70%, var(--white));
+    background: color-mix(in srgb, var(--slide-muted) 55%, var(--white));
+    border-color: color-mix(in srgb, var(--slide-muted) 55%, var(--white));
   }
   .diagram-layout-field .diagram-label-title {
     font-size: var(--slide-text-label);

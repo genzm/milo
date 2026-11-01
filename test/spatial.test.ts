@@ -255,6 +255,10 @@ test('field renderer mounts dots, axes, zones and a cluster legend', () => {
 @enddiagram`);
   try {
     assert.equal(root.querySelectorAll('.diagram-dot').length, 2);
+    assert.ok(
+      root.querySelector('[data-diagram-item="b"]')?.classList.contains('is-cluster-muted'),
+    );
+    assert.ok(root.querySelector('.diagram-legend-item.is-muted'));
     assert.equal(root.querySelectorAll('.diagram-field-label').length, 2);
     assert.ok(root.querySelector('.diagram-axis'));
     assert.ok(root.querySelector('.diagram-region.is-zone'));
