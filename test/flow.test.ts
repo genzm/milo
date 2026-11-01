@@ -4,6 +4,8 @@ import { Window } from 'happy-dom';
 import { canvasDiagnostics, canvasHeight, layoutCanvas, parseCanvas } from '../src/canvas.ts';
 import { parseDiagram } from '../src/diagram.ts';
 import { layoutFlowFromCanvas } from '../src/flow/layout.ts';
+import { estimateHeightAtWidth } from '../src/flow/measure.ts';
+import { FLOW } from '../src/flow/types.ts';
 import { renderSlide } from '../src/render.ts';
 import { SourceStore } from '../src/source.ts';
 
@@ -139,8 +141,21 @@ test('four serial flow nodes fit without clipping Japanese titles', () => {
     ),
     false,
   );
-  const widths = new Set(frames.map((frame) => frame.width));
-  assert.equal(widths.size === 1 || widths.size === 4, true);
+});
+
+test('long Japanese titles get a wider node than short ones', () => {
+  const scene = parseCanvas(
+    `@node a\n### 入力\n-->\n@node b\n### 顧客からの問い合わせ内容を分類し優先度をつけて担当へ渡す\n-->\n@node c\n### 実行`,
+    'layout=flow direction=right',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  const a = layout.nodeFrames.get('a')!;
+  const b = layout.nodeFrames.get('b')!;
+  const c = layout.nodeFrames.get('c')!;
+  assert.ok(b.width > a.width);
+  assert.ok(b.width > c.width);
+  assert.ok(b.width - a.width <= FLOW.WIDTH_VARIANCE);
+  assert.ok(b.height < estimateHeightAtWidth(scene.nodes[1].markdown, FLOW.MIN_WIDTH));
 });
 
 test('long flow body grows height instead of shrinking type', () => {

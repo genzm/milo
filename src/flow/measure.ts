@@ -80,19 +80,117 @@ function packFits(
   });
 }
 
-function scoreSizes(sizes: { width: number; height: number }[], gap: number, graph: FlowGraph) {
+function scoreSizes(graph: FlowGraph, sizes: { width: number; height: number }[], gap: number) {
   const widths = sizes.map((size) => size.width);
   const heights = sizes.map((size) => size.height);
   const meanH = heights.reduce((sum, value) => sum + value, 0) / heights.length;
-  const variance = heights.reduce((sum, value) => sum + (value - meanH) ** 2, 0) / heights.length;
-  const used = widths.reduce((sum, value) => sum + value, 0) + gap * Math.max(0, sizes.length - 1);
-  return (
-    widths.reduce((sum, value) => sum + value, 0) * 2 +
-    gap -
-    variance * 0.15 -
-    Math.max(...heights) * 0.05 +
-    Math.min(used, graph.width)
+  const meanW = widths.reduce((sum, value) => sum + value, 0) / widths.length;
+  const heightVar = heights.reduce((sum, value) => sum + (value - meanH) ** 2, 0) / heights.length;
+  const widthVar = widths.reduce((sum, value) => sum + (value - meanW) ** 2, 0) / widths.length;
+  const misfit = sizes.reduce((sum, size, i) => {
+    const preferred =
+      graph.nodes[i].width ?? snapWidth(estimatePreferredWidth(graph.nodes[i].markdown));
+    return sum + Math.abs(size.width - preferred);
+  }, 0);
+  return -Math.max(...heights) * 3 - misfit * 0.4 - heightVar * 0.15 - widthVar * 0.04 + gap * 0.01;
+}
+
+function textUnits(text: string) {
+  return [...text].reduce((sum, ch) => sum + (/[\u3000-\u9fff]/.test(ch) ? 1 : 0.55), 0);
+}
+
+export function estimatePreferredWidth(markdown: string) {
+  const lines = markdown
+    .replace(/```[\s\S]*?```/g, 'コード')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return FLOW.PREFERRED_WIDTH;
+  let needed = FLOW.MIN_WIDTH;
+  for (const line of lines) {
+    const heading = /^#{1,6}\s+/.test(line);
+    const text = line.replace(/^#{1,6}\s+/, '').replace(/[#>*_`+\-]/g, '');
+    const font = heading ? FLOW.TITLE_PX : FLOW.BODY_PX;
+    const maxLines = heading ? 2 : 3;
+    needed = Math.max(needed, (textUnits(text) / maxLines) * font + 48);
+  }
+  return Math.min(FLOW.MAX_WIDTH, Math.max(FLOW.MIN_WIDTH, Math.round(needed)));
+}
+
+function snapWidth(width: number, min = FLOW.MIN_WIDTH, max = FLOW.MAX_WIDTH) {
+  const lo = Math.max(min, FLOW.MIN_WIDTH);
+  const hi = Math.min(max, FLOW.MAX_WIDTH);
+  const pool = FLOW.WIDTH_CANDIDATES.filter(
+    (candidate) => candidate >= lo - 0.5 && candidate <= hi + 0.5,
   );
+  const choices = pool.length ? pool : FLOW.WIDTH_CANDIDATES;
+  return choices.reduce((best, candidate) =>
+    Math.abs(candidate - width) < Math.abs(best - width) ? candidate : best,
+  );
+}
+
+function median(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)] ?? FLOW.PREFERRED_WIDTH;
+}
+
+function capWidths(graph: FlowGraph, widths: number[]) {
+  const flexible = widths.filter((_, i) => graph.nodes[i].width === undefined);
+  const band = median(flexible.length ? flexible : widths);
+  return widths.map((width, i) => {
+    if (graph.nodes[i].width !== undefined) return graph.nodes[i].width!;
+    return snapWidth(width, band - FLOW.WIDTH_VARIANCE, band + FLOW.WIDTH_VARIANCE);
+  });
+}
+
+function unifyRankWidths(groups: number[][], widths: number[]) {
+  const next = [...widths];
+  for (const members of groups) {
+    const widest = Math.max(...members.map((i) => next[i]));
+    for (const i of members) next[i] = widest;
+  }
+  return next;
+}
+
+function shrinkWidest(graph: FlowGraph, widths: number[]) {
+  const flexible = widths
+    .map((width, i) => (graph.nodes[i].width === undefined ? width : -1))
+    .filter((width) => width > 0);
+  if (!flexible.length) return undefined;
+  const maxWidth = Math.max(...flexible);
+  const smaller = [...FLOW.WIDTH_CANDIDATES].filter((candidate) => candidate < maxWidth).pop();
+  if (smaller === undefined) return undefined;
+  return widths.map((width, i) =>
+    graph.nodes[i].width === undefined && width === maxWidth ? smaller : width,
+  );
+}
+
+function consider(
+  graph: FlowGraph,
+  ranked: FlowRanked,
+  hints: ReturnType<typeof hintsOf>,
+  widths: number[],
+  gap: number,
+  best: { measures: FlowNodeMeasure[]; gap: number; score: number; overflow: boolean } | undefined,
+) {
+  const sizes = widths.map((width, i) => ({ width, height: heightFor(graph, i, width, hints) }));
+  if (!packFits(graph, ranked.groups, sizes, gap)) return best;
+  const score = scoreSizes(graph, sizes, gap);
+  if (best && score <= best.score) return best;
+  return {
+    gap,
+    score,
+    overflow: false,
+    measures: sizes.map((size, i) => ({
+      id: graph.nodes[i].id,
+      minWidth: graph.nodes[i].width ?? FLOW.MIN_WIDTH,
+      preferredWidth: size.width,
+      maxWidth: graph.nodes[i].width ?? FLOW.MAX_WIDTH,
+      measuredHeight: size.height,
+      width: size.width,
+      height: size.height,
+    })),
+  };
 }
 
 export function resolveNodeSizes(
@@ -110,29 +208,25 @@ export function resolveNodeSizes(
     { measures: FlowNodeMeasure[]; gap: number; score: number; overflow: boolean } | undefined;
 
   for (const gap of gaps) {
+    let widths = capWidths(
+      graph,
+      graph.nodes.map((node) => {
+        if (node.width !== undefined) return node.width;
+        return horizontal ? snapWidth(estimatePreferredWidth(node.markdown)) : FLOW.VERTICAL_WIDTH;
+      }),
+    );
+    widths = capWidths(graph, unifyRankWidths(ranked.groups, widths));
+    for (;;) {
+      best = consider(graph, ranked, hints, widths, gap, best);
+      const next = shrinkWidest(graph, widths);
+      if (!next) break;
+      widths = capWidths(graph, unifyRankWidths(ranked.groups, next));
+    }
     for (const candidate of candidates) {
-      const sizes = graph.nodes.map((node, i) => {
-        const width = node.width ?? (horizontal ? candidate : FLOW.VERTICAL_WIDTH);
-        return { width, height: heightFor(graph, i, width, hints) };
-      });
-      if (!packFits(graph, ranked.groups, sizes, gap)) continue;
-      const score = scoreSizes(sizes, gap, graph);
-      if (!best || score > best.score) {
-        best = {
-          gap,
-          score,
-          overflow: false,
-          measures: sizes.map((size, i) => ({
-            id: graph.nodes[i].id,
-            minWidth: graph.nodes[i].width ?? FLOW.MIN_WIDTH,
-            preferredWidth: size.width,
-            maxWidth: graph.nodes[i].width ?? FLOW.MAX_WIDTH,
-            measuredHeight: size.height,
-            width: size.width,
-            height: size.height,
-          })),
-        };
-      }
+      const unified = graph.nodes.map(
+        (node) => node.width ?? (horizontal ? candidate : FLOW.VERTICAL_WIDTH),
+      );
+      best = consider(graph, ranked, hints, unified, gap, best);
     }
   }
 
