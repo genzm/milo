@@ -197,6 +197,7 @@ test('zones and clusters decorate field space without moving items', () => {
   const source = `@zone internal label="内部・長期" x="-1:0" y="0:1"
 @cluster business title="事業" tone=accent
 @item a title="コスト" x=-0.5 y=0.6 cluster=business
+@item c title="時間" x=-0.4 y=-0.3 cluster=business
 @item b title="品質" x=0.6 y=0.5 cluster=product`;
   const plain = layoutDiagram(parseDiagram(source, 'layout=field guide=axes'));
   const halo = layoutDiagram(parseDiagram(source, 'layout=field guide=axes cluster-region=halo'));
@@ -207,8 +208,14 @@ test('zones and clusters decorate field space without moving items', () => {
   assert.equal(plain.regions.filter((region) => region.kind === 'zone').length, 1);
   assert.equal(plain.regions.filter((region) => region.kind === 'cluster').length, 0);
   const haloMarks = halo.regions.filter((region) => region.kind === 'cluster');
-  assert.ok(haloMarks.every((region) => (region.marks?.length || 0) >= 1));
-  assert.ok(haloMarks.every((region) => (region.marks || []).every((mark) => mark.r < 28)));
+  assert.equal(haloMarks.length, 2);
+  const business = haloMarks.find((region) => region.id === 'business')!;
+  assert.ok(business.path);
+  assert.match(business.path || '', /A /);
+  assert.equal((business.marks || []).length, 0);
+  const time = centerOf(halo.items.find((item) => item.id === 'c')!);
+  assert.ok(time.y < business.box.y + business.box.height);
+  assert.ok(time.y > business.box.y);
   assert.deepEqual(
     plain.legend.map((entry) => entry.id),
     ['business', 'product'],
@@ -262,6 +269,7 @@ test('field renderer mounts dots, axes, zones and a cluster legend', () => {
     assert.equal(root.querySelectorAll('.diagram-field-label').length, 2);
     assert.ok(root.querySelector('.diagram-axis'));
     assert.ok(root.querySelector('.diagram-region.is-zone'));
+    assert.ok(root.querySelector('path.diagram-region.is-cluster'));
     assert.match(
       root.querySelector('.diagram-legend')?.textContent || '',
       /business|プロダクト|product/,

@@ -1,4 +1,4 @@
-import { leaderPath, overlaps, perimeterLink } from './geometry.ts';
+import { clusterHaloPath, leaderPath, overlaps, perimeterLink } from './geometry.ts';
 import {
   estimateFieldLabel,
   estimateZoneLabel,
@@ -74,6 +74,7 @@ export interface FieldRegion {
   tone: string;
   box: Box;
   labelBox?: Box;
+  path?: string;
   marks?: { x: number; y: number; r: number }[];
 }
 
@@ -218,29 +219,22 @@ export function layoutClusterHalos(
   clusters: FieldCluster[],
 ): FieldRegion[] {
   const titles = new Map(clusters.map((cluster) => [cluster.id, cluster]));
-  const groups = new Map<string, { x: number; y: number; r: number }[]>();
+  const groups = new Map<string, { x: number; y: number }[]>();
   for (const item of items) {
     if (!item.cluster) continue;
-    const marks = groups.get(item.cluster) || [];
-    marks.push({
-      x: item.x + item.width / 2,
-      y: item.y + item.height / 2,
-      r: Math.max(item.width, item.height) / 2 + 11,
-    });
-    groups.set(item.cluster, marks);
+    const points = groups.get(item.cluster) || [];
+    points.push({ x: item.x + item.width / 2, y: item.y + item.height / 2 });
+    groups.set(item.cluster, points);
   }
-  return [...groups.entries()].map(([id, marks]) => {
-    const x = Math.min(...marks.map((mark) => mark.x - mark.r));
-    const y = Math.min(...marks.map((mark) => mark.y - mark.r));
-    const right = Math.max(...marks.map((mark) => mark.x + mark.r));
-    const bottom = Math.max(...marks.map((mark) => mark.y + mark.r));
+  return [...groups.entries()].map(([id, points]) => {
+    const blob = clusterHaloPath(points);
     return {
       id,
       kind: 'cluster' as const,
       label: titles.get(id)?.title || id,
       tone: titles.get(id)?.tone || 'muted',
-      box: { x, y, width: right - x, height: bottom - y },
-      marks,
+      box: blob.box,
+      path: blob.path,
     };
   });
 }

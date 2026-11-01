@@ -126,6 +126,7 @@ export interface DiagramRegion {
   tone: string;
   box: DiagramBox;
   labelBox?: DiagramBox;
+  path?: string;
   marks?: { x: number; y: number; r: number }[];
 }
 
@@ -1483,7 +1484,9 @@ export function mountDiagram(
     for (const region of layout.regions) {
       const box = regionRect(region.box);
       const klass = `diagram-region is-${region.kind} is-${region.tone}`;
-      if (region.marks?.length) {
+      if (region.path) {
+        regionLayer.append(svgElement('path', { d: region.path, class: klass }));
+      } else if (region.marks?.length) {
         for (const mark of region.marks) {
           regionLayer.append(
             svgElement('circle', { cx: mark.x, cy: mark.y, r: mark.r, class: klass }),

@@ -356,3 +356,26 @@ Field は指定した座標を保ったまま、ラベルだけ避ける。
 @enddiagram
 
 Zone は空間の区分。Cluster は項目の所属。
+
+---
+
+<!-- milo: layout=lab -->
+
+# まとまりを囲む
+
+@diagram layout=field guide=axes x-low="内部" x-high="外部" y-low="短期" y-high="長期" cluster-region=halo
+@zone internal label="内部・長期" x="-1:0" y="0:1"
+@zone external label="外部・長期" x="0:1" y="0:1"
+@cluster business title="事業" tone=accent
+@cluster product title="プロダクト" tone=muted
+@item cost title="コスト" x=-0.68 y=0.58 cluster=business
+@item hire title="採用" x=-0.8 y=0.08 cluster=business
+@item org title="組織" x=-0.28 y=0.22 cluster=business
+@item time title="時間" x=-0.48 y=-0.42 cluster=business
+@item quality title="品質" x=0.48 y=0.68 cluster=product
+@item exp title="体験" x=0.26 y=0.16 cluster=product
+@item price title="価格" x=0.82 y=0.22 cluster=product
+@item support title="サポート" x=0.7 y=-0.38 cluster=product
+@enddiagram
+
+`cluster-region=halo` は同じ所属を一つの囲みにする。箱ではなく、点をまとめて包む。

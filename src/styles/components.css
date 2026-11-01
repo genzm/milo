@@ -395,13 +395,15 @@
     stroke: none;
   }
   .diagram-region.is-cluster {
-    fill: none;
-    stroke: color-mix(in srgb, var(--slide-muted) 42%, var(--white));
-    stroke-width: 1.25;
-    stroke-dasharray: 3 5;
+    fill: color-mix(in srgb, var(--slide-muted) 12%, transparent);
+    stroke: color-mix(in srgb, var(--slide-muted) 70%, var(--white));
+    stroke-width: 2;
+    stroke-dasharray: 4 5;
+    vector-effect: non-scaling-stroke;
   }
   .diagram-region.is-cluster.is-accent {
-    stroke: color-mix(in srgb, var(--accent) 36%, var(--white));
+    fill: color-mix(in srgb, var(--accent) 10%, transparent);
+    stroke: color-mix(in srgb, var(--accent) 60%, var(--white));
   }
   .diagram-region-label,
   .diagram-axis-label {
