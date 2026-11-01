@@ -1,5 +1,11 @@
 import { leaderPath, overlaps, perimeterLink } from './geometry.ts';
-import { estimateFieldLabel, placeAnchoredLabel } from './labels.ts';
+import {
+  estimateFieldLabel,
+  estimateZoneLabel,
+  placeAnchoredLabel,
+  placeZoneLabel,
+  textBox,
+} from './labels.ts';
 import {
   DOT,
   boxFromCenter,
@@ -67,6 +73,8 @@ export interface FieldRegion {
   label: string;
   tone: string;
   box: Box;
+  labelBox?: Box;
+  marks?: { x: number; y: number; r: number }[];
 }
 
 function itemSize(item: FieldItem, labels: { width: number; height: number }[], index: number) {
@@ -101,8 +109,33 @@ export function layoutField(
     };
   });
 
-  const obstacles: Box[] = nodes.map((node) => node);
+  const zones = layoutZones(scene.zones, frame);
+  const guides = guide === 'axes' ? layoutAxes(frame, scene.options) : [];
+  const origin = plotCenter(frame);
+  const obstacles: Box[] = [
+    ...nodes,
+    ...guides.flatMap((mark) =>
+      mark.text ? [textBox(mark.text, mark.x || 0, mark.y || 0, mark.anchor || 'middle')] : [],
+    ),
+  ];
   let overflow = nodes.some((node) => boxLeaves(node, frame, 2));
+  for (const zone of zones) {
+    if (!zone.label) continue;
+    const prefer = {
+      x: zone.box.x + zone.box.width / 2 < origin.x ? -1 : 1,
+      y: zone.box.y + zone.box.height / 2 < origin.y ? 1 : -1,
+    };
+    const result = placeZoneLabel(
+      zone.box,
+      estimateZoneLabel(zone.label),
+      prefer,
+      obstacles,
+      frame,
+    );
+    zone.labelBox = result.box;
+    obstacles.push(result.box);
+    overflow = overflow || result.overflow || boxLeaves(result.box, frame, 2);
+  }
   const placed = nodes.map((node, i) => {
     const size = labelSizes[i] || estimateFieldLabel(scene.items[i].title);
     const preferred = preferredDir(node.semantic);
@@ -146,10 +179,10 @@ export function layoutField(
     overflow,
     frame,
     regions: [
-      ...layoutZones(scene.zones, frame),
+      ...zones,
       ...(clusterRegion === 'halo' ? layoutClusterHalos(placed, scene.clusters) : []),
     ],
-    guides: guide === 'axes' ? layoutAxes(frame, scene.options) : [],
+    guides,
     legend: legendFor(scene),
   };
 }
@@ -176,30 +209,33 @@ export function layoutClusterHalos(
     y: number;
     width: number;
     height: number;
-    label?: Box;
   }[],
   clusters: FieldCluster[],
 ): FieldRegion[] {
   const titles = new Map(clusters.map((cluster) => [cluster.id, cluster]));
-  const groups = new Map<string, Box[]>();
+  const groups = new Map<string, { x: number; y: number; r: number }[]>();
   for (const item of items) {
     if (!item.cluster) continue;
-    const boxes = groups.get(item.cluster) || [];
-    boxes.push(item);
-    if (item.label) boxes.push(item.label);
-    groups.set(item.cluster, boxes);
+    const marks = groups.get(item.cluster) || [];
+    marks.push({
+      x: item.x + item.width / 2,
+      y: item.y + item.height / 2,
+      r: Math.max(item.width, item.height) / 2 + 11,
+    });
+    groups.set(item.cluster, marks);
   }
-  return [...groups.entries()].map(([id, boxes]) => {
-    const x = Math.min(...boxes.map((box) => box.x)) - 14;
-    const y = Math.min(...boxes.map((box) => box.y)) - 14;
-    const right = Math.max(...boxes.map((box) => box.x + box.width)) + 14;
-    const bottom = Math.max(...boxes.map((box) => box.y + box.height)) + 14;
+  return [...groups.entries()].map(([id, marks]) => {
+    const x = Math.min(...marks.map((mark) => mark.x - mark.r));
+    const y = Math.min(...marks.map((mark) => mark.y - mark.r));
+    const right = Math.max(...marks.map((mark) => mark.x + mark.r));
+    const bottom = Math.max(...marks.map((mark) => mark.y + mark.r));
     return {
       id,
       kind: 'cluster' as const,
       label: titles.get(id)?.title || id,
       tone: titles.get(id)?.tone || 'muted',
       box: { x, y, width: right - x, height: bottom - y },
+      marks,
     };
   });
 }
@@ -218,24 +254,36 @@ export function layoutAxes(
     { kind: 'axis', path: `M ${origin.x} ${top.y} L ${origin.x} ${bottom.y}` },
   ];
   if (labels.xLow)
-    guides.push({ kind: 'label', text: labels.xLow, x: left.x, y: origin.y - 14, anchor: 'start' });
+    guides.push({
+      kind: 'label',
+      text: labels.xLow,
+      x: left.x + 4,
+      y: origin.y + 22,
+      anchor: 'start',
+    });
   if (labels.xHigh)
-    guides.push({ kind: 'label', text: labels.xHigh, x: right.x, y: origin.y - 14, anchor: 'end' });
+    guides.push({
+      kind: 'label',
+      text: labels.xHigh,
+      x: right.x - 4,
+      y: origin.y + 22,
+      anchor: 'end',
+    });
   if (labels.yHigh)
     guides.push({
       kind: 'label',
       text: labels.yHigh,
-      x: origin.x + 10,
-      y: top.y + 16,
-      anchor: 'start',
+      x: origin.x,
+      y: top.y - 10,
+      anchor: 'middle',
     });
   if (labels.yLow)
     guides.push({
       kind: 'label',
       text: labels.yLow,
-      x: origin.x + 10,
-      y: bottom.y - 4,
-      anchor: 'start',
+      x: origin.x,
+      y: bottom.y + 22,
+      anchor: 'middle',
     });
   return guides;
 }

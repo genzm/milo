@@ -344,7 +344,7 @@ Field は指定した座標を保ったまま、ラベルだけ避ける。
 
 # 領域とまとまり
 
-@diagram layout=field guide=axes x-low="内部" x-high="外部" y-low="短期" y-high="長期" cluster-region=halo
+@diagram layout=field guide=axes x-low="内部" x-high="外部" y-low="短期" y-high="長期"
 @zone internal label="内部・長期" x="-1:0" y="0:1"
 @zone external label="外部・長期" x="0:1" y="0:1"
 @cluster business title="事業" tone=accent

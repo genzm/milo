@@ -15,6 +15,8 @@ export interface SpatialRegion {
   label: string;
   tone: string;
   box: Box;
+  labelBox?: Box;
+  marks?: { x: number; y: number; r: number }[];
 }
 
 export function regionRect(box: Box) {
@@ -44,6 +46,17 @@ export function spatialSignature(input: {
       Math.round(region.box.y),
       Math.round(region.box.width),
       Math.round(region.box.height),
+      region.labelBox && [
+        Math.round(region.labelBox.x),
+        Math.round(region.labelBox.y),
+        Math.round(region.labelBox.width),
+        Math.round(region.labelBox.height),
+      ],
+      (region.marks || []).map((mark) => [
+        Math.round(mark.x),
+        Math.round(mark.y),
+        Math.round(mark.r),
+      ]),
     ]),
     g: (input.guides || []).map((guide) => guide.path || `${guide.text}:${guide.x}:${guide.y}`),
     i: input.items.map((item) => [

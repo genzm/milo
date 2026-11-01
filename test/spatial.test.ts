@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
 import { layoutDiagram, parseDiagram, usesSpatialRadial } from '../src/diagram.ts';
+import { overlaps } from '../src/diagram/geometry.ts';
+import { textBox } from '../src/diagram/labels.ts';
 import { semanticToDisplay, spatialFrame } from '../src/diagram/spatial.ts';
 import { renderSlide } from '../src/render.ts';
 import { SourceStore } from '../src/source.ts';
@@ -176,7 +178,10 @@ test('zones and clusters decorate field space without moving items', () => {
   assert.equal(Math.round(a.x), Math.round(aHalo.x));
   assert.equal(Math.round(a.y), Math.round(aHalo.y));
   assert.equal(plain.regions.filter((region) => region.kind === 'zone').length, 1);
-  assert.ok(halo.regions.some((region) => region.kind === 'cluster'));
+  assert.equal(plain.regions.filter((region) => region.kind === 'cluster').length, 0);
+  const haloMarks = halo.regions.filter((region) => region.kind === 'cluster');
+  assert.ok(haloMarks.every((region) => (region.marks?.length || 0) >= 1));
+  assert.ok(haloMarks.every((region) => (region.marks || []).every((mark) => mark.r < 28)));
   assert.deepEqual(
     plain.legend.map((entry) => entry.id),
     ['business', 'product'],
@@ -184,6 +189,34 @@ test('zones and clusters decorate field space without moving items', () => {
   const zone = plain.regions.find((region) => region.id === 'internal')!;
   assert.ok(zone.box.x < a.x && a.x < zone.box.x + zone.box.width);
   assert.ok(zone.box.y < a.y && a.y < zone.box.y + zone.box.height);
+});
+
+test('field zone and axis labels stay clear of each other', () => {
+  const layout = layoutDiagram(
+    parseDiagram(
+      `@zone internal label="内部・長期" x="-1:0" y="0:1"
+@zone external label="外部・長期" x="0:1" y="0:1"
+@item a title="コスト" x=-0.6 y=0.55 cluster=business
+@item c title="品質" x=0.55 y=0.65 cluster=product`,
+      'layout=field guide=axes x-low="内部" x-high="外部" y-low="短期" y-high="長期"',
+    ),
+  );
+  const boxes = [
+    ...layout.regions
+      .filter((region) => region.kind === 'zone' && region.labelBox)
+      .map((region) => region.labelBox!),
+    ...layout.guides
+      .filter((guide) => guide.text)
+      .map((guide) =>
+        textBox(guide.text || '', guide.x || 0, guide.y || 0, guide.anchor || 'middle'),
+      ),
+    ...layout.items.flatMap((item) => (item.label ? [item.label] : [])),
+  ];
+  for (let i = 0; i < boxes.length; i += 1) {
+    for (let j = i + 1; j < boxes.length; j += 1) {
+      assert.equal(overlaps(boxes[i], boxes[j], 0), false, `${i} overlaps ${j}`);
+    }
+  }
 });
 
 test('field renderer mounts dots, axes, zones and a cluster legend', () => {

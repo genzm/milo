@@ -118,6 +118,8 @@ export interface DiagramRegion {
   label: string;
   tone: string;
   box: DiagramBox;
+  labelBox?: DiagramBox;
+  marks?: { x: number; y: number; r: number }[];
 }
 
 export interface DiagramGuideMark {
@@ -1456,21 +1458,30 @@ export function mountDiagram(
     const regionLayer = svgElement('g', { class: 'diagram-region-layer' });
     for (const region of layout.regions) {
       const box = regionRect(region.box);
-      regionLayer.append(
-        svgElement('rect', {
-          ...box,
-          rx: region.kind === 'cluster' ? 18 : 8,
-          class: `diagram-region is-${region.kind} is-${region.tone}`,
-        }),
-      );
-      if (region.label && region.kind === 'zone')
+      const klass = `diagram-region is-${region.kind} is-${region.tone}`;
+      if (region.marks?.length) {
+        for (const mark of region.marks) {
+          regionLayer.append(
+            svgElement('circle', { cx: mark.x, cy: mark.y, r: mark.r, class: klass }),
+          );
+        }
+      } else {
+        regionLayer.append(svgElement('rect', { ...box, rx: 8, class: klass }));
+      }
+      if (region.label && region.kind === 'zone') {
+        const label = region.labelBox;
         regionLayer.append(
           svgElement(
             'text',
-            { x: box.x + 10, y: box.y + 18, class: 'diagram-region-label' },
+            {
+              x: label ? label.x : box.x + 10,
+              y: label ? label.y + 16 : box.y + 18,
+              class: 'diagram-region-label',
+            },
             region.label,
           ),
         );
+      }
     }
     const guideLayer = svgElement('g', { class: 'diagram-guide-layer' });
     for (const mark of layout.guides) {
