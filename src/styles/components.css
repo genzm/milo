@@ -294,17 +294,26 @@
   }
 }
 .milo-diagram {
+  --diagram-display-width: 900px;
+  --diagram-display-height: 500px;
   position: relative;
-  width: min(100%, 900px);
-  max-height: 500px;
+  width: min(100%, var(--diagram-display-width));
+  max-height: var(--diagram-display-height);
   aspect-ratio: 1000 / 500;
   margin: 1.2cqw auto 0.4cqw;
   overflow: visible;
   isolation: isolate;
 
-  &.diagram-has-notes,
-  &.diagram-has-spatial {
-    max-height: 620px;
+  &.diagram-layout-radial {
+    --diagram-display-width: 1040px;
+    --diagram-display-height: 580px;
+  }
+  &.diagram-layout-field {
+    --diagram-display-width: 1280px;
+    --diagram-display-height: 580px;
+  }
+  &.diagram-has-notes {
+    --diagram-display-height: 620px;
   }
 
   .diagram-connections,

@@ -17,6 +17,13 @@ import { regionRect, spatialSignature } from './diagram/render-spatial.ts';
 
 export type DiagramLayoutKind = 'ring' | 'flow' | 'radial' | 'field';
 export { usesSpatialRadial };
+
+export const DIAGRAM_FRAME: Record<DiagramLayoutKind, { width: number; height: number }> = {
+  ring: { width: 1000, height: 500 },
+  flow: { width: 1000, height: 500 },
+  radial: { width: 1040, height: 580 },
+  field: { width: 1280, height: 580 },
+};
 export type DiagramLevel = 'none' | 'high' | 'medium' | 'low';
 export type DiagramLinkKind = 'undirected' | 'forward' | 'both';
 export type DiagramStart = 'top' | 'right' | 'bottom' | 'left';
@@ -489,10 +496,12 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
       'direction',
     ),
     center: attrs.center || '',
-    width: finite(attrs.width, 1000)!,
+    width: finite(attrs.width, DIAGRAM_FRAME[layout].width)!,
     height: finite(
       attrs.height,
-      layout === 'radial' || layout === 'field' || noteMode === 'outside' ? 620 : 500,
+      noteMode === 'outside'
+        ? Math.max(DIAGRAM_FRAME[layout].height, 620)
+        : DIAGRAM_FRAME[layout].height,
     )!,
     geometry: choice(attrs.geometry, ['regular'] as const, 'regular', 'geometry'),
     noteMode,
@@ -1210,6 +1219,8 @@ export function mountDiagram(
 
   const uid = `milo-diagram-${++diagramSequence}`;
   element.className = `milo-diagram diagram-layout-${scene.options.layout}`;
+  element.style.setProperty('--diagram-display-width', `${scene.options.width}px`);
+  element.style.setProperty('--diagram-display-height', `${scene.options.height}px`);
   element.style.aspectRatio = `${scene.options.width} / ${scene.options.height}`;
   element.setAttribute('role', 'img');
   element.setAttribute('aria-label', scene.items.map((item) => item.title).join('、'));

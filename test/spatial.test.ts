@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
-import { layoutDiagram, parseDiagram, usesSpatialRadial } from '../src/diagram.ts';
+import { DIAGRAM_FRAME, layoutDiagram, parseDiagram, usesSpatialRadial } from '../src/diagram.ts';
 import { leaderPath, overlaps } from '../src/diagram/geometry.ts';
 import { textBox } from '../src/diagram/labels.ts';
 import { semanticToDisplay, spatialFrame } from '../src/diagram/spatial.ts';
@@ -258,6 +258,26 @@ test('field renderer mounts dots, axes, zones and a cluster legend', () => {
       /business|プロダクト|product/,
     );
     assert.equal(root.querySelector('.diagram-edge'), null);
+  } finally {
+    close();
+  }
+});
+
+test('each diagram layout can set its own display frame', () => {
+  const field = parseDiagram('@item a title="A" x=0 y=0', 'layout=field');
+  const radial = parseDiagram('@item a title="A"', 'layout=radial');
+  const wide = parseDiagram('@item a title="A" x=0 y=0', 'layout=field width=1400 height=700');
+  assert.equal(field.options.width, DIAGRAM_FRAME.field.width);
+  assert.equal(field.options.height, DIAGRAM_FRAME.field.height);
+  assert.equal(radial.options.width, DIAGRAM_FRAME.radial.width);
+  assert.equal(wide.options.width, 1400);
+  const { root, close } = render(`@diagram layout=field width=1400 height=700
+@item a title="施策A" x=-0.7 y=0.6
+@enddiagram`);
+  try {
+    const diagram = root.querySelector('.milo-diagram') as unknown as HTMLElement;
+    assert.equal(diagram.style.getPropertyValue('--diagram-display-width'), '1400px');
+    assert.equal(diagram.style.getPropertyValue('--diagram-display-height'), '700px');
   } finally {
     close();
   }
