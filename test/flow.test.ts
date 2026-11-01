@@ -202,6 +202,53 @@ test('cycles become a ranked line plus a feedback diagnostic', () => {
   assert.ok(xs[1] < xs[2]);
 });
 
+test('route=curve keeps a cubic for a two-point edge', () => {
+  const scene = parseCanvas(
+    `@node a\n### 入力\n-->\n@node b\n### 実行`,
+    'layout=flow direction=right route=curve',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  assert.match(layout.edgePaths[0].path, / C /);
+  assert.equal(layout.edgePaths[0].path.includes(' L '), false);
+});
+
+test('diagram route=curve is forwarded to the flow engine', () => {
+  const parsed = parseDiagram(
+    `@item a title="入力"
+@item b title="実行"
+@link a -> b`,
+    'layout=flow route=curve',
+  );
+  assert.equal(parsed.options.route, 'curve');
+  const { root, close } = render(`@diagram layout=flow route=curve
+@item a title="入力"
+@item b title="実行"
+@link a -> b
+@enddiagram`);
+  try {
+    const path = root.querySelector('.canvas-edge')?.getAttribute('d') || '';
+    assert.match(path, / C /);
+  } finally {
+    close();
+  }
+});
+
+test('route=curve falls back when a smoothed detour would cut a node', () => {
+  const scene = parseCanvas(
+    `@node plan\n### 計画\n@node do\n### 実行\n@node see\n### 検証\n@edge plan --> do\n@edge do --> see\n@edge see --> plan`,
+    'layout=flow direction=right route=curve',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  const back = layout.edgePaths.find((path) => path.from === 'see' && path.to === 'plan')!;
+  const mid = layout.nodeFrames.get('do')!;
+  assert.equal(
+    layout.diagnostics.some((item) => item.code === 'EDGE_COLLISION'),
+    false,
+  );
+  assert.ok(back.label.y > mid.y + mid.height);
+  assert.ok(Math.max(mid.y, back.label.y) > mid.y + mid.height);
+});
+
 test('flow edges leave from the node perimeter and avoid a third node', () => {
   const scene = parseCanvas(
     `@node a\n### 入力\n@node b\n### 経路A\n@node c\n### 経路B\n@node d\n### 統合\n@edge a --> b\n@edge a --> c\n@edge b --> d\n@edge c --> d`,

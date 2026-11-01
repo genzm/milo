@@ -83,6 +83,104 @@ function polylineHits(points: Point[], obstacles: FlowFrame[]) {
   return false;
 }
 
+function cubicPoint(p0: Point, p1: Point, p2: Point, p3: Point, t: number): Point {
+  const u = 1 - t;
+  return {
+    x: u ** 3 * p0.x + 3 * u ** 2 * t * p1.x + 3 * u * t ** 2 * p2.x + t ** 3 * p3.x,
+    y: u ** 3 * p0.y + 3 * u ** 2 * t * p1.y + 3 * u * t ** 2 * p2.y + t ** 3 * p3.y,
+  };
+}
+
+function quadPoint(p0: Point, p1: Point, p2: Point, t: number): Point {
+  const u = 1 - t;
+  return {
+    x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+    y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
+  };
+}
+
+function cubicControls(start: Point, end: Point) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  const bend = horizontal ? Math.max(35, Math.abs(dx) * 0.42) : Math.max(35, Math.abs(dy) * 0.42);
+  return horizontal
+    ? {
+        c1: { x: start.x + Math.sign(dx || 1) * bend, y: start.y },
+        c2: { x: end.x - Math.sign(dx || 1) * bend, y: end.y },
+      }
+    : {
+        c1: { x: start.x, y: start.y + Math.sign(dy || 1) * bend },
+        c2: { x: end.x, y: end.y - Math.sign(dy || 1) * bend },
+      };
+}
+
+function sampleCubic(p0: Point, c1: Point, c2: Point, p3: Point, steps = 12) {
+  return Array.from({ length: steps + 1 }, (_, i) => cubicPoint(p0, c1, c2, p3, i / steps));
+}
+
+function sampleQuad(p0: Point, c1: Point, p2: Point, steps = 12) {
+  return Array.from({ length: steps + 1 }, (_, i) => quadPoint(p0, c1, p2, i / steps));
+}
+
+function numbersOf(body: string) {
+  return [...body.matchAll(/-?\d+(?:\.\d+)?/g)].map((match) => Number(match[0]));
+}
+
+function samplePath(path: string): Point[] {
+  const points: Point[] = [];
+  let current = { x: 0, y: 0 };
+  for (const match of path.matchAll(/([MLQC])([^MLQC]*)/g)) {
+    const nums = numbersOf(match[2]);
+    if ((match[1] === 'M' || match[1] === 'L') && nums.length >= 2) {
+      current = { x: nums[0], y: nums[1] };
+      points.push(current);
+      continue;
+    }
+    if (match[1] === 'C' && nums.length >= 6) {
+      const c1 = { x: nums[0], y: nums[1] };
+      const c2 = { x: nums[2], y: nums[3] };
+      const end = { x: nums[4], y: nums[5] };
+      points.push(...sampleCubic(current, c1, c2, end).slice(1));
+      current = end;
+      continue;
+    }
+    if (match[1] === 'Q' && nums.length >= 4) {
+      const control = { x: nums[0], y: nums[1] };
+      const end = { x: nums[2], y: nums[3] };
+      points.push(...sampleQuad(current, control, end).slice(1));
+      current = end;
+    }
+  }
+  return points;
+}
+
+function curveFromPoints(points: Point[]) {
+  if (points.length === 2) {
+    const start = points[0];
+    const end = points[1];
+    const { c1, c2 } = cubicControls(start, end);
+    return {
+      path: `M ${start.x} ${start.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${end.x} ${end.y}`,
+      samples: sampleCubic(start, c1, c2, end),
+    };
+  }
+  const padded = [points[0], ...points, points[points.length - 1]];
+  let path = `M ${points[0].x} ${points[0].y}`;
+  const samples: Point[] = [points[0]];
+  for (let i = 1; i < padded.length - 2; i += 1) {
+    const p0 = padded[i - 1];
+    const p1 = padded[i];
+    const p2 = padded[i + 1];
+    const p3 = padded[i + 2];
+    const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
+    const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+    path += ` C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`;
+    samples.push(...sampleCubic(p1, c1, c2, p2, 8).slice(1));
+  }
+  return { path, samples };
+}
+
 function labelFor(points: Point[]) {
   let best = 0;
   let bestLen = -1;
@@ -102,42 +200,36 @@ function labelFor(points: Point[]) {
   };
 }
 
-function pathOf(points: Point[], route: FlowRoute) {
+function polylinePath(points: Point[]) {
+  return {
+    path: points
+      .map((point, i) => (i === 0 ? `M ${point.x} ${point.y}` : `L ${point.x} ${point.y}`))
+      .join(' '),
+    label: labelFor(points),
+  };
+}
+
+function pathOf(points: Point[], route: FlowRoute, obstacles: FlowFrame[] = []) {
   if (points.length < 2) return { path: '', label: { x: 0, y: 0 } };
-  const label = labelFor(points);
-  if (route === 'straight' || points.length === 2) {
+  if (route === 'straight') {
     return {
       path: `M ${points[0].x} ${points[0].y} L ${points[points.length - 1].x} ${points[points.length - 1].y}`,
-      label,
+      label: labelFor(points),
     };
-  }
-  if (route === 'curve' && points.length === 2) {
-    return routeConnectionLegacy(points[0], points[1]);
   }
   if (route === 'curve') {
-    const start = points[0];
-    const end = points[points.length - 1];
-    const via = points[Math.floor(points.length / 2)];
-    return {
-      path: `M ${start.x} ${start.y} Q ${via.x} ${via.y} ${end.x} ${end.y}`,
-      label,
-    };
+    const curved = curveFromPoints(points);
+    if (obstacles.length && polylineHits(curved.samples, obstacles)) {
+      return pathOf(points, points.length > 2 ? 'elbow' : 'straight');
+    }
+    return { path: curved.path, label: labelFor(points) };
   }
-  const commands = points.map((point, i) =>
-    i === 0 ? `M ${point.x} ${point.y}` : `L ${point.x} ${point.y}`,
-  );
-  return { path: commands.join(' '), label };
+  return polylinePath(points);
 }
 
 function routeConnectionLegacy(start: Point, end: Point) {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const horizontal = Math.abs(dx) >= Math.abs(dy);
-  const bend = horizontal ? Math.max(35, Math.abs(dx) * 0.42) : Math.max(35, Math.abs(dy) * 0.42);
-  const path = horizontal
-    ? `M ${start.x} ${start.y} C ${start.x + Math.sign(dx || 1) * bend} ${start.y}, ${end.x - Math.sign(dx || 1) * bend} ${end.y}, ${end.x} ${end.y}`
-    : `M ${start.x} ${start.y} C ${start.x} ${start.y + Math.sign(dy || 1) * bend}, ${end.x} ${end.y - Math.sign(dy || 1) * bend}, ${end.x} ${end.y}`;
-  return { path, label: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 - 8 } };
+  const curved = curveFromPoints([start, end]);
+  return { path: curved.path, label: labelFor([start, end]) };
 }
 
 function sidesFor(graph: FlowGraph, feedback: boolean): { out: Side; inn: Side } {
@@ -217,17 +309,17 @@ function pickRoute(
 ) {
   const straight = [start, end];
   if (!feedback && !polylineHits(straight, obstacles)) {
-    return pathOf(straight, route === 'elbow' ? 'straight' : route);
+    return pathOf(straight, route === 'elbow' ? 'straight' : route, obstacles);
   }
   if (feedback)
-    return pathOf(around(start, end, bounds, side), route === 'curve' ? 'curve' : 'elbow');
+    return pathOf(around(start, end, bounds, side), route === 'curve' ? 'curve' : 'elbow', obstacles);
   const candidates = [
     elbow(start, end, true),
     elbow(start, end, false),
     around(start, end, bounds, side),
   ];
   const clear = candidates.find((points) => !polylineHits(points, obstacles));
-  return pathOf(clear || candidates[0], route === 'curve' ? 'curve' : 'elbow');
+  return pathOf(clear || candidates[0], route === 'curve' ? 'curve' : 'elbow', obstacles);
 }
 
 export function routeEdges(graph: FlowGraph, frames: Map<string, FlowFrame>): FlowEdgePath[] {
@@ -278,9 +370,5 @@ export function routeEdges(graph: FlowGraph, frames: Map<string, FlowFrame>): Fl
 }
 
 export function edgeHitsNode(path: string, box: FlowFrame) {
-  const points = [...path.matchAll(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g)].map((match) => ({
-    x: Number(match[1]),
-    y: Number(match[2]),
-  }));
-  return polylineHits(points, [inflate(box, 1)]);
+  return polylineHits(samplePath(path), [inflate(box, 1)]);
 }

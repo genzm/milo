@@ -6,6 +6,7 @@ import {
   finite,
   mountCanvasScene,
   type CanvasArrows,
+  type CanvasRoute,
   type CanvasScene,
 } from './canvas';
 import { parseSemanticSpan, parseSemanticValue } from './diagram/coords.ts';
@@ -86,6 +87,7 @@ export interface DiagramOptions {
   start: DiagramStart;
   order: DiagramOrder;
   direction: 'right' | 'left' | 'down' | 'up';
+  route: CanvasRoute;
   center: string;
   width: number;
   height: number;
@@ -525,6 +527,7 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
       'right',
       'direction',
     ),
+    route: choice(attrs.route, ['curve', 'straight', 'elbow'] as const, 'curve', 'route'),
     center: attrs.center || '',
     width: finite(attrs.width, DIAGRAM_FRAME[layout].width)!,
     ...parseDiagramHeight(attrs, layout, noteMode),
@@ -1176,7 +1179,7 @@ function toCanvasScene(scene: DiagramScene): CanvasScene {
       height: scene.options.height,
       autoHeight: scene.options.autoHeight,
       gap: 54,
-      route: 'straight',
+      route: scene.options.route,
     },
     nodes: scene.items.map((item) => ({
       id: item.id,
