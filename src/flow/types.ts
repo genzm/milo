@@ -1,0 +1,156 @@
+export type FlowDirection = 'right' | 'left' | 'down' | 'up';
+export type FlowRoute = 'curve' | 'straight' | 'elbow';
+export type FlowShape = 'card' | 'round' | 'ellipse' | 'diamond' | 'plain';
+
+export interface FlowNode {
+  id: string;
+  markdown: string;
+  shape: FlowShape;
+  index: number;
+  width?: number;
+  height?: number;
+  x?: number;
+  y?: number;
+  dx: number;
+  dy: number;
+  pinned: boolean;
+}
+
+export interface FlowEdge {
+  from: string;
+  to: string;
+  label: string;
+  route?: FlowRoute;
+  feedback?: boolean;
+}
+
+export interface FlowGraph {
+  direction: FlowDirection;
+  width: number;
+  height: number;
+  autoHeight: boolean;
+  gap: number;
+  route: FlowRoute;
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+}
+
+export interface FlowSceneInput {
+  options: {
+    direction: FlowDirection;
+    width: number;
+    height: number;
+    autoHeight: boolean;
+    gap: number;
+    route: FlowRoute;
+  };
+  nodes: Array<{
+    id: string;
+    markdown: string;
+    shape: FlowShape;
+    width?: number;
+    height?: number;
+    x?: number;
+    y?: number;
+    dx: number;
+    dy: number;
+    pinned: boolean;
+  }>;
+  edges: Array<{
+    from: string;
+    to: string;
+    label: string;
+    route?: FlowRoute;
+  }>;
+}
+
+export interface FlowNodeMeasure {
+  id: string;
+  minWidth: number;
+  preferredWidth: number;
+  maxWidth: number;
+  measuredHeight: number;
+  width: number;
+  height: number;
+}
+
+export interface FlowFrame {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface FlowEdgePath {
+  from: string;
+  to: string;
+  path: string;
+  label: { x: number; y: number };
+}
+
+export type FlowDiagnosticCode =
+  | 'NODE_OVERLAP'
+  | 'TEXT_OVERFLOW'
+  | 'FRAME_OVERFLOW'
+  | 'EDGE_COLLISION'
+  | 'EDGE_LABEL_COLLISION'
+  | 'CYCLE_DETECTED'
+  | 'INSUFFICIENT_SPACE';
+
+export interface FlowDiagnostic {
+  code: FlowDiagnosticCode;
+  severity: 'warning' | 'error';
+  nodeIds: string[];
+  message: string;
+}
+
+export interface FlowRanked {
+  rank: number[];
+  groups: number[][];
+  feedback: Set<string>;
+}
+
+export interface FlowLayoutResult {
+  width: number;
+  height: number;
+  nodeFrames: Map<string, FlowFrame>;
+  edgePaths: FlowEdgePath[];
+  diagnostics: FlowDiagnostic[];
+}
+
+export const FLOW = {
+  MIN_WIDTH: 180,
+  PREFERRED_WIDTH: 220,
+  VERTICAL_WIDTH: 250,
+  MAX_WIDTH: 360,
+  WIDTH_CANDIDATES: [180, 200, 220, 260, 300],
+  MIN_GAP: 24,
+  PREFERRED_GAP: 48,
+  PADDING: 34,
+  TITLE_PX: 24,
+  BODY_PX: 18,
+  MIN_HEIGHT: 160,
+  HEIGHT_PAD: 68,
+};
+
+export const FLOW_DIAGNOSTIC_MESSAGE: Record<FlowDiagnosticCode, string> = {
+  NODE_OVERLAP: 'ノードが重なっています',
+  TEXT_OVERFLOW: '文字が切れています',
+  FRAME_OVERFLOW: '図が領域に収まりません',
+  EDGE_COLLISION: '線がノードを横切っています',
+  EDGE_LABEL_COLLISION: '線のラベルが重なっています',
+  CYCLE_DETECTED: '循環があるため戻り線で示します',
+  INSUFFICIENT_SPACE: '配置できる余白が足りません',
+};
+
+export function edgeKey(from: string, to: string) {
+  return `${from}->${to}`;
+}
+
+export function diagnostic(
+  code: FlowDiagnosticCode,
+  nodeIds: string[] = [],
+  severity: FlowDiagnostic['severity'] = 'warning',
+): FlowDiagnostic {
+  return { code, severity, nodeIds, message: FLOW_DIAGNOSTIC_MESSAGE[code] };
+}

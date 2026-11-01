@@ -292,6 +292,14 @@
     stroke-linejoin: round;
     font: var(--slide-text-edge-label) var(--mono);
   }
+  .canvas-overflow-hint {
+    position: absolute;
+    right: 8px;
+    bottom: 4px;
+    font-size: var(--slide-text-footer);
+    color: var(--slide-muted);
+    pointer-events: none;
+  }
 }
 .milo-diagram {
   --diagram-display-width: 900px;

@@ -89,6 +89,7 @@ export interface DiagramOptions {
   center: string;
   width: number;
   height: number;
+  autoHeight: boolean;
   geometry: DiagramGeometry;
   noteMode: DiagramNoteMode;
   noteStyle: DiagramNoteStyle;
@@ -473,6 +474,28 @@ function itemFrom(
 }
 
 /** Parse @diagram contents into items, links and layout options. */
+function parseDiagramHeight(
+  attrs: Record<string, string>,
+  layout: DiagramLayoutKind,
+  noteMode: DiagramNoteMode,
+) {
+  if (attrs.height === 'auto' && layout !== 'flow') {
+    throw new Error('height=auto は layout=flow で使ってください。');
+  }
+  const autoHeight = layout === 'flow' && (attrs.height === undefined || attrs.height === 'auto');
+  return {
+    autoHeight,
+    height: autoHeight
+      ? DIAGRAM_FRAME.flow.height
+      : finite(
+          attrs.height,
+          noteMode === 'outside'
+            ? Math.max(DIAGRAM_FRAME[layout].height, 620)
+            : DIAGRAM_FRAME[layout].height,
+        )!,
+  };
+}
+
 export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
   const attrs = atAttributes(rawOptions);
   if (attrs.layout === 'tree' || attrs.layout === 'free')
@@ -504,12 +527,7 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
     ),
     center: attrs.center || '',
     width: finite(attrs.width, DIAGRAM_FRAME[layout].width)!,
-    height: finite(
-      attrs.height,
-      noteMode === 'outside'
-        ? Math.max(DIAGRAM_FRAME[layout].height, 620)
-        : DIAGRAM_FRAME[layout].height,
-    )!,
+    ...parseDiagramHeight(attrs, layout, noteMode),
     geometry: choice(attrs.geometry, ['regular'] as const, 'regular', 'geometry'),
     noteMode,
     noteStyle: choice(
@@ -1156,7 +1174,7 @@ function toCanvasScene(scene: DiagramScene): CanvasScene {
       direction: scene.options.direction,
       width: scene.options.width,
       height: scene.options.height,
-      autoHeight: true,
+      autoHeight: scene.options.autoHeight,
       gap: 54,
       route: 'straight',
     },

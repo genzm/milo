@@ -1,4 +1,8 @@
 import type { RenderContext } from './directives';
+import { layoutFlowFromCanvas } from './flow/layout.ts';
+import { estimateNodeHeight } from './flow/measure.ts';
+import { routeConnection } from './flow/route.ts';
+import { FLOW_DIAGNOSTIC_MESSAGE, type FlowDiagnostic } from './flow/types.ts';
 
 export type CanvasDirection = 'right' | 'left' | 'down' | 'up';
 export type CanvasLayout = 'flow' | 'free';
@@ -246,74 +250,18 @@ export function parseCanvas(source: string, rawOptions = ''): CanvasScene {
 }
 
 function estimatedHeight(node: CanvasNode) {
-  const plain = node.markdown
-    .replace(/```[\s\S]*?```/g, 'コード')
-    .replace(/[#>*_`+\-]/g, '')
-    .trim();
-  const lines = plain
-    .split('\n')
-    .reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / 24)), 0);
-  return Math.max(76, Math.min(190, 43 + lines * 20));
-}
-
-function ranks(scene: CanvasScene) {
-  const index = new Map(scene.nodes.map((node, i) => [node.id, i]));
-  const incoming = scene.nodes.map(() => 0);
-  const outgoing = scene.nodes.map(() => [] as number[]);
-  for (const edge of scene.edges) {
-    const from = index.get(edge.from)!,
-      to = index.get(edge.to)!;
-    incoming[to]++;
-    outgoing[from].push(to);
-  }
-  const queue = incoming.map((count, i) => (count ? -1 : i)).filter((i) => i >= 0);
-  const rank = scene.nodes.map(() => 0);
-  const seen = new Set<number>();
-  while (queue.length) {
-    const current = queue.shift()!;
-    if (seen.has(current)) continue;
-    seen.add(current);
-    for (const next of outgoing[current]) {
-      rank[next] = Math.max(rank[next], rank[current] + 1);
-      incoming[next]--;
-      if (!incoming[next]) queue.push(next);
-    }
-  }
-  // Cycles remain useful diagrams: put unresolved nodes in authored order.
-  let last = Math.max(0, ...rank);
-  scene.nodes.forEach((_, i) => {
-    if (!seen.has(i)) rank[i] = ++last;
-  });
-  // With no edges, authored order is the flow.
-  if (!scene.edges.length) rank.forEach((_, i) => (rank[i] = i));
-  return rank;
+  return estimateNodeHeight(node.markdown);
 }
 
 /** Resolve flow height from its measured node contents; free and explicit heights stay fixed. */
 export function canvasHeight(scene: CanvasScene, measured: number[] = []): number {
-  if (!scene.options.autoHeight) return scene.options.height;
-  const horizontal = scene.options.direction === 'right' || scene.options.direction === 'left',
-    rank = ranks(scene),
-    groups = Array.from({ length: Math.max(...rank) + 1 }, () => [] as number[]);
-  rank.forEach((value, i) => groups[value].push(i));
-  const heights = scene.nodes.map((node, i) => node.height ?? measured[i] ?? estimatedHeight(node));
-  const contentHeight = horizontal
-    ? Math.max(
-        ...groups.map(
-          (members) =>
-            members.reduce((sum, i) => sum + heights[i], 0) +
-            scene.options.gap * Math.max(0, members.length - 1),
-        ),
-      )
-    : groups.reduce((sum, members) => sum + Math.max(...members.map((i) => heights[i])), 0) +
-      scene.options.gap * Math.max(0, groups.length - 1);
-  return Math.max(160, Math.ceil(contentHeight + 68));
+  if (scene.options.layout === 'free' || !scene.options.autoHeight) return scene.options.height;
+  return layoutFlowFromCanvas(scene, measured).height;
 }
 
 /** Deterministic scene layout; measured heights can be supplied by the DOM renderer. */
 export function layoutCanvas(scene: CanvasScene, measured: number[] = []): CanvasFrame[] {
   const { options, nodes } = scene;
-  const horizontal = options.direction === 'right' || options.direction === 'left';
   if (options.layout === 'free') {
     return nodes.map((node, i) => ({
       x: (node.x ?? 36 + (i % 3) * 300) + node.dx,
@@ -322,60 +270,13 @@ export function layoutCanvas(scene: CanvasScene, measured: number[] = []): Canva
       height: node.height ?? measured[i] ?? estimatedHeight(node),
     }));
   }
+  const layout = layoutFlowFromCanvas(scene, measured);
+  return nodes.map((node) => layout.nodeFrames.get(node.id)!);
+}
 
-  const rank = ranks(scene),
-    rankCount = Math.max(...rank) + 1,
-    groups = Array.from({ length: rankCount }, () => [] as number[]);
-  rank.forEach((value, i) => groups[value].push(i));
-  const primarySize = horizontal ? options.width : options.height,
-    crossSize = horizontal ? options.height : options.width,
-    padding = 34;
-  const sizes = nodes.map((node, i) => ({
-      width: node.width ?? (horizontal ? 220 : 250),
-      height: node.height ?? measured[i] ?? estimatedHeight(node),
-    })),
-    groupPrimary = groups.map((members) =>
-      Math.max(...members.map((i) => (horizontal ? sizes[i].width : sizes[i].height))),
-    ),
-    occupied = groupPrimary.reduce((sum, value) => sum + value, 0),
-    primaryGap =
-      rankCount === 1
-        ? 0
-        : Math.max(options.gap, (primarySize - padding * 2 - occupied) / (rankCount - 1)),
-    primaryPositions: number[] = [];
-  let primaryCursor = padding;
-  groupPrimary.forEach((length, i) => {
-    primaryPositions.push(primaryCursor);
-    primaryCursor += length + (i < rankCount - 1 ? primaryGap : 0);
-  });
-  const frames = nodes.map(() => ({ x: 0, y: 0, width: 0, height: 0 }));
-  groups.forEach((members, groupIndex) => {
-    const crossLengths = members.map((i) => (horizontal ? sizes[i].height : sizes[i].width));
-    const total =
-      crossLengths.reduce((sum, value) => sum + value, 0) + options.gap * (members.length - 1);
-    let cross = Math.max(padding, (crossSize - total) / 2);
-    members.forEach((nodeIndex, memberIndex) => {
-      const node = nodes[nodeIndex],
-        size = sizes[nodeIndex],
-        rawPrimary = primaryPositions[groupIndex],
-        primary =
-          options.direction === 'left' || options.direction === 'up'
-            ? primarySize - rawPrimary - (horizontal ? size.width : size.height)
-            : rawPrimary;
-      let x = horizontal ? primary : cross,
-        y = horizontal ? cross : primary;
-      if (node.pinned && node.x !== undefined) x = node.x;
-      if (node.pinned && node.y !== undefined) y = node.y;
-      frames[nodeIndex] = {
-        x: x + node.dx,
-        y: y + node.dy,
-        width: size.width,
-        height: size.height,
-      };
-      cross += crossLengths[memberIndex] + options.gap;
-    });
-  });
-  return frames;
+export function canvasDiagnostics(scene: CanvasScene, measured: number[] = []): FlowDiagnostic[] {
+  if (scene.options.layout === 'free') return [];
+  return layoutFlowFromCanvas(scene, measured).diagnostics;
 }
 
 function svgElement(tag: string, attrs: Record<string, string | number>, text?: string) {
@@ -386,32 +287,7 @@ function svgElement(tag: string, attrs: Record<string, string | number>, text?: 
 }
 
 export function connection(from: CanvasFrame, to: CanvasFrame, route: CanvasRoute) {
-  const a = { x: from.x + from.width / 2, y: from.y + from.height / 2 },
-    b = { x: to.x + to.width / 2, y: to.y + to.height / 2 },
-    dx = b.x - a.x,
-    dy = b.y - a.y,
-    horizontal = Math.abs(dx) >= Math.abs(dy);
-  let start, end;
-  if (horizontal) {
-    start = { x: a.x + (Math.sign(dx || 1) * from.width) / 2, y: a.y };
-    end = { x: b.x - (Math.sign(dx || 1) * to.width) / 2, y: b.y };
-  } else {
-    start = { x: a.x, y: a.y + (Math.sign(dy || 1) * from.height) / 2 };
-    end = { x: b.x, y: b.y - (Math.sign(dy || 1) * to.height) / 2 };
-  }
-  let path: string;
-  if (route === 'straight') path = `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
-  else if (route === 'elbow') {
-    path = horizontal
-      ? `M ${start.x} ${start.y} H ${(start.x + end.x) / 2} V ${end.y} H ${end.x}`
-      : `M ${start.x} ${start.y} V ${(start.y + end.y) / 2} H ${end.x} V ${end.y}`;
-  } else {
-    const bend = horizontal ? Math.max(35, Math.abs(dx) * 0.42) : Math.max(35, Math.abs(dy) * 0.42);
-    path = horizontal
-      ? `M ${start.x} ${start.y} C ${start.x + Math.sign(dx || 1) * bend} ${start.y}, ${end.x - Math.sign(dx || 1) * bend} ${end.y}, ${end.x} ${end.y}`
-      : `M ${start.x} ${start.y} C ${start.x} ${start.y + Math.sign(dy || 1) * bend}, ${end.x} ${end.y - Math.sign(dy || 1) * bend}, ${end.x} ${end.y}`;
-  }
-  return { path, label: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 - 8 } };
+  return routeConnection(from, to, route);
 }
 
 /** Mount an already-parsed canvas scene and keep its SVG connection layer in sync. */
@@ -452,6 +328,10 @@ export function mountCanvasScene(
     content.append(item);
     return item;
   });
+  const overflowHint = document.createElement('div');
+  overflowHint.className = 'canvas-overflow-hint';
+  overflowHint.hidden = true;
+  content.append(overflowHint);
   element.replaceChildren(svg, content);
 
   let disposed = false;
@@ -469,10 +349,13 @@ export function mountCanvasScene(
       const height = item.scrollHeight * ratio;
       return height > 1 ? height : estimatedHeight(scene.nodes[i]);
     });
-    scene.options.height = canvasHeight(scene, measured);
+    const layout = scene.options.layout === 'flow' ? layoutFlowFromCanvas(scene, measured) : null;
+    scene.options.height = layout?.height ?? canvasHeight(scene, measured);
     element.style.aspectRatio = `${scene.options.width} / ${scene.options.height}`;
     svg.setAttribute('viewBox', `0 0 ${scene.options.width} ${scene.options.height}`);
-    const frames = layoutCanvas(scene, measured);
+    const frames = layout
+      ? scene.nodes.map((node) => layout.nodeFrames.get(node.id)!)
+      : layoutCanvas(scene, measured);
     elements.forEach((item, i) => {
       const frame = frames[i];
       item.style.left = `${(frame.x / scene.options.width) * 100}%`;
@@ -513,6 +396,30 @@ export function mountCanvasScene(
         );
     }
     svg.append(layer);
+    const diagnostics = [...(layout?.diagnostics || [])];
+    elements.forEach((item, i) => {
+      const frame = frames[i];
+      if (frame && item.scrollHeight * ratio > frame.height + 2) {
+        diagnostics.push({
+          code: 'TEXT_OVERFLOW',
+          severity: 'warning',
+          nodeIds: [scene.nodes[i].id],
+          message: FLOW_DIAGNOSTIC_MESSAGE.TEXT_OVERFLOW,
+        });
+      }
+    });
+    const seen = new Set<string>();
+    const unique = diagnostics.filter((item) => {
+      if (seen.has(item.code)) return false;
+      seen.add(item.code);
+      return true;
+    });
+    overflowHint.hidden = unique.length === 0;
+    overflowHint.textContent = unique[0]?.message || '';
+    element.classList.toggle('is-overflow', unique.length > 0);
+    if (unique.length)
+      element.setAttribute('data-canvas-overflow', unique.map((item) => item.code).join(' '));
+    else element.removeAttribute('data-canvas-overflow');
   };
   draw();
   const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(draw);
