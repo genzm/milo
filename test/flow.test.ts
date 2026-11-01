@@ -569,3 +569,170 @@ test('free canvas placement is unchanged by the flow engine', () => {
   assert.equal(layoutCanvas(free)[1].x, 300);
   assert.deepEqual(canvasDiagnostics(free), []);
 });
+
+test('asymmetric branches and merges keep every stem connected in all four directions', async () => {
+  const { routeEdges } = await import('../src/flow/route.ts');
+  for (const direction of ['right', 'left', 'down', 'up'] as const) {
+    for (const merge of [false, true]) {
+      const scene = parseCanvas(
+        `@node hub\nHub\n@node a\nA\n@node b\nB\n` +
+          (merge ? '@edge a --> hub\n@edge b --> hub' : '@edge hub --> a\n@edge hub --> b'),
+        `direction=${direction} route=auto`,
+      );
+      const graph = fromCanvasScene(scene);
+      const horizontal = direction === 'right' || direction === 'left';
+      const reverse = (direction === 'left' || direction === 'up') !== merge;
+      const make = (primary: number, cross: number) => ({
+        x: horizontal ? primary : cross,
+        y: horizontal ? cross : primary,
+        width: 80,
+        height: 80,
+      });
+      const frames = new Map([
+        ['hub', make(reverse ? 400 : 0, 0)],
+        ['a', make(reverse ? 0 : 400, 160)],
+        ['b', make(reverse ? 0 : 400, 300)],
+      ]);
+      const paths = routeEdges(graph, frames);
+      const bus = paths.find((edge) => edge.role === 'bus')!;
+      const stem = paths.find((edge) => edge.role === 'stem')!;
+      assert.ok(bus && stem);
+      const points = (path: string) =>
+        [...path.matchAll(/([\d.-]+) ([\d.-]+)/g)].map((m) => ({ x: +m[1], y: +m[2] }));
+      const bp = points(bus.path);
+      const joint = points(stem.path)[merge ? 0 : 1];
+      const cross = (p: { x: number; y: number }) => (horizontal ? p.y : p.x);
+      assert.ok(
+        cross(joint) >= Math.min(...bp.map(cross)) && cross(joint) <= Math.max(...bp.map(cross)),
+        `${direction} ${merge}: disconnected stem`,
+      );
+    }
+  }
+});
+
+test('free curves have distinct merge ports, side-normal tangents and labels on the curve', async () => {
+  const { routeFreeEdges, edgeHitsNode } = await import('../src/flow/route.ts');
+  const scene = parseCanvas(
+    `@node a frame=0,0,245,108\nA
+@node b frame=0,328,245,108\nB
+@node c frame=317,152,245,138\nC
+@edge a --> c
+@edge b --> c`,
+    'layout=free route=curve',
+  );
+  const frames = new Map(scene.nodes.map((node, i) => [node.id, layoutCanvas(scene)[i]]));
+  const paths = routeFreeEdges(fromCanvasScene(scene), frames);
+  const ends: number[] = [];
+  for (const edge of paths) {
+    const commands = [...edge.path.matchAll(/([MLCQ])([^MLCQ]*)/g)].map((m) => ({
+      kind: m[1],
+      n: m[2].match(/-?\d+(?:\.\d+)?/g)!.map(Number),
+    }));
+    const [sx, sy] = commands[0].n;
+    const [x0, y0] = commands[1].n;
+    const [x3, y3] = commands.at(-2)!.n.slice(-2);
+    const [ex, ey] = commands.at(-1)!.n;
+    assert.equal(commands[1].kind, 'L');
+    assert.equal(commands.at(-1)!.kind, 'L');
+    assert.equal(sy, y0);
+    assert.equal(y3, ey);
+    assert.ok(x0 - sx >= 12 && ex - x3 >= 12, 'visible horizontal approach at both ends');
+    assert.ok(edge.label.x > sx && edge.label.x < ex);
+    assert.ok(edge.label.y + 10 > Math.min(sy, ey) && edge.label.y + 10 < Math.max(sy, ey));
+    ends.push(ey);
+    const other = frames.get(edge.from === 'a' ? 'b' : 'a')!;
+    assert.equal(edgeHitsNode(edge.path, other), false);
+  }
+  assert.ok(Math.abs(ends[0] - ends[1]) > 20);
+});
+
+test('unequal nested branches and merges align on their middle neighbor in every direction', () => {
+  for (const direction of ['right', 'left', 'down', 'up'] as const)
+    for (const merge of [false, true]) {
+      const edges = [
+        ['hub', 'a'],
+        ['hub', 'b'],
+        ['hub', 'c'],
+        ['a', 'a1'],
+        ['a', 'a2'],
+        ['a', 'a3'],
+        ['b', 'b1'],
+        ['c', 'c1'],
+      ];
+      const scene = parseCanvas(
+        `@node hub width=160 height=130\nHub
+@node a width=140 height=90\nA
+@node b width=120 height=80\nB
+@node c width=180 height=140\nC
+@node a1 width=100 height=60\nA1
+@node a2 width=120 height=70\nA2
+@node a3 width=140 height=80\nA3
+@node b1 width=130 height=80\nB1
+@node c1 width=130 height=80\nC1\n` +
+          edges.map(([a, b]) => (merge ? `@edge ${b} --> ${a}` : `@edge ${a} --> ${b}`)).join('\n'),
+        `route=auto direction=${direction} width=1800`,
+      );
+      const layout = layoutFlowFromCanvas(scene);
+      const horizontal = direction === 'right' || direction === 'left';
+      const center = (id: string) => {
+        const box = layout.nodeFrames.get(id)!;
+        return horizontal ? box.y + box.height / 2 : box.x + box.width / 2;
+      };
+      assert.ok(
+        Math.abs(center('hub') - center('b')) < 0.001,
+        `${direction} ${merge}: main branch`,
+      );
+      assert.ok(
+        Math.abs(center('a') - center('a2')) < 0.001,
+        `${direction} ${merge}: nested branch`,
+      );
+      assert.equal(
+        layout.diagnostics.some(
+          (d) =>
+            d.code === 'NODE_OVERLAP' || d.code === 'EDGE_COLLISION' || d.code === 'FRAME_OVERFLOW',
+        ),
+        false,
+      );
+    }
+});
+
+test('even branches center the parent between the two middle neighbors despite different sizes', () => {
+  for (const count of [2, 4]) {
+    const scene = parseCanvas(
+      '@node hub width=120 height=130\nHub\n' +
+        Array.from(
+          { length: count },
+          (_, i) => `@node n${i} width=120 height=${60 + i * 20}\nChild ${i}`,
+        ).join('\n') +
+        '\n' +
+        Array.from({ length: count }, (_, i) => `@edge hub --> n${i}`).join('\n'),
+      'route=auto',
+    );
+    const layout = layoutFlowFromCanvas(scene);
+    const center = (id: string) => {
+      const b = layout.nodeFrames.get(id)!;
+      return b.y + b.height / 2;
+    };
+    assert.ok(
+      Math.abs(center('hub') - (center(`n${count / 2 - 1}`) + center(`n${count / 2}`)) / 2) < 0.001,
+    );
+  }
+});
+
+test('free row and column connections stay straight when card centers differ slightly', async () => {
+  const { routeFreeEdges } = await import('../src/flow/route.ts');
+  for (const vertical of [false, true])
+    for (const reverse of [false, true]) {
+      const scene = parseCanvas(
+        `@node a frame=${vertical ? '46,20,100,250' : '20,46,250,100'}\nA
+@node b frame=${vertical ? '46,347,108,245' : '347,46,245,108'}\nB
+@edge ${reverse ? 'b --> a' : 'a --> b'}`,
+        'layout=free route=curve',
+      );
+      const frames = new Map(scene.nodes.map((n, i) => [n.id, layoutCanvas(scene)[i]]));
+      const path = routeFreeEdges(fromCanvasScene(scene), frames)[0].path;
+      assert.match(path, /^M [\d.]+ [\d.]+ L [\d.]+ [\d.]+$/);
+      const [x0, y0, x1, y1] = path.match(/[\d.]+/g)!.map(Number);
+      assert.equal(vertical ? x0 : y0, vertical ? x1 : y1);
+    }
+});

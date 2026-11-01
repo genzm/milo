@@ -20,6 +20,8 @@ import {
   type RadialOverflowReason,
 } from './diagram/layout-radial.ts';
 import { regionRect, spatialSignature } from './diagram/render-spatial.ts';
+import { measureBorderBox, sceneRatio } from './diagram/measure.ts';
+import { frameFitScale, spatialFrame, unreadablySmall } from './diagram/spatial.ts';
 
 export type DiagramLayoutKind = 'ring' | 'flow' | 'radial' | 'field';
 export { usesSpatialRadial };
@@ -944,88 +946,58 @@ function layoutRing(
   return { items, radius, noteLinks, overflow };
 }
 
-function rayHalf(size: { width: number; height: number }, phi: number) {
-  return (Math.abs(Math.sin(phi)) * size.width + Math.abs(Math.cos(phi)) * size.height) / 2;
-}
-
-function layoutRadial(
-  scene: DiagramScene,
-  cardSizes: { width: number; height: number }[],
-): DiagramPlacedItem[] {
+function layoutRadial(scene: DiagramScene, cardSizes: { width: number; height: number }[]) {
   const { width, height, start, order, center } = scene.options;
-  const cx = width / 2;
-  const cy = height / 2;
-  const centerIndex = scene.items.findIndex((item) => item.id === center);
-  const satellites = scene.items
-    .map((item, i) => ({ item, i }))
-    .filter((entry) => entry.i !== centerIndex);
-  const sizeAt = (index: number, hub: boolean) => {
-    const raw = cardSizes[index] || estimateCardSize(scene.items[index], hub);
-    return { width: raw.width, height: raw.height };
-  };
-  const placed: DiagramPlacedItem[] = scene.items.map((item) => ({
+  const satellites = scene.items.filter((item) => item.id !== center);
+  const sizes = scene.items.map(
+    (item, i) => cardSizes[i] || estimateCardSize(item, item.id === center),
+  );
+  // Use the available horizontal space instead of clamping individual cards
+  // against the frame, which destroys spacing when the orbit is too large.
+  const stretchX = Math.max(
+    1,
+    (width - Math.max(...sizes.map((size) => size.width)) - PAD * 2) /
+      Math.max(1, height - Math.max(...sizes.map((size) => size.height)) - PAD * 2),
+  );
+  let orbit = 0;
+  const directions = scene.items.map((item) => {
+    if (item.id === center) return { x: 0, y: 0 };
+    const phi = angle(orbit++, satellites.length, start, order);
+    return { x: Math.sin(phi) * stretchX, y: -Math.cos(phi) };
+  });
+  let minR = 0;
+  let maxR = Infinity;
+  for (let i = 0; i < sizes.length; i++) {
+    const dir = directions[i];
+    if (Math.abs(dir.x) > 1e-6)
+      maxR = Math.min(maxR, (width / 2 - PAD - sizes[i].width / 2) / Math.abs(dir.x));
+    if (Math.abs(dir.y) > 1e-6)
+      maxR = Math.min(maxR, (height / 2 - PAD - sizes[i].height / 2) / Math.abs(dir.y));
+    for (let j = 0; j < i; j++) {
+      const dx = Math.abs(dir.x - directions[j].x);
+      const dy = Math.abs(dir.y - directions[j].y);
+      // Every pair must be separated along at least one axis, including
+      // satellite pairs (not just each satellite and the central card).
+      minR = Math.max(
+        minR,
+        Math.min(
+          dx > 1e-6 ? ((sizes[i].width + sizes[j].width) / 2 + 28) / dx : Infinity,
+          dy > 1e-6 ? ((sizes[i].height + sizes[j].height) / 2 + 28) / dy : Infinity,
+        ),
+      );
+    }
+  }
+  const radius = Math.max(minR, Math.min(maxR, minR + 36));
+  const items: DiagramPlacedItem[] = scene.items.map((item, i) => ({
     id: item.id,
     kind: 'card',
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
+    x: width / 2 + directions[i].x * radius - sizes[i].width / 2,
+    y: height / 2 + directions[i].y * radius - sizes[i].height / 2,
+    ...sizes[i],
   }));
-
-  const placeHub = () => {
-    const hub = sizeAt(centerIndex, true);
-    placed[centerIndex] = {
-      id: scene.items[centerIndex].id,
-      kind: 'card',
-      x: cx - hub.width / 2,
-      y: cy - hub.height / 2,
-      width: hub.width,
-      height: hub.height,
-    };
-    return hub;
-  };
-
-  if (!satellites.length) {
-    placeHub();
-    return placed;
-  }
-
-  const metrics = (hub: { width: number; height: number }) => {
-    let minR = 0;
-    let maxR = Infinity;
-    satellites.forEach((entry, orbit) => {
-      const phi = angle(orbit, satellites.length, start, order);
-      const sat = sizeAt(entry.i, false);
-      minR = Math.max(minR, rayHalf(hub, phi) + rayHalf(sat, phi) + 28);
-      const dx = Math.sin(phi);
-      const dy = -Math.cos(phi);
-      if (dx > 0.08) maxR = Math.min(maxR, (width - PAD - sat.width / 2 - cx) / dx);
-      if (dx < -0.08) maxR = Math.min(maxR, (cx - PAD - sat.width / 2) / -dx);
-      if (dy > 0.08) maxR = Math.min(maxR, (height - PAD - sat.height / 2 - cy) / dy);
-      if (dy < -0.08) maxR = Math.min(maxR, (cy - PAD - sat.height / 2) / -dy);
-    });
-    return { minR, maxR };
-  };
-
-  const hub = placeHub();
-  const { minR, maxR } = metrics(hub);
-  const radius =
-    Number.isFinite(maxR) && maxR > minR ? Math.min(maxR, Math.max(minR, minR + 36)) : minR;
-  satellites.forEach((entry, orbit) => {
-    const size = sizeAt(entry.i, false);
-    const phi = angle(orbit, satellites.length, start, order);
-    const point = pointOnRing(cx, cy, radius, phi);
-    placed[entry.i] = {
-      id: entry.item.id,
-      kind: 'card',
-      x: point.x - size.width / 2,
-      y: point.y - size.height / 2,
-      width: size.width,
-      height: size.height,
-    };
-  });
-  for (const box of placed) clampBox(box, width, height);
-  return placed;
+  const fitScale = frameFitScale(items, spatialFrame(width, height), PAD);
+  const overflowReason = unreadablySmall(fitScale) ? ('read' as const) : undefined;
+  return { items, fitScale, overflow: Boolean(overflowReason), overflowReason };
 }
 
 function circlePath(from: DiagramBox, to: DiagramBox) {
@@ -1049,10 +1021,16 @@ function linkGeometry(
   to: DiagramPlacedItem,
   perimeter = false,
 ): { path: string; labelAt: { x: number; y: number } } {
-  if (perimeter || from.kind === 'dot' || to.kind === 'dot') {
+  if (
+    perimeter ||
+    from.kind === 'card' ||
+    to.kind === 'card' ||
+    from.kind === 'dot' ||
+    to.kind === 'dot'
+  ) {
     const geometry = perimeterLink(from, to, {
-      from: from.kind === 'dot' || from.kind === 'vertex' ? 'circle' : 'box',
-      to: to.kind === 'dot' || to.kind === 'vertex' ? 'circle' : 'box',
+      from: from.kind === 'dot' || from.kind === 'vertex' ? 'circle' : 'capsule',
+      to: to.kind === 'dot' || to.kind === 'vertex' ? 'circle' : 'capsule',
     });
     return geometry || { path: '', labelAt: { x: 0, y: 0 } };
   }
@@ -1123,9 +1101,8 @@ export function layoutDiagram(
       measured.cards ||
       scene.items.map((item) => estimateCardSize(item, item.id === options.center));
     const spatial = usesSpatialRadial(scene);
-    const radial = spatial ? layoutRadialSpatial(scene, sizes) : null;
-    const items = radial ? radial.items : layoutRadial(scene, sizes);
-    const overflow = radial?.overflow ?? false;
+    const radial = spatial ? layoutRadialSpatial(scene, sizes) : layoutRadial(scene, sizes);
+    const { items, overflow } = radial;
     const byId = new Map(items.map((item) => [item.id, item]));
     const links = resolvedLinks(scene)
       .map((link) => {
@@ -1267,7 +1244,7 @@ export function mountDiagram(
   const marker = svgElement('marker', {
     id: `${uid}-arrow`,
     viewBox: '0 0 10 10',
-    refX: 8.2,
+    refX: 10,
     refY: 5,
     markerWidth: 7,
     markerHeight: 7,
@@ -1277,7 +1254,7 @@ export function mountDiagram(
   const noteMarker = svgElement('marker', {
     id: `${uid}-note-arrow`,
     viewBox: '0 0 10 10',
-    refX: 8,
+    refX: 10,
     refY: 5,
     markerWidth: 5,
     markerHeight: 5,
@@ -1402,13 +1379,14 @@ export function mountDiagram(
     ratio: number,
   ) => {
     if (!node) return fallback;
-    const width = (node as HTMLElement).scrollWidth * ratio;
-    const height = (node as HTMLElement).scrollHeight * ratio;
+    const size = measureBorderBox(node as HTMLElement);
+    const width = size.width * ratio;
+    const height = size.height * ratio;
     return width > 1 ? { width, height } : fallback;
   };
   const draw = () => {
     if (disposed) return;
-    const ratio = element.clientWidth ? scene.options.width / element.clientWidth : 1;
+    const ratio = sceneRatio(element, scene.options.width);
     annotations.forEach((node, i) => {
       if (!node) return;
       const outside = resolvedNoteMode(scene.items[i], scene.options) === 'outside';
@@ -1447,8 +1425,9 @@ export function mountDiagram(
       );
     });
     const measuredCards = nodes.map((node, i) => {
-      const width = node.scrollWidth * ratio;
-      const height = node.scrollHeight * ratio;
+      const size = measureBorderBox(node);
+      const width = size.width * ratio;
+      const height = size.height * ratio;
       return width > 1
         ? { width, height }
         : estimateCardSize(scene.items[i], scene.items[i].id === scene.options.center);
@@ -1579,6 +1558,8 @@ export function mountDiagram(
     for (const link of layout.links) {
       const attrs: Record<string, string | number> = {
         d: link.path,
+        'data-edge-from': link.from,
+        'data-edge-to': link.to,
         class: `diagram-edge diagram-edge-${link.kind}`,
       };
       if (link.kind === 'forward' || link.kind === 'both')

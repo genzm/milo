@@ -224,14 +224,62 @@ function pathOf(points: Point[], route: FlowRoute, obstacles: FlowFrame[] = []) 
     if (obstacles.length && polylineHits(curved.samples, obstacles)) {
       return pathOf(points, points.length > 2 ? 'elbow' : 'straight');
     }
-    return { path: curved.path, label: labelFor(points) };
+    return { path: curved.path, label: curveLabel(curved.samples) };
   }
   return polylinePath(points);
 }
 
 function routeConnectionLegacy(start: Point, end: Point) {
   const curved = curveFromPoints([start, end]);
-  return { path: curved.path, label: labelFor([start, end]) };
+  return { path: curved.path, label: curveLabel(curved.samples) };
+}
+
+// Use distance along the rendered curve, not the bounding diagonal (or one
+// of its control segments), so the label remains attached to its edge.
+function curveLabel(samples: Point[]): Point {
+  const lengths = samples
+    .slice(1)
+    .map((p, i) => Math.hypot(p.x - samples[i].x, p.y - samples[i].y));
+  let remaining = lengths.reduce((sum, length) => sum + length, 0) / 2;
+  for (let i = 0; i < lengths.length; i++) {
+    if (remaining <= lengths[i]) {
+      const t = lengths[i] ? remaining / lengths[i] : 0;
+      return {
+        x: samples[i].x + (samples[i + 1].x - samples[i].x) * t,
+        y: samples[i].y + (samples[i + 1].y - samples[i].y) * t - 10,
+      };
+    }
+    remaining -= lengths[i];
+  }
+  return samples[0];
+}
+
+function roundedElbow(points: Point[]) {
+  let path = `M ${points[0].x} ${points[0].y}`;
+  const samples = [points[0]];
+  for (let i = 1; i < points.length - 1; i++) {
+    const prev = points[i - 1],
+      corner = points[i],
+      next = points[i + 1];
+    const before = Math.hypot(corner.x - prev.x, corner.y - prev.y);
+    const after = Math.hypot(next.x - corner.x, next.y - corner.y);
+    const radius = Math.min(16, before / 2, after / 2);
+    if (!radius) continue;
+    const entry = {
+      x: corner.x + ((prev.x - corner.x) * radius) / before,
+      y: corner.y + ((prev.y - corner.y) * radius) / before,
+    };
+    const exit = {
+      x: corner.x + ((next.x - corner.x) * radius) / after,
+      y: corner.y + ((next.y - corner.y) * radius) / after,
+    };
+    path += ` L ${entry.x} ${entry.y} Q ${corner.x} ${corner.y} ${exit.x} ${exit.y}`;
+    samples.push(...sampleQuad(entry, corner, exit));
+  }
+  const end = points[points.length - 1];
+  path += ` L ${end.x} ${end.y}`;
+  samples.push(end);
+  return { path, samples, label: curveLabel(samples) };
 }
 
 function sidesFor(graph: FlowGraph, feedback: boolean): { out: Side; inn: Side } {
@@ -382,6 +430,7 @@ function emitFanOut(
   const trunk = outP + sign * offset;
   const sourceCross = crossOf(source, graph);
   const crosses = targets.map((frame) => crossOf(frame, graph));
+  const busCrosses = [sourceCross, ...crosses];
   emitPath(
     paths,
     edges[0],
@@ -389,11 +438,14 @@ function emitFanOut(
     'stem',
     'none',
   );
-  if (Math.max(...crosses) - Math.min(...crosses) > 1) {
+  if (Math.max(...busCrosses) - Math.min(...busCrosses) > 1) {
     emitPath(
       paths,
       edges[0],
-      [pointAt(trunk, Math.min(...crosses), graph), pointAt(trunk, Math.max(...crosses), graph)],
+      [
+        pointAt(trunk, Math.min(...busCrosses), graph),
+        pointAt(trunk, Math.max(...busCrosses), graph),
+      ],
       'bus',
       'none',
     );
@@ -432,6 +484,7 @@ function emitFanIn(
   const trunk = inP - sign * offset;
   const targetCross = crossOf(target, graph);
   const crosses = sources.map((frame) => crossOf(frame, graph));
+  const busCrosses = [targetCross, ...crosses];
   edges.forEach((edge, i) => {
     const source = sources[i];
     const cross = crosses[i];
@@ -443,11 +496,14 @@ function emitFanIn(
       'none',
     );
   });
-  if (Math.max(...crosses) - Math.min(...crosses) > 1) {
+  if (Math.max(...busCrosses) - Math.min(...busCrosses) > 1) {
     emitPath(
       paths,
       edges[0],
-      [pointAt(trunk, Math.min(...crosses), graph), pointAt(trunk, Math.max(...crosses), graph)],
+      [
+        pointAt(trunk, Math.min(...busCrosses), graph),
+        pointAt(trunk, Math.max(...busCrosses), graph),
+      ],
       'bus',
       'none',
     );
@@ -476,6 +532,114 @@ export function routeConnection(from: FlowFrame, to: FlowFrame, route: FlowRoute
   if (route === 'elbow') return pathOf(elbow(start, end, horizontal), 'elbow');
   if (route === 'straight' || route === 'auto') return pathOf([start, end], 'straight');
   return routeConnectionLegacy(start, end);
+}
+
+/** Route authored free-layout frames, sharing each side between its incident edges. */
+export function routeFreeEdges(graph: FlowGraph, frames: Map<string, FlowFrame>): FlowEdgePath[] {
+  const groups = new Map<string, { index: number; end: 'from' | 'to'; cross: number }[]>();
+  const sides = graph.edges.map((edge) => {
+    const from = frames.get(edge.from)!;
+    const to = frames.get(edge.to)!;
+    const dx = to.x + to.width / 2 - from.x - from.width / 2;
+    const dy = to.y + to.height / 2 - from.y - from.height / 2;
+    const horizontal = Math.abs(dx) >= Math.abs(dy);
+    const out: Side = horizontal ? (dx >= 0 ? 'right' : 'left') : dy >= 0 ? 'bottom' : 'top';
+    const inn: Side = horizontal ? (dx >= 0 ? 'left' : 'right') : dy >= 0 ? 'top' : 'bottom';
+    for (const [id, side, end, other] of [
+      [edge.from, out, 'from', to],
+      [edge.to, inn, 'to', from],
+    ] as const) {
+      const key = `${id}:${side}`;
+      const list = groups.get(key) || [];
+      list.push({
+        index: edge.index,
+        end,
+        cross: horizontal ? other.y + other.height / 2 : other.x + other.width / 2,
+      });
+      groups.set(key, list);
+    }
+    return { out, inn, horizontal };
+  });
+  const ports = new Map<string, number>();
+  for (const list of groups.values()) {
+    list.sort((a, b) => a.cross - b.cross || a.index - b.index);
+    list.forEach((entry, i) =>
+      ports.set(`${entry.index}:${entry.end}`, (i + 1) / (list.length + 1)),
+    );
+  }
+  return graph.edges.map((edge, i) => {
+    const from = frames.get(edge.from)!;
+    const to = frames.get(edge.to)!;
+    const { out, inn, horizontal } = sides[i];
+    const start = portPoint(from, out, ports.get(`${edge.index}:from`)!);
+    const end = portPoint(to, inn, ports.get(`${edge.index}:to`)!);
+    if (
+      groups.get(`${edge.from}:${out}`)!.length === 1 &&
+      groups.get(`${edge.to}:${inn}`)!.length === 1
+    ) {
+      // Overlapping central side intervals describe a shared row/column even
+      // when differently sized cards have slightly different centers.
+      const low = Math.max(
+        horizontal ? from.y + from.height * 0.25 : from.x + from.width * 0.25,
+        horizontal ? to.y + to.height * 0.25 : to.x + to.width * 0.25,
+      );
+      const high = Math.min(
+        horizontal ? from.y + from.height * 0.75 : from.x + from.width * 0.75,
+        horizontal ? to.y + to.height * 0.75 : to.x + to.width * 0.75,
+      );
+      if (low <= high) {
+        const cross = Math.min(high, Math.max(low, horizontal ? end.y : end.x));
+        if (horizontal) start.y = end.y = cross;
+        else start.x = end.x = cross;
+      }
+    }
+    const obstacles = [...frames.values()]
+      .filter((box) => box !== from && box !== to)
+      .map((box) => inflate(box, 8));
+    const route = edge.route || graph.route;
+    let geometry;
+    if (route === 'curve') {
+      // A finite straight approach keeps the whole arrowhead aligned with a
+      // visible shaft, not just the mathematical tangent at the endpoint.
+      const span = Math.abs(horizontal ? end.x - start.x : end.y - start.y);
+      const crossSpan = Math.abs(horizontal ? end.y - start.y : end.x - start.x);
+      const lead = Math.min(18, span * 0.22);
+      const bend = Math.max(1, (span - lead * 2) * 0.5);
+      const sign = out === 'right' || out === 'bottom' ? 1 : -1;
+      const leadStart = horizontal
+        ? { x: start.x + sign * lead, y: start.y }
+        : { x: start.x, y: start.y + sign * lead };
+      const leadEnd = horizontal
+        ? { x: end.x - sign * lead, y: end.y }
+        : { x: end.x, y: end.y - sign * lead };
+      const c1 = horizontal
+        ? { x: leadStart.x + sign * bend, y: start.y }
+        : { x: start.x, y: leadStart.y + sign * bend };
+      const c2 = horizontal
+        ? { x: leadEnd.x - sign * bend, y: end.y }
+        : { x: end.x, y: leadEnd.y - sign * bend };
+      const samples = [start, ...sampleCubic(leadStart, c1, c2, leadEnd), end];
+      if (!polylineHits(samples, obstacles))
+        geometry = {
+          path:
+            Math.abs(horizontal ? start.y - end.y : start.x - end.x) < 0.01
+              ? `M ${start.x} ${start.y} L ${end.x} ${end.y}`
+              : `M ${start.x} ${start.y} L ${leadStart.x} ${leadStart.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${leadEnd.x} ${leadEnd.y} L ${end.x} ${end.y}`,
+          label: curveLabel(samples),
+        };
+      if (crossSpan > span * 1.5) {
+        // In a narrow corridor, two rounded turns and a straight middle leg
+        // avoid a cubic that bends sharply immediately behind the arrowhead.
+        const rounded = roundedElbow(elbow(start, end, horizontal));
+        if (!polylineHits(rounded.samples, obstacles)) geometry = rounded;
+      }
+    }
+    geometry ??=
+      route === 'elbow'
+        ? pathOf(elbow(start, end, horizontal), 'elbow')
+        : pickRoute(start, end, obstacles, route, false, graphBounds([...frames.values()]), out);
+    return { index: edge.index, from: edge.from, to: edge.to, ...geometry, role: 'edge' };
+  });
 }
 
 function pickRoute(

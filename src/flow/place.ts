@@ -5,6 +5,7 @@ import {
   type FlowNodeMeasure,
   type FlowRanked,
 } from './types.ts';
+import { alignBranches } from './align.ts';
 
 function axisGaps(graph: FlowGraph, gap = graph.gap) {
   const rankGap = graph.route === 'auto' ? Math.max(gap, FLOW.RANK_GAP) : gap;
@@ -68,7 +69,8 @@ export function placeNodes(
   const frames = new Map<string, FlowFrame>();
   ranked.groups.forEach((members, groupIndex) => {
     const crossLengths = members.map((i) => (horizontal ? sizes[i].height : sizes[i].width));
-    const total = crossLengths.reduce((sum, value) => sum + value, 0) + crossGap * (members.length - 1);
+    const total =
+      crossLengths.reduce((sum, value) => sum + value, 0) + crossGap * (members.length - 1);
     let cross = Math.max(padding, (crossSize - total) / 2);
     members.forEach((nodeIndex, memberIndex) => {
       const node = graph.nodes[nodeIndex];
@@ -91,5 +93,5 @@ export function placeNodes(
       cross += crossLengths[memberIndex] + crossGap;
     });
   });
-  return { frames, height };
+  return alignBranches(graph, ranked, frames, height, crossGap);
 }

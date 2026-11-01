@@ -41,21 +41,46 @@ export function closestPointOnCircle(center: Vec, radius: number, toward: Vec): 
   return { x: center.x + unit.x * radius, y: center.y + unit.y * radius };
 }
 
-function rimPoint(box: Box, toward: Vec, circular: boolean): Vec {
+type Outline = 'circle' | 'box' | 'capsule';
+
+/** Intersect a center-to-center ray with the actual visible outline. */
+export function rimPoint(box: Box, toward: Vec, outline: Outline): Vec {
   const center = boxCenter(box);
-  if (circular) return closestPointOnCircle(center, Math.min(box.width, box.height) / 2, toward);
-  return closestPointOnBox(box, toward);
+  if (outline === 'circle')
+    return closestPointOnCircle(center, Math.min(box.width, box.height) / 2, toward);
+  const dx = toward.x - center.x;
+  const dy = toward.y - center.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance < 1e-6) return { x: center.x, y: box.y };
+  const ux = dx / distance;
+  const uy = dy / distance;
+  let length = Math.min(
+    Math.abs(ux) > 1e-9 ? box.width / 2 / Math.abs(ux) : Infinity,
+    Math.abs(uy) > 1e-9 ? box.height / 2 / Math.abs(uy) : Infinity,
+  );
+  if (outline === 'capsule') {
+    const radius = Math.min(box.width, box.height) / 2;
+    const horizontal = box.width >= box.height;
+    const offset = Math.abs(box.width - box.height) / 2;
+    const along = Math.abs(horizontal ? ux : uy);
+    const across = Math.abs(horizontal ? uy : ux);
+    // The straight side is valid only between the two semicircle centers.
+    if (across < 1e-9 || (radius / across) * along > offset) {
+      length = offset * along + Math.sqrt(Math.max(0, radius ** 2 - (offset * across) ** 2));
+    }
+  }
+  return { x: center.x + ux * length, y: center.y + uy * length };
 }
 
 export function perimeterLink(
   from: Box,
   to: Box,
-  kinds: { from: 'circle' | 'box'; to: 'circle' | 'box' } = { from: 'box', to: 'box' },
+  kinds: { from: Outline; to: Outline } = { from: 'box', to: 'box' },
 ): { path: string; labelAt: Vec } | null {
   const a = boxCenter(from);
   const b = boxCenter(to);
-  const start = rimPoint(from, b, kinds.from === 'circle');
-  const end = rimPoint(to, a, kinds.to === 'circle');
+  const start = rimPoint(from, b, kinds.from);
+  const end = rimPoint(to, a, kinds.to);
   const dx = end.x - start.x,
     dy = end.y - start.y,
     dist = Math.hypot(dx, dy);
@@ -67,7 +92,7 @@ export function perimeterLink(
 }
 
 export function leaderPath(from: Box, to: Box, circular = true): string | null {
-  const start = rimPoint(from, boxCenter(to), circular);
+  const start = rimPoint(from, boxCenter(to), circular ? 'circle' : 'box');
   const end = closestPointOnBox(to, start);
   const dx = end.x - start.x,
     dy = end.y - start.y,

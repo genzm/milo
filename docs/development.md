@@ -4,9 +4,9 @@ Node.js v22 以降です。
 
 ```sh
 npm ci
+npm run build
 npm test
 npm run check
-npm run build
 ```
 
 | コマンド | 内容 |
@@ -52,6 +52,8 @@ npm run build
 
 ## テストの置き場所
 
-`test/core.test.ts` と `test/render-blocks.test.ts` が記法、`test/canvas.test.ts` と `test/flow.test.ts` が流れ図、`test/diagram.test.ts` と `test/diagrams.test.ts` がダイアグラムです。CLI と PDF は `test/cli.test.mjs`、`test/pdf.test.mjs`、`test/build.test.mjs` です。ブラウザ上の描画は `test/flow-browser.test.mjs` と `test/diagram-browser.test.mjs` です。
+`test/core.test.ts` と `test/render-blocks.test.ts` が記法、`test/canvas.test.ts` と `test/flow.test.ts` が流れ図、`test/diagram.test.ts` と `test/diagrams.test.ts` がダイアグラムです。CLI と PDF は `test/cli.test.mjs`、`test/pdf.test.mjs`、`test/build.test.mjs` です。ブラウザ上の描画は `test/flow-browser.test.mjs`、`test/diagram-browser.test.mjs`、`test/diagram-regressions-browser.test.mjs` です。
+
+全体テストには `dist/milo.html` を読むものがあるため、先に `npm run build` を実行します。図の接続・測定・配置の修正方針と回帰検証は [図の接続・配置の修正](diagram-layout-fixes.md) を参照してください。
 
 サンプル原稿は `content/slides.md` と `marp/example.md` です。

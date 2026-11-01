@@ -1,14 +1,10 @@
 import type { RenderContext } from './directives';
 import { layoutFlowFromCanvas } from './flow/layout.ts';
 import { estimateNodeHeight } from './flow/measure.ts';
-import { routeConnection } from './flow/route.ts';
-import {
-  FLOW,
-  FLOW_DIAGNOSTIC_MESSAGE,
-  FLOW_ROUTES,
-  type FlowDiagnostic,
-  type FlowEdgePath,
-} from './flow/types.ts';
+import { routeConnection, routeFreeEdges } from './flow/route.ts';
+import { fromCanvasScene } from './flow/normalize.ts';
+import { measureBorderBox, sceneRatio } from './diagram/measure.ts';
+import { FLOW, FLOW_DIAGNOSTIC_MESSAGE, FLOW_ROUTES, type FlowDiagnostic } from './flow/types.ts';
 
 export type CanvasDirection = 'right' | 'left' | 'down' | 'up';
 export type CanvasLayout = 'flow' | 'free';
@@ -313,7 +309,7 @@ export function mountCanvasScene(
     marker = svgElement('marker', {
       id: `${uid}-arrow`,
       viewBox: '0 0 10 10',
-      refX: flowMarks ? 9 : 8.2,
+      refX: 10,
       refY: 5,
       markerWidth: flowMarks ? 5 : 7,
       markerHeight: flowMarks ? 5 : 7,
@@ -342,24 +338,27 @@ export function mountCanvasScene(
   let disposed = false;
   const draw = () => {
     if (disposed) return;
-    const ratio = element.clientWidth ? scene.options.width / element.clientWidth : 1;
+    const ratio = sceneRatio(element, scene.options.width);
     const atWidth = new Map<number, number[]>();
-    for (const candidate of FLOW.WIDTH_CANDIDATES) {
+    const preferredWidth = scene.options.layout === 'free' ? 230 : FLOW.PREFERRED_WIDTH;
+    const candidates = scene.options.layout === 'free' ? [preferredWidth] : FLOW.WIDTH_CANDIDATES;
+    for (const candidate of candidates) {
       elements.forEach((item, i) => {
         const width = scene.nodes[i].width ?? candidate;
         item.style.width = `${(width / scene.options.width) * 100}%`;
         item.style.minHeight = '';
+        item.style.height = '';
       });
       atWidth.set(
         candidate,
         elements.map((item, i) => {
           if (scene.nodes[i].height !== undefined) return scene.nodes[i].height!;
-          const height = item.scrollHeight * ratio;
+          const height = measureBorderBox(item).height * ratio;
           return height > 1 ? height : estimatedHeight(scene.nodes[i]);
         }),
       );
     }
-    const measured = { heights: atWidth.get(FLOW.PREFERRED_WIDTH) || [], atWidth };
+    const measured = { heights: atWidth.get(preferredWidth) || [], atWidth };
     const layout = scene.options.layout === 'flow' ? layoutFlowFromCanvas(scene, measured) : null;
     scene.options.height = layout?.height ?? canvasHeight(scene, measured.heights);
     element.style.aspectRatio = `${scene.options.width} / ${scene.options.height}`;
@@ -373,34 +372,22 @@ export function mountCanvasScene(
       item.style.top = `${(frame.y / scene.options.height) * 100}%`;
       item.style.width = `${(frame.width / scene.options.width) * 100}%`;
       item.style.minHeight = `${(frame.height / scene.options.height) * 100}%`;
+      item.style.height = `${(frame.height / scene.options.height) * 100}%`;
     });
     svg.querySelector('.canvas-edge-layer')?.remove();
     const layer = svgElement('g', { class: 'canvas-edge-layer' });
     const byId = new Map(scene.nodes.map((node, i) => [node.id, frames[i]]));
-    const routed: { item: FlowEdgePath; edge: CanvasEdge | undefined }[] = layout?.edgePaths?.length
-      ? layout.edgePaths.map((item) => ({ item, edge: scene.edges[item.index] }))
-      : scene.edges.map((edge, index) => {
-          const geometry = connection(
-            byId.get(edge.from)!,
-            byId.get(edge.to)!,
-            edge.route || scene.options.route,
-          );
-          const item: FlowEdgePath = {
-            index,
-            from: edge.from,
-            to: edge.to,
-            path: geometry.path,
-            label: geometry.label,
-            role: 'edge',
-          };
-          return { item, edge };
-        });
+    const paths = layout?.edgePaths ?? routeFreeEdges(fromCanvasScene(scene), byId);
+    const routed = paths.map((item) => ({ item, edge: scene.edges[item.index] }));
     const labeled = new Set<number>();
     for (const { item, edge } of routed) {
       if (!edge) continue;
       const arrows = item.arrows ?? edge.arrows;
       const attrs: Record<string, string | number> = {
         d: item.path,
+        'data-edge-from': item.from,
+        'data-edge-to': item.to,
+        'data-edge-role': item.role || 'edge',
         class: `canvas-edge canvas-edge-${edge.tone}${edge.dashed ? ' is-dashed' : ''}`,
       };
       if (arrows === 'end' || arrows === 'both') attrs['marker-end'] = `url(#${uid}-arrow)`;
@@ -426,7 +413,7 @@ export function mountCanvasScene(
     const diagnostics = [...(layout?.diagnostics || [])];
     elements.forEach((item, i) => {
       const frame = frames[i];
-      if (frame && item.scrollHeight * ratio > frame.height + 2) {
+      if (frame && measureBorderBox(item).height * ratio > frame.height + 2) {
         diagnostics.push({
           code: 'TEXT_OVERFLOW',
           severity: 'warning',

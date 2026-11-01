@@ -445,3 +445,51 @@ test('diagram reports structural errors', () => {
     }
   }
 });
+
+test('radial links follow center rays and meet rounded card outlines', async () => {
+  const { rimPoint } = await import('../src/diagram/geometry.ts');
+  const scene = parseDiagram(
+    '@item hub title="顧客の課題"\n@item a title="視座を変える"\n@item b title="本と事例を読む"\n@item c title="人と対話する"\n@link hub -- a\n@link hub -- b\n@link hub -- c',
+    'layout=radial center=hub',
+  );
+  const layout = layoutDiagram(scene);
+  for (const link of layout.links) {
+    const from = layout.items.find((item) => item.id === link.from)!;
+    const to = layout.items.find((item) => item.id === link.to)!;
+    const a = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+    const b = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+    const n = link.path.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+    for (const [x, y] of [
+      [n[0], n[1]],
+      [n[2], n[3]],
+    ])
+      assert.ok(Math.abs((x - a.x) * (b.y - a.y) - (y - a.y) * (b.x - a.x)) < 0.001);
+  }
+  const box = { x: 0, y: 0, width: 200, height: 80 };
+  const point = rimPoint(box, { x: 300, y: 110 }, 'capsule');
+  assert.ok(Math.abs(Math.hypot(point.x - 160, point.y - 40) - 40) < 0.001);
+});
+
+test('dense radial layouts preserve separation instead of clamping cards into each other', () => {
+  const scene = parseDiagram(
+    '@item hub title="中心"\n' +
+      Array.from({ length: 10 }, (_, i) => `@item n${i} title="観察の入口${i}"`).join('\n'),
+    'layout=radial center=hub width=1000 height=580',
+  );
+  const layout = layoutDiagram(scene, {
+    cards: scene.items.map(() => ({ width: 240, height: 100 })),
+  });
+  for (let i = 0; i < layout.items.length; i++)
+    for (let j = 0; j < i; j++) {
+      const a = layout.items[i],
+        b = layout.items[j];
+      assert.ok(
+        a.x + a.width <= b.x ||
+          b.x + b.width <= a.x ||
+          a.y + a.height <= b.y ||
+          b.y + b.height <= a.y,
+      );
+    }
+  assert.ok(layout.fitScale! <= 1);
+  if (layout.fitScale! < 18 / 27) assert.equal(layout.overflowReason, 'read');
+});
