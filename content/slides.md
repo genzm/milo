@@ -303,3 +303,56 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @enddiagram
 
 同じ `@item` と `@link` で、放射状の図にもできる。
+
+---
+
+<!-- milo: layout=lab -->
+
+# 方向と距離も、宣言する
+
+@diagram layout=radial center=problem
+@item problem title="顧客の課題" level=high
+@item cost title="コスト" side=top distance=far
+@item time title="時間" side=left distance=near
+@item quality title="品質" side=bottom distance=far
+@item support title="サポート" side=right distance=mid
+@link problem -- cost
+@link problem -- time
+@link problem -- quality
+@link problem -- support
+@enddiagram
+
+`side` と `distance` は中心からの意味。位置を直接は動かさない。
+
+---
+
+<!-- milo: layout=lab -->
+
+# 2つの軸で置く
+
+@diagram layout=field guide=axes x-low="内部" x-high="外部" y-low="短期" y-high="長期"
+@item a title="施策A" x=-0.7 y=0.6
+@item b title="施策B" x=0.5 y=0.4
+@item c title="施策C" x=0.8 y=-0.6
+@enddiagram
+
+Field は指定した座標を保ったまま、ラベルだけ避ける。
+
+---
+
+<!-- milo: layout=lab -->
+
+# 領域とまとまり
+
+@diagram layout=field guide=axes x-low="内部" x-high="外部" y-low="短期" y-high="長期" cluster-region=halo
+@zone internal label="内部・長期" x="-1:0" y="0:1"
+@zone external label="外部・長期" x="0:1" y="0:1"
+@cluster business title="事業" tone=accent
+@cluster product title="プロダクト" tone=muted
+@item a title="コスト" x=-0.6 y=0.55 cluster=business
+@item b title="時間" x=-0.45 y=-0.35 cluster=business
+@item c title="品質" x=0.55 y=0.65 cluster=product
+@item d title="サポート" x=0.7 y=-0.25 cluster=product
+@enddiagram
+
+Zone は空間の区分。Cluster は項目の所属。

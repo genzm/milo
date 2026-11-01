@@ -8,8 +8,15 @@ import {
   type CanvasArrows,
   type CanvasScene,
 } from './canvas';
+import { parseSemanticSpan, parseSemanticValue } from './diagram/coords.ts';
+import { perimeterLink } from './diagram/geometry.ts';
+import { estimateFieldLabel } from './diagram/labels.ts';
+import { layoutField } from './diagram/layout-field.ts';
+import { layoutRadialSpatial, usesSpatialRadial } from './diagram/layout-radial.ts';
+import { regionRect, spatialSignature } from './diagram/render-spatial.ts';
 
-export type DiagramLayoutKind = 'ring' | 'flow' | 'radial';
+export type DiagramLayoutKind = 'ring' | 'flow' | 'radial' | 'field';
+export { usesSpatialRadial };
 export type DiagramLevel = 'none' | 'high' | 'medium' | 'low';
 export type DiagramLinkKind = 'undirected' | 'forward' | 'both';
 export type DiagramStart = 'top' | 'right' | 'bottom' | 'left';
@@ -20,16 +27,39 @@ export type DiagramNoteMode = 'inline' | 'outside' | 'none';
 export type DiagramNoteStyle = 'plain' | 'caption';
 export type DiagramNoteLinkKind = 'none' | 'leader' | 'arrow';
 export type DiagramNoteSide = 'auto' | 'top' | 'right' | 'bottom' | 'left';
+export type DiagramDistance = 'near' | 'mid' | 'far';
+export type DiagramGuide = 'none' | 'axes';
+export type DiagramClusterRegion = 'none' | 'halo';
+export type DiagramClusterTone = 'accent' | 'muted' | 'ink' | 'soft';
+export type DiagramShape = 'vertex' | 'card' | 'dot';
 
 export interface DiagramItem {
   id: string;
   title: string;
   badge: string;
   level: DiagramLevel;
-  shape: 'vertex' | 'card';
+  shape: DiagramShape;
   markdown: string;
   noteMode?: DiagramNoteMode;
   noteSide: DiagramNoteSide;
+  side: DiagramNoteSide;
+  distance?: DiagramDistance;
+  x?: number;
+  y?: number;
+  cluster: string;
+}
+
+export interface DiagramZone {
+  id: string;
+  label: string;
+  x: { min: number; max: number };
+  y: { min: number; max: number };
+}
+
+export interface DiagramCluster {
+  id: string;
+  title: string;
+  tone: DiagramClusterTone;
 }
 
 export interface DiagramLink {
@@ -52,12 +82,20 @@ export interface DiagramOptions {
   noteMode: DiagramNoteMode;
   noteStyle: DiagramNoteStyle;
   noteLink: DiagramNoteLinkKind;
+  guide: DiagramGuide;
+  xLow: string;
+  xHigh: string;
+  yLow: string;
+  yHigh: string;
+  clusterRegion: DiagramClusterRegion;
 }
 
 export interface DiagramScene {
   options: DiagramOptions;
   items: DiagramItem[];
   links: DiagramLink[];
+  zones: DiagramZone[];
+  clusters: DiagramCluster[];
 }
 
 export interface DiagramBox {
@@ -69,9 +107,32 @@ export interface DiagramBox {
 
 export interface DiagramPlacedItem extends DiagramBox {
   id: string;
-  kind: 'vertex' | 'card';
+  kind: 'vertex' | 'card' | 'dot';
   label?: DiagramBox;
   note?: DiagramBox;
+}
+
+export interface DiagramRegion {
+  id: string;
+  kind: 'zone' | 'cluster';
+  label: string;
+  tone: string;
+  box: DiagramBox;
+}
+
+export interface DiagramGuideMark {
+  kind: 'axis' | 'label';
+  path?: string;
+  text?: string;
+  x?: number;
+  y?: number;
+  anchor?: 'start' | 'middle' | 'end';
+}
+
+export interface DiagramLegendItem {
+  id: string;
+  title: string;
+  tone: string;
 }
 
 export interface DiagramPlacedLink {
@@ -96,6 +157,9 @@ export interface DiagramLayout {
   links: DiagramPlacedLink[];
   noteLinks: DiagramNoteLink[];
   overflow: boolean;
+  regions: DiagramRegion[];
+  guides: DiagramGuideMark[];
+  legend: DiagramLegendItem[];
 }
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -352,10 +416,16 @@ function itemFrom(
   if (!title) throw new Error(`@item ${attrs.id || index + 1} には title が必要です。`);
   const shape = choice(
     attrs.shape,
-    ['vertex', 'card'] as const,
-    layout === 'ring' ? 'vertex' : 'card',
+    ['vertex', 'card', 'dot'] as const,
+    layout === 'ring' ? 'vertex' : layout === 'field' ? 'dot' : 'card',
     'shape',
   );
+  const x =
+    attrs.x !== undefined && attrs.x !== '' ? parseSemanticValue(attrs.x, 'x', 'x') : undefined;
+  const y =
+    attrs.y !== undefined && attrs.y !== '' ? parseSemanticValue(attrs.y, 'y', 'y') : undefined;
+  if (layout === 'field' && (x === undefined || y === undefined))
+    throw new Error(`@item ${attrs.id || index + 1} には x と y が必要です。`);
   return {
     id: attrs.id,
     title,
@@ -375,6 +445,14 @@ function itemFrom(
       'auto',
       'note-side',
     ),
+    side: choice(attrs.side, ['auto', 'top', 'right', 'bottom', 'left'] as const, 'auto', 'side'),
+    distance:
+      attrs.distance !== undefined && attrs.distance !== ''
+        ? choice(attrs.distance, ['near', 'mid', 'far'] as const, 'mid', 'distance')
+        : undefined,
+    x,
+    y,
+    cluster: attrs.cluster || '',
   };
 }
 
@@ -382,8 +460,15 @@ function itemFrom(
 export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
   const attrs = atAttributes(rawOptions);
   if (attrs.layout === 'tree' || attrs.layout === 'free')
-    throw new Error('layout は ring / flow / radial です。精密な配置は @canvas を使ってください。');
-  const layout = choice(attrs.layout, ['ring', 'flow', 'radial'] as const, 'ring', 'layout');
+    throw new Error(
+      'layout は ring / flow / radial / field です。精密な配置は @canvas を使ってください。',
+    );
+  const layout = choice(
+    attrs.layout,
+    ['ring', 'flow', 'radial', 'field'] as const,
+    'ring',
+    'layout',
+  );
   const noteMode = choice(attrs.note, ['inline', 'outside', 'none'] as const, 'inline', 'note');
   const options: DiagramOptions = {
     layout,
@@ -403,7 +488,10 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
     ),
     center: attrs.center || '',
     width: finite(attrs.width, 1000)!,
-    height: finite(attrs.height, layout === 'radial' ? 620 : noteMode === 'outside' ? 620 : 500)!,
+    height: finite(
+      attrs.height,
+      layout === 'radial' || layout === 'field' || noteMode === 'outside' ? 620 : 500,
+    )!,
     geometry: choice(attrs.geometry, ['regular'] as const, 'regular', 'geometry'),
     noteMode,
     noteStyle: choice(
@@ -418,6 +506,17 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
       noteMode === 'outside' ? 'arrow' : 'none',
       'note-link',
     ),
+    guide: choice(attrs.guide, ['none', 'axes'] as const, 'none', 'guide'),
+    xLow: attrs.xLow || attrs['x-low'] || '',
+    xHigh: attrs.xHigh || attrs['x-high'] || '',
+    yLow: attrs.yLow || attrs['y-low'] || '',
+    yHigh: attrs.yHigh || attrs['y-high'] || '',
+    clusterRegion: choice(
+      attrs.clusterRegion || attrs['cluster-region'],
+      ['none', 'halo'] as const,
+      'none',
+      'cluster-region',
+    ),
   };
   if (options.width <= 0 || options.height <= 0)
     throw new Error('diagram の width / height を確認してください。');
@@ -425,6 +524,8 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
   const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const items: DiagramItem[] = [];
   const links: DiagramLink[] = [];
+  const zones: DiagramZone[] = [];
+  const clusters: DiagramCluster[] = [];
   let current: { attrs: Record<string, string>; body: string[] } | null = null,
     markdownFence = '';
 
@@ -461,12 +562,44 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
       links.push(link);
       continue;
     }
+    const zone = /^@zone\s+([A-Za-z][\w-]*)(?:\s+([\s\S]*))?\s*$/.exec(text);
+    if (zone) {
+      flush();
+      const zoneAttrs: Record<string, string> = { ...atAttributes(zone[2] || ''), id: zone[1] };
+      zones.push({
+        id: zoneAttrs.id,
+        label: zoneAttrs.label || zoneAttrs.title || zoneAttrs.id,
+        x: parseSemanticSpan(zoneAttrs.x, 'x', `zone ${zoneAttrs.id} の x`),
+        y: parseSemanticSpan(zoneAttrs.y, 'y', `zone ${zoneAttrs.id} の y`),
+      });
+      continue;
+    }
+    const cluster = /^@cluster\s+([A-Za-z][\w-]*)(?:\s+([\s\S]*))?\s*$/.exec(text);
+    if (cluster) {
+      flush();
+      const clusterAttrs: Record<string, string> = {
+        ...atAttributes(cluster[2] || ''),
+        id: cluster[1],
+      };
+      clusters.push({
+        id: clusterAttrs.id,
+        title: clusterAttrs.title || clusterAttrs.label || clusterAttrs.id,
+        tone: choice(
+          clusterAttrs.tone,
+          ['accent', 'muted', 'ink', 'soft'] as const,
+          'muted',
+          'tone',
+        ),
+      });
+      continue;
+    }
     if (!text) {
       current?.body.push(line);
       continue;
     }
     if (text.startsWith('@')) throw new Error(`diagram の中では使えません: ${text}`);
-    if (!current) throw new Error('diagram の内容は @item か @link で書いてください。');
+    if (!current)
+      throw new Error('diagram の内容は @item / @link / @zone / @cluster で書いてください。');
     current.body.push(line);
   }
   flush();
@@ -483,7 +616,7 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
     if (!ids.has(link.from)) throw new Error(`link の接続元が見つかりません: ${link.from}`);
     if (!ids.has(link.to)) throw new Error(`link の接続先が見つかりません: ${link.to}`);
   }
-  return { options, items, links };
+  return { options, items, links, zones, clusters };
 }
 
 function labelOutside(
@@ -874,10 +1007,26 @@ function circlePath(from: DiagramBox, to: DiagramBox) {
 function linkGeometry(
   from: DiagramPlacedItem,
   to: DiagramPlacedItem,
+  perimeter = false,
 ): { path: string; labelAt: { x: number; y: number } } {
+  if (perimeter || from.kind === 'dot' || to.kind === 'dot') {
+    const geometry = perimeterLink(from, to, {
+      from: from.kind === 'dot' || from.kind === 'vertex' ? 'circle' : 'box',
+      to: to.kind === 'dot' || to.kind === 'vertex' ? 'circle' : 'box',
+    });
+    return geometry || { path: '', labelAt: { x: 0, y: 0 } };
+  }
   if (from.kind === 'vertex' && to.kind === 'vertex') return circlePath(from, to);
   const geometry = connection(from, to, 'straight');
   return { path: geometry.path, labelAt: geometry.label };
+}
+
+function emptySpatial() {
+  return {
+    regions: [] as DiagramRegion[],
+    guides: [] as DiagramGuideMark[],
+    legend: [] as DiagramLegendItem[],
+  };
 }
 
 /** Deterministic placement for ring and radial diagrams. Flow uses the canvas engine. */
@@ -890,24 +1039,68 @@ export function layoutDiagram(
   } = {},
 ): DiagramLayout {
   const { options } = scene;
-  if (options.layout === 'radial') {
-    const items = layoutRadial(
-      scene,
-      measured.cards ||
-        scene.items.map((item) => estimateCardSize(item, item.id === options.center)),
+  if (options.layout === 'field') {
+    const field = layoutField(
+      {
+        options: {
+          width: options.width,
+          height: options.height,
+          guide: options.guide,
+          xLow: options.xLow,
+          xHigh: options.xHigh,
+          yLow: options.yLow,
+          yHigh: options.yHigh,
+          clusterRegion: options.clusterRegion,
+        },
+        items: scene.items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          shape: item.shape,
+          x: item.x ?? 0,
+          y: item.y ?? 0,
+          cluster: item.cluster,
+        })),
+        links: resolvedLinks(scene),
+        zones: scene.zones,
+        clusters: scene.clusters,
+      },
+      measured.labels || scene.items.map((item) => estimateFieldLabel(item.title)),
     );
+    return {
+      width: options.width,
+      height: options.height,
+      items: field.items,
+      links: field.links,
+      noteLinks: field.noteLinks,
+      overflow: field.overflow,
+      regions: field.regions,
+      guides: field.guides,
+      legend: field.legend,
+    };
+  }
+  if (options.layout === 'radial') {
+    const sizes =
+      measured.cards ||
+      scene.items.map((item) => estimateCardSize(item, item.id === options.center));
+    const spatial = usesSpatialRadial(scene);
+    const radial = spatial ? layoutRadialSpatial(scene, sizes) : null;
+    const items = radial ? radial.items : layoutRadial(scene, sizes);
+    const overflow = radial?.overflow ?? false;
     const byId = new Map(items.map((item) => [item.id, item]));
-    const links = resolvedLinks(scene).map((link) => {
-      const geometry = linkGeometry(byId.get(link.from)!, byId.get(link.to)!);
-      return { ...link, path: geometry.path, labelAt: geometry.labelAt };
-    });
+    const links = resolvedLinks(scene)
+      .map((link) => {
+        const geometry = linkGeometry(byId.get(link.from)!, byId.get(link.to)!, spatial);
+        return { ...link, path: geometry.path, labelAt: geometry.labelAt };
+      })
+      .filter((link) => link.path);
     return {
       width: options.width,
       height: options.height,
       items,
       links,
       noteLinks: [],
-      overflow: false,
+      overflow,
+      ...emptySpatial(),
     };
   }
   const ring = layoutRing(scene, measured);
@@ -923,6 +1116,7 @@ export function layoutDiagram(
     links,
     noteLinks: ring.noteLinks,
     overflow: ring.overflow,
+    ...emptySpatial(),
   };
 }
 
@@ -1048,13 +1242,27 @@ export function mountDiagram(
     scene.options.layout === 'ring' &&
     scene.items.some((item) => resolvedNoteMode(item, scene.options) === 'outside');
   if (hasOutsideNotes) element.classList.add('diagram-has-notes');
+  if (scene.options.layout === 'field' || usesSpatialRadial(scene))
+    element.classList.add('diagram-has-spatial');
 
   const content = document.createElement('div');
   content.className = 'diagram-content';
+  const clusterTone = new Map<string, string>();
+  const toneCycle = ['accent', 'muted', 'ink', 'soft'];
+  let toneIndex = 0;
+  for (const cluster of scene.clusters) clusterTone.set(cluster.id, cluster.tone);
+  for (const item of scene.items) {
+    if (!item.cluster || clusterTone.has(item.cluster)) continue;
+    clusterTone.set(item.cluster, toneCycle[toneIndex++ % toneCycle.length]);
+  }
   const nodes = scene.items.map((item) => {
     const node = document.createElement('div');
     const isCenter = scene.options.layout === 'radial' && item.id === scene.options.center;
-    if (scene.options.layout === 'ring') {
+    const clusterClass = item.cluster ? ` is-cluster-${clusterTone.get(item.cluster)}` : '';
+    if (scene.options.layout === 'field' && item.shape !== 'card') {
+      node.className = `diagram-dot${levelClass(item.level)}${clusterClass}`;
+      node.dataset.diagramItem = item.id;
+    } else if (scene.options.layout === 'ring') {
       node.className = `diagram-vertex${levelClass(item.level)}`;
       node.dataset.diagramItem = item.id;
       if (item.badge) node.innerHTML = `<span class="diagram-badge">${esc(item.badge)}</span>`;
@@ -1077,6 +1285,17 @@ export function mountDiagram(
     return node;
   });
   const annotations = scene.items.map((item) => {
+    if (scene.options.layout === 'field') {
+      const wrap = document.createElement('div');
+      wrap.className = 'diagram-label diagram-field-label';
+      wrap.dataset.diagramLabel = item.id;
+      const title = document.createElement('div');
+      title.className = 'diagram-label-title';
+      title.textContent = item.title;
+      wrap.append(title);
+      content.append(wrap);
+      return wrap;
+    }
     if (scene.options.layout !== 'ring') return null;
     const mode = resolvedNoteMode(item, scene.options);
     if (mode === 'none') return null;
@@ -1116,8 +1335,12 @@ export function mountDiagram(
   const overflowHint = document.createElement('div');
   overflowHint.className = 'diagram-overflow-hint';
   overflowHint.hidden = true;
-  overflowHint.textContent = '注釈が領域に収まりません';
-  content.append(overflowHint);
+  overflowHint.textContent =
+    scene.options.layout === 'ring' ? '注釈が領域に収まりません' : '図が領域に収まりません';
+  const legend = document.createElement('div');
+  legend.className = 'diagram-legend';
+  legend.hidden = true;
+  content.append(overflowHint, legend);
   element.replaceChildren(svg, content);
 
   let disposed = false;
@@ -1138,7 +1361,7 @@ export function mountDiagram(
     annotations.forEach((node, i) => {
       if (!node) return;
       const outside = resolvedNoteMode(scene.items[i], scene.options) === 'outside';
-      const cap = outside ? NOTE_MAX : 200;
+      const cap = scene.options.layout === 'field' ? 180 : outside ? NOTE_MAX : 200;
       const maxWidth = `${(cap / scene.options.width) * 100}%`;
       if (node.style.maxWidth !== maxWidth) node.style.maxWidth = maxWidth;
     });
@@ -1151,6 +1374,12 @@ export function mountDiagram(
           estimateTitleSize(item.title),
           ratio,
         );
+      }
+      if (scene.options.layout === 'field') {
+        if (!node) return estimateFieldLabel(item.title);
+        const width = Math.min(180, node.scrollWidth * ratio);
+        const height = node.scrollHeight * ratio;
+        return width > 1 ? { width, height } : estimateFieldLabel(item.title);
       }
       if (!node) return estimateLabelSize(item);
       const width = Math.min(200, node.scrollWidth * ratio);
@@ -1178,38 +1407,26 @@ export function mountDiagram(
       notes: measuredNotes,
       cards: measuredCards,
     });
-    const signature = JSON.stringify({
-      o: layout.overflow,
-      n: layout.noteLinks.map((link) => link.path),
-      i: layout.items.map((item) => [
-        Math.round(item.x),
-        Math.round(item.y),
-        item.label && [
-          Math.round(item.label.x),
-          Math.round(item.label.y),
-          Math.round(item.label.width),
-          Math.round(item.label.height),
-        ],
-        item.note && [
-          Math.round(item.note.x),
-          Math.round(item.note.y),
-          Math.round(item.note.width),
-          Math.round(item.note.height),
-        ],
-      ]),
-    });
+    const signature = spatialSignature(layout);
     if (signature === lastSignature) return;
     lastSignature = signature;
     const byId = new Map(layout.items.map((item) => [item.id, item]));
     nodes.forEach((node, i) => {
       const box = byId.get(scene.items[i].id)!;
-      applyBox(node, box, layout.width, layout.height, box.kind === 'card' ? 'center' : 'size');
+      applyBox(
+        node,
+        box,
+        layout.width,
+        layout.height,
+        box.kind === 'card' || box.kind === 'dot' ? 'center' : 'size',
+      );
     });
     annotations.forEach((node, i) => {
       const placed = byId.get(scene.items[i].id);
       if (!node || !placed) return;
       const box =
-        resolvedNoteMode(scene.items[i], scene.options) === 'outside'
+        resolvedNoteMode(scene.items[i], scene.options) === 'outside' &&
+        scene.options.layout === 'ring'
           ? annotationBox(placed)
           : placed.label;
       if (!box) {
@@ -1223,8 +1440,56 @@ export function mountDiagram(
     element.classList.toggle('is-overflow', layout.overflow);
     if (layout.overflow) element.setAttribute('data-diagram-overflow', 'true');
     else element.removeAttribute('data-diagram-overflow');
+    legend.hidden = !layout.legend.length;
+    legend.replaceChildren(
+      ...layout.legend.map((entry) => {
+        const row = document.createElement('div');
+        row.className = `diagram-legend-item is-${entry.tone}`;
+        row.innerHTML = `<i></i><span>${esc(entry.title)}</span>`;
+        return row;
+      }),
+    );
+    svg.querySelector('.diagram-region-layer')?.remove();
+    svg.querySelector('.diagram-guide-layer')?.remove();
     svg.querySelector('.diagram-note-layer')?.remove();
     svg.querySelector('.diagram-edge-layer')?.remove();
+    const regionLayer = svgElement('g', { class: 'diagram-region-layer' });
+    for (const region of layout.regions) {
+      const box = regionRect(region.box);
+      regionLayer.append(
+        svgElement('rect', {
+          ...box,
+          rx: region.kind === 'cluster' ? 18 : 8,
+          class: `diagram-region is-${region.kind} is-${region.tone}`,
+        }),
+      );
+      if (region.label && region.kind === 'zone')
+        regionLayer.append(
+          svgElement(
+            'text',
+            { x: box.x + 10, y: box.y + 18, class: 'diagram-region-label' },
+            region.label,
+          ),
+        );
+    }
+    const guideLayer = svgElement('g', { class: 'diagram-guide-layer' });
+    for (const mark of layout.guides) {
+      if (mark.path) guideLayer.append(svgElement('path', { d: mark.path, class: 'diagram-axis' }));
+      if (mark.text)
+        guideLayer.append(
+          svgElement(
+            'text',
+            {
+              x: mark.x || 0,
+              y: mark.y || 0,
+              class: 'diagram-axis-label',
+              'text-anchor': mark.anchor || 'middle',
+            },
+            mark.text,
+          ),
+        );
+    }
+    svg.append(regionLayer, guideLayer);
     const noteLayer = svgElement('g', { class: 'diagram-note-layer' });
     for (const link of layout.noteLinks) {
       const attrs: Record<string, string | number> = {

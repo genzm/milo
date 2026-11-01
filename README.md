@@ -102,6 +102,16 @@ $$
 @enddiagram
 ```
 
+`layout=radial` に `side` と `distance` を付けると、中心からの方向と距離を宣言できます。`layout=field` は `-1` から `1` の意味座標で分布図を描きます。`@zone` は領域、`cluster=` は所属です。
+
+```markdown
+@diagram layout=field guide=axes x-low="内部" x-high="外部" y-low="短期" y-high="長期"
+@item a title="施策A" x=-0.7 y=0.6
+@item b title="施策B" x=0.5 y=0.4
+@item c title="施策C" x=0.8 y=-0.6
+@enddiagram
+```
+
 ```markdown
 @steps highlight=2
 @step title="考え方"

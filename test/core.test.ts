@@ -331,8 +331,8 @@ test('a failed post-write verification never advances the baseline until a retry
 test('built artifact contains one kernel and all dependencies; a source edit preserves the toolbox bytes', () => {
   const html = readFileSync('dist/milo.html', 'utf8'),
     s = SourceStore.fromHTML(html);
-  assert.equal(s.list().length, 15);
-  assert.equal(s.list('slide').length, 13);
+  assert.equal(s.list().length, 18);
+  assert.equal(s.list('slide').length, 16);
   assert.equal(html.includes('MILO COMPONENTS'), false);
   assert.equal(/<script[^>]+\bsrc\s*=/i.test(html), false);
   assert.equal(/<link[^>]+rel="stylesheet"/i.test(html), false);
@@ -360,6 +360,8 @@ test('built artifact contains one kernel and all dependencies; a source edit pre
   assert.ok(s.get('slide-10').text.includes('@diagram'));
   assert.ok(s.get('slide-12').text.includes('note=outside'));
   assert.ok(s.get('slide-13').text.includes('layout=radial'));
+  assert.ok(s.get('slide-15').text.includes('layout=field'));
+  assert.ok(s.get('slide-16').text.includes('@zone'));
   assert.equal(json(s.get('manifest').text).title, '小さな実験室');
   assert.equal(Object.hasOwn(json(s.get('manifest').text), 'layouts'), false);
   assert.equal(s.list('asset')[0]?.name, 'assets/flow.gif');

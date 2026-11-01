@@ -302,7 +302,8 @@
   overflow: visible;
   isolation: isolate;
 
-  &.diagram-has-notes {
+  &.diagram-has-notes,
+  &.diagram-has-spatial {
     max-height: 620px;
   }
 
@@ -324,8 +325,10 @@
   }
   .diagram-vertex,
   .diagram-card,
+  .diagram-dot,
   .diagram-label,
   .diagram-note,
+  .diagram-legend,
   .diagram-overflow-hint {
     position: absolute;
     box-sizing: border-box;
@@ -344,6 +347,89 @@
   }
   .diagram-badge {
     font-size: inherit;
+  }
+  .diagram-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 0 3px var(--white);
+  }
+  .diagram-dot.diagram-level-medium,
+  .diagram-dot.is-cluster-muted {
+    background: var(--slide-card);
+    border-color: var(--slide-muted);
+  }
+  .diagram-dot.diagram-level-low,
+  .diagram-dot.is-cluster-ink {
+    background: var(--white);
+    border-color: var(--slide-ink);
+  }
+  .diagram-dot.is-cluster-soft {
+    background: var(--white);
+    border-color: color-mix(in srgb, var(--slide-muted) 70%, var(--white));
+  }
+  .diagram-layout-field .diagram-label-title {
+    font-size: var(--slide-text-label);
+    font-weight: 700;
+    white-space: normal;
+  }
+  .diagram-region {
+    fill: color-mix(in srgb, var(--slide-card) 72%, var(--white));
+    stroke: none;
+  }
+  .diagram-region.is-cluster {
+    fill: none;
+    stroke: color-mix(in srgb, var(--slide-muted) 55%, var(--white));
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+  }
+  .diagram-region.is-cluster.is-accent {
+    stroke: color-mix(in srgb, var(--accent) 45%, var(--white));
+  }
+  .diagram-region-label,
+  .diagram-axis-label {
+    fill: var(--slide-muted);
+    font-family: YakuHanJP, 'Noto Sans JP', sans-serif;
+    font-size: var(--slide-text-label);
+    font-weight: 700;
+  }
+  .diagram-axis {
+    fill: none;
+    stroke: color-mix(in srgb, var(--slide-ink) 18%, var(--slide-muted));
+    stroke-width: 1.25;
+    vector-effect: non-scaling-stroke;
+  }
+  .diagram-legend {
+    left: 8px;
+    bottom: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    color: var(--slide-muted);
+    font-size: var(--slide-text-footer);
+    font-weight: 700;
+  }
+  .diagram-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .diagram-legend-item i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .diagram-legend-item.is-muted i {
+    background: var(--slide-muted);
+  }
+  .diagram-legend-item.is-ink i {
+    background: var(--slide-ink);
+  }
+  .diagram-legend-item.is-soft i {
+    background: color-mix(in srgb, var(--slide-muted) 55%, var(--white));
   }
   .diagram-vertex.diagram-level-medium {
     background: var(--slide-card);
