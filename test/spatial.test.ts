@@ -68,13 +68,39 @@ test('radial side and distance keep direction and near < mid < far', () => {
   assert.ok(near.x < hub.x);
   assert.ok(mid.x > hub.x);
   assert.ok(far.y < hub.y);
-  assert.ok(Math.hypot(near.x - hub.x, near.y - hub.y) < Math.hypot(mid.x - hub.x, mid.y - hub.y));
-  const hubBox = layout.items.find((item) => item.id === 'problem')!;
-  const nearBox = layout.items.find((item) => item.id === 'nearL')!;
-  const farBox = layout.items.find((item) => item.id === 'farT')!;
-  assert.ok(nearBox.x + nearBox.width <= hubBox.x + 1);
-  assert.ok(farBox.y >= 0);
+  const nearDist = Math.hypot(near.x - hub.x, near.y - hub.y);
+  const midDist = Math.hypot(mid.x - hub.x, mid.y - hub.y);
+  const farDist = Math.hypot(far.x - hub.x, far.y - hub.y);
+  assert.ok(nearDist < midDist);
+  assert.ok(midDist < farDist);
+  assert.ok(Math.abs(midDist / nearDist - 0.72 / 0.5) < 0.08);
+  assert.ok(Math.abs(farDist / nearDist - 1 / 0.5) < 0.08);
   assert.equal(layout.links.length, 3);
+});
+
+test('slide 14 keeps a shared near < mid < far scale across axes', () => {
+  const layout = layoutDiagram(
+    parseDiagram(
+      `@item problem title="顧客の課題" level=high
+@item cost title="コスト" side=top distance=far
+@item time title="時間" side=left distance=near
+@item quality title="品質" side=bottom distance=far
+@item support title="サポート" side=right distance=mid
+@link problem -- cost
+@link problem -- time
+@link problem -- quality
+@link problem -- support`,
+      'layout=radial center=problem',
+    ),
+  );
+  const hub = centerOf(layout.items.find((item) => item.id === 'problem')!);
+  const dist = (id: string) => {
+    const point = centerOf(layout.items.find((item) => item.id === id)!);
+    return Math.hypot(point.x - hub.x, point.y - hub.y);
+  };
+  assert.ok(dist('time') < dist('support'));
+  assert.ok(dist('support') < dist('cost'));
+  assert.ok(Math.abs(dist('cost') - dist('quality')) < 1);
 });
 
 test('same-side radial items stay on that side and spread apart', () => {

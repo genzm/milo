@@ -30,9 +30,9 @@ export interface SemanticPoint {
 export const SPATIAL_PAD = 56;
 export const DOT = 16;
 export const DISTANCE_RANK: Record<SpatialDistance, number> = {
-  near: 0.2,
-  mid: 0.52,
-  far: 0.88,
+  near: 0.5,
+  mid: 0.72,
+  far: 1,
 };
 export const SIDE_SEMANTIC: Record<Exclude<SpatialSide, 'auto'>, SemanticPoint> = {
   top: { x: 0, y: 1 },
