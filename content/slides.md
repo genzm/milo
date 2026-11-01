@@ -97,7 +97,7 @@ grid が揃える
 ### 線
 
 関係は diagram
-分岐は canvas
+流れも diagram
 
 @box tone=default
 SVGでつなぐ
@@ -150,28 +150,35 @@ miloが並べて揃える
 
 @canvas direction=right route=straight
 
-@node markdown tone=muted
-### Markdown
+@node write tone=muted
+### 書く
 
 文章、**強調**、数式 $x^2$ を
-そのまま描画します。
+そのまま書く。
 
 -->
 
-@node layout tone=accent
-### Canvas
+@node measure
+### 測る
 
-- flowで自動配置
-- freeで座標指定
-- SVGで接続
+本文の幅から
+カードの大きさを決める。
 
 -->
 
-@node slide tone=dark
-### Slide
+@node place tone=accent
+### 置く
 
-Markdownの見た目を保ったまま、
-ひとつの図になります。
+流れに並べて
+矢印でつなぐ。
+
+-->
+
+@node show tone=dark
+### 出す
+
+Markdownの見た目のまま、
+ひとつの図になる。
 
 @endcanvas
 
@@ -283,6 +290,63 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @enddiagram
 
 `note=outside` は正多角形を崩さず、説明を外向きの矢印でつなぐ。
+
+---
+
+<!-- milo: layout=lab -->
+
+# 流れは、書くだけ
+
+@diagram layout=flow direction=right
+@item input title="入力"
+@item analyze title="分析"
+@item judge title="判断"
+@item run title="実行" level=high
+@link input -> analyze
+@link analyze -> judge
+@link judge -> run
+@enddiagram
+
+同じ `@item` と `@link` で、処理の流れにもできる。4つでも、文字を縮めずに並べる。
+
+---
+
+<!-- milo: layout=lab -->
+
+# 分岐しても、階層は揃う
+
+@diagram layout=flow direction=right
+@item start title="入力"
+@item pathA title="経路A"
+@item pathB title="経路B"
+@item join title="統合" level=high
+@link start -> pathA
+@link start -> pathB
+@link pathA -> join
+@link pathB -> join
+@enddiagram
+
+分岐と合流は同じ段に置く。線は交差させない。
+
+---
+
+<!-- milo: layout=lab -->
+
+# 循環は、戻す
+
+@canvas direction=right route=straight
+@node plan
+### 計画
+-->
+@node act
+### 実行
+-->
+@node see tone=accent
+### 検証
+@edge see --> plan dashed=true tone=accent label=フィードバック
+@endcanvas
+
+循環があってもノードは一列。戻りは外側の線にする。
 
 ---
 
