@@ -106,6 +106,8 @@ test('slide 14 keeps a shared near < mid < far scale across axes', () => {
   const hubBox = layout.items.find((item) => item.id === 'problem')!;
   const timeBox = layout.items.find((item) => item.id === 'time')!;
   assert.ok(timeBox.x + timeBox.width <= hubBox.x + 1);
+  assert.ok((layout.fitScale ?? 1) <= 1);
+  assert.ok((layout.fitScale ?? 1) > 0.5);
 });
 
 test('same-side radial items stay on that side and spread apart', () => {

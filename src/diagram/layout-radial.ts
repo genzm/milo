@@ -4,6 +4,7 @@ import {
   SIDE_SEMANTIC,
   boxFromCenter,
   boxLeaves,
+  frameFitScale,
   normalize,
   plotCenter,
   rotate,
@@ -89,55 +90,25 @@ export function layoutRadialSpatial(
   };
 
   const frame: SpatialFrame = spatialFrame(width, height);
+  const hubSize = sizeAt(hubIndex);
   const origin = plotCenter(frame);
   const plot = {
     width: frame.width - frame.left - frame.right,
     height: frame.height - frame.top - frame.bottom,
   };
-  const sized = scene.items.map((_, i) => {
-    const raw = sizeAt(i);
-    return { width: raw.width, height: raw.height };
+  const orbits = satellites.map((entry, orbit) => {
+    const phi = defaultPhi(orbit, satellites.length, start, order);
+    const unit = rotate(unitFor(entry.item, phi), spreadOf(orbit));
+    const displayDir = normalize(unit.x, -unit.y);
+    const sat = sizeAt(entry.i);
+    const rank = DISTANCE_RANK[entry.item.distance || 'mid'];
+    const minR =
+      rayHalf(hubSize, displayDir.x, displayDir.y) + rayHalf(sat, displayDir.x, displayDir.y) + 24;
+    return { entry, unit, sat, rank, minR };
   });
-  const measure = () => {
-    const hub = sized[hubIndex] || { width: 120, height: 48 };
-    const orbits = satellites.map((entry, orbit) => {
-      const phi = defaultPhi(orbit, satellites.length, start, order);
-      const unit = rotate(unitFor(entry.item, phi), spreadOf(orbit));
-      const displayDir = normalize(unit.x, -unit.y);
-      const sat = sized[entry.i] || { width: 120, height: 48 };
-      const rank = DISTANCE_RANK[entry.item.distance || 'mid'];
-      const minR =
-        rayHalf(hub, displayDir.x, displayDir.y) + rayHalf(sat, displayDir.x, displayDir.y) + 24;
-      let maxR = Infinity;
-      if (Math.abs(unit.x) > 0.08)
-        maxR = Math.min(maxR, (plot.width / 2 - sat.width / 2) / Math.abs(unit.x));
-      if (Math.abs(unit.y) > 0.08)
-        maxR = Math.min(maxR, (plot.height / 2 - sat.height / 2) / Math.abs(unit.y));
-      return { entry, unit, sat, rank, minR, maxR };
-    });
-    let needed = 0;
-    let fit = Infinity;
-    for (const orbit of orbits) {
-      needed = Math.max(needed, orbit.minR / orbit.rank);
-      if (Number.isFinite(orbit.maxR) && orbit.maxR > 0)
-        fit = Math.min(fit, orbit.maxR / orbit.rank);
-    }
-    return { hub, orbits, needed, fit };
-  };
-  let overflow = false;
-  let pack = measure();
-  for (let step = 0; step < 4; step += 1) {
-    if (!(Number.isFinite(pack.fit) && pack.fit > 0 && pack.fit < pack.needed)) break;
-    const factor = pack.fit / pack.needed;
-    if (factor > 0.995) break;
-    overflow = true;
-    for (const size of sized) {
-      size.width *= factor;
-      size.height *= factor;
-    }
-    pack = measure();
-  }
-  const radius = pack.needed > 0 ? pack.needed : 120;
+  let radius = 0;
+  for (const orbit of orbits) radius = Math.max(radius, orbit.minR / orbit.rank);
+  if (radius <= 0) radius = 120;
 
   const placed = scene.items.map((item) => ({
     id: item.id,
@@ -151,10 +122,10 @@ export function layoutRadialSpatial(
   placed[hubIndex] = {
     id: scene.items[hubIndex].id,
     kind: 'card',
-    ...boxFromCenter(origin, pack.hub),
+    ...boxFromCenter(origin, hubSize),
     semantic: { x: 0, y: 0 },
   };
-  for (const orbit of pack.orbits) {
+  for (const orbit of orbits) {
     const dist = orbit.rank * radius;
     const semantic = {
       x: (orbit.unit.x * dist) / (plot.width / 2 || 1),
@@ -167,10 +138,13 @@ export function layoutRadialSpatial(
       semantic,
     };
   }
+  const fitScale = frameFitScale(placed, frame);
 
   return {
     items: placed,
-    overflow: overflow || placed.some((item) => boxLeaves(item, frame, 2)),
+    overflow:
+      fitScale < 0.6 || (fitScale >= 0.999 && placed.some((item) => boxLeaves(item, frame, 2))),
+    fitScale,
     frame,
   };
 }

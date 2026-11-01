@@ -30,6 +30,7 @@ export function regionRect(box: Box) {
 
 export function spatialSignature(input: {
   overflow: boolean;
+  fitScale?: number;
   items: { x: number; y: number; label?: Box; note?: Box }[];
   regions?: SpatialRegion[];
   guides?: SpatialGuide[];
@@ -38,6 +39,7 @@ export function spatialSignature(input: {
 }) {
   return JSON.stringify({
     o: input.overflow,
+    s: input.fitScale ?? 1,
     n: (input.noteLinks || []).map((link) => link.path),
     e: (input.links || []).map((link) => link.path),
     r: (input.regions || []).map((region) => [

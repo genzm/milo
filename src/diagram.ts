@@ -166,6 +166,7 @@ export interface DiagramLayout {
   links: DiagramPlacedLink[];
   noteLinks: DiagramNoteLink[];
   overflow: boolean;
+  fitScale?: number;
   regions: DiagramRegion[];
   guides: DiagramGuideMark[];
   legend: DiagramLegendItem[];
@@ -1111,6 +1112,7 @@ export function layoutDiagram(
       links,
       noteLinks: [],
       overflow,
+      fitScale: radial?.fitScale,
       ...emptySpatial(),
     };
   }
@@ -1454,6 +1456,12 @@ export function mountDiagram(
       node.style.display = '';
       applyBox(node, box, layout.width, layout.height);
     });
+    const fit = layout.fitScale ?? 1;
+    const layerScale = fit < 0.999 ? `scale(${fit})` : '';
+    content.style.transform = layerScale;
+    svg.style.transform = layerScale;
+    content.style.transformOrigin = '50% 50%';
+    svg.style.transformOrigin = '50% 50%';
     overflowHint.hidden = !layout.overflow;
     element.classList.toggle('is-overflow', layout.overflow);
     if (layout.overflow) element.setAttribute('data-diagram-overflow', 'true');

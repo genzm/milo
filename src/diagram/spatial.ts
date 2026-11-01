@@ -113,6 +113,24 @@ export function normalize(x: number, y: number): Vec {
   return { x: x / dist, y: y / dist };
 }
 
+export function frameFitScale(boxes: Box[], frame: SpatialFrame, pad = 6) {
+  const cx = frame.width / 2;
+  const cy = frame.height / 2;
+  const availX = Math.max(1, cx - pad);
+  const availY = Math.max(1, cy - pad);
+  let need = 1;
+  for (const box of boxes) {
+    need = Math.max(
+      need,
+      (cx - box.x) / availX,
+      (cy - box.y) / availY,
+      (box.x + box.width - cx) / availX,
+      (box.y + box.height - cy) / availY,
+    );
+  }
+  return Math.min(1, 1 / need);
+}
+
 export function boxLeaves(box: Box, frame: SpatialFrame, slack = 0) {
   return (
     box.x < slack ||
