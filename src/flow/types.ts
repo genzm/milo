@@ -132,7 +132,8 @@ export const FLOW = {
   WIDTH_CANDIDATES: [180, 200, 220, 260, 300],
   WIDTH_VARIANCE: 80,
   MIN_GAP: 24,
-  PREFERRED_GAP: 36,
+  PREFERRED_GAP: 48,
+  RANK_GAP: 88,
   PADDING: 28,
   TITLE_PX: 24,
   BODY_PX: 18,
@@ -140,8 +141,8 @@ export const FLOW = {
   MIN_HEIGHT: 160,
   HEIGHT_PAD: 48,
   FEEDBACK_PAD: 56,
-  TRUNK_MIN: 16,
-  TRUNK_MAX: 28,
+  TRUNK_MIN: 28,
+  TRUNK_MAX: 40,
 };
 
 export const FLOW_DIAGNOSTIC_MESSAGE: Record<FlowDiagnosticCode, string> = {

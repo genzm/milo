@@ -452,7 +452,8 @@ test('flow ranks stay packed and centered in the frame', () => {
   );
   const frames = [...layout.nodeFrames.values()].sort((a, b) => a.x - b.x);
   const gaps = frames.slice(1).map((frame, i) => frame.x - (frames[i].x + frames[i].width));
-  assert.ok(gaps.every((value) => value <= FLOW.PREFERRED_GAP + 1));
+  assert.ok(gaps.every((value) => value <= FLOW.RANK_GAP + 1));
+  assert.ok(gaps.every((value) => value >= FLOW.RANK_GAP - 1));
   const left = frames[0].x;
   const right = 1280 - (frames[frames.length - 1].x + frames[frames.length - 1].width);
   assert.ok(Math.abs(left - right) < 8);
@@ -506,6 +507,8 @@ test('route=auto keeps serial edges straight and shares a trunk on branch-merge'
   assert.ok(layout.edgePaths.some((path) => path.role === 'bus' || path.role === 'stem'));
   assert.ok(splitXs.length);
   assert.ok(splitXs.every((x) => x > start.x + start.width && x < a.x));
+  assert.ok(splitXs[0] - (start.x + start.width) >= FLOW.TRUNK_MIN - 1);
+  assert.ok(a.x - splitXs[0] >= FLOW.TRUNK_MIN - 1);
   assert.equal(new Set(splitXs.map((x) => Math.round(x))).size, 1);
   assert.ok(mergeXs.length);
   assert.ok(mergeXs.every((x) => x > a.x + a.width && x < join.x));
