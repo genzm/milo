@@ -155,6 +155,51 @@ test('long flow body grows height instead of shrinking type', () => {
   );
 });
 
+test('branch and merge stay on shared ranks without crossing', () => {
+  const scene = parseCanvas(
+    `@node a\n### 入力\n@node b\n### 経路A\n@node c\n### 経路B\n@node d\n### 統合\n@edge a --> b\n@edge a --> c\n@edge b --> d\n@edge c --> d`,
+    'layout=flow direction=right',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  const a = layout.nodeFrames.get('a')!;
+  const b = layout.nodeFrames.get('b')!;
+  const c = layout.nodeFrames.get('c')!;
+  const d = layout.nodeFrames.get('d')!;
+  assert.ok(Math.abs(b.x - c.x) < 1);
+  assert.ok(a.x + a.width < b.x);
+  assert.ok(b.x + b.width < d.x);
+  const ab =
+    (b.y + b.height / 2 - (a.y + a.height / 2)) * (c.y + c.height / 2 - (a.y + a.height / 2));
+  assert.ok(ab < 0);
+});
+
+test('crossing edges are uncrossed by barycenter order', () => {
+  const scene = parseCanvas(
+    `@node a\nA\n@node b\nB\n@node c\nC\n@node d\nD\n@edge a --> d\n@edge b --> c`,
+    'layout=flow direction=right',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  const a = layout.nodeFrames.get('a')!;
+  const b = layout.nodeFrames.get('b')!;
+  const c = layout.nodeFrames.get('c')!;
+  const d = layout.nodeFrames.get('d')!;
+  const aAbove = a.y + a.height / 2 < b.y + b.height / 2;
+  const dAbove = d.y + d.height / 2 < c.y + c.height / 2;
+  assert.equal(aAbove, dAbove);
+});
+
+test('cycles become a ranked line plus a feedback diagnostic', () => {
+  const scene = parseCanvas(
+    `@node plan\n### 計画\n@node do\n### 実行\n@node see\n### 検証\n@edge plan --> do\n@edge do --> see\n@edge see --> plan`,
+    'layout=flow direction=right',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  assert.ok(layout.diagnostics.some((item) => item.code === 'CYCLE_DETECTED'));
+  const xs = ['plan', 'do', 'see'].map((id) => layout.nodeFrames.get(id)!.x);
+  assert.ok(xs[0] < xs[1]);
+  assert.ok(xs[1] < xs[2]);
+});
+
 test('free canvas placement is unchanged by the flow engine', () => {
   const free = parseCanvas(
     '@node a frame=10,20,210,100\nA\n@node b x=300 y=40 pinned\nB',

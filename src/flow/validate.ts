@@ -64,5 +64,7 @@ export function validateFlow(
       );
     }
   }
+  const cyclic = graph.edges.filter((edge) => edge.feedback).map((edge) => edge.from);
+  if (cyclic.length) diagnostics.push(diagnostic('CYCLE_DETECTED', [...new Set(cyclic)]));
   return diagnostics;
 }

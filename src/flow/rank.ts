@@ -1,18 +1,64 @@
-import type { FlowGraph, FlowRanked } from './types.ts';
+import { edgeKey, type FlowGraph, type FlowRanked } from './types.ts';
 
-/** Layer nodes so each edge goes forward. Cycles stay in authored order for now. */
-export function rankNodes(graph: FlowGraph): FlowRanked {
+function adjacency(graph: FlowGraph) {
   const index = new Map(graph.nodes.map((node, i) => [node.id, i]));
-  const incoming = graph.nodes.map(() => 0);
   const outgoing = graph.nodes.map(() => [] as number[]);
-  for (const edge of graph.edges) {
-    const from = index.get(edge.from)!;
-    const to = index.get(edge.to)!;
-    incoming[to] += 1;
-    outgoing[from].push(to);
+  const incoming = graph.nodes.map(() => [] as number[]);
+  const pairs = graph.edges.map((edge) => ({
+    edge,
+    from: index.get(edge.from)!,
+    to: index.get(edge.to)!,
+    key: edgeKey(edge.from, edge.to),
+  }));
+  for (const pair of pairs) {
+    outgoing[pair.from].push(pair.to);
+    incoming[pair.to].push(pair.from);
   }
-  const queue = incoming.map((count, i) => (count ? -1 : i)).filter((i) => i >= 0);
-  const rank = graph.nodes.map(() => 0);
+  return { index, outgoing, incoming, pairs };
+}
+
+function feedbackEdges(
+  graph: FlowGraph,
+  outgoing: number[][],
+  pairs: { from: number; to: number; key: string }[],
+) {
+  const feedback = new Set<string>();
+  const visiting = new Set<number>();
+  const visited = new Set<number>();
+  const walk = (node: number) => {
+    visiting.add(node);
+    for (const next of outgoing[node]) {
+      if (visiting.has(next)) {
+        const found = pairs.find((pair) => pair.from === node && pair.to === next);
+        if (found) feedback.add(found.key);
+        continue;
+      }
+      if (!visited.has(next)) walk(next);
+    }
+    visiting.delete(node);
+    visited.add(node);
+  };
+  graph.nodes.forEach((_, i) => {
+    if (!visited.has(i)) walk(i);
+  });
+  for (const pair of pairs) if (pair.from === pair.to) feedback.add(pair.key);
+  return feedback;
+}
+
+function longestPathRanks(
+  count: number,
+  pairs: { from: number; to: number; key: string }[],
+  feedback: Set<string>,
+) {
+  const incoming = Array.from({ length: count }, () => 0);
+  const outgoing = Array.from({ length: count }, () => [] as number[]);
+  for (const pair of pairs) {
+    if (feedback.has(pair.key)) continue;
+    incoming[pair.to] += 1;
+    outgoing[pair.from].push(pair.to);
+  }
+  const queue = incoming.map((value, i) => (value ? -1 : i)).filter((i) => i >= 0);
+  const rank = Array.from({ length: count }, () => 0);
   const seen = new Set<number>();
   while (queue.length) {
     const current = queue.shift()!;
@@ -25,11 +71,25 @@ export function rankNodes(graph: FlowGraph): FlowRanked {
     }
   }
   let last = Math.max(0, ...rank);
-  graph.nodes.forEach((_, i) => {
+  for (let i = 0; i < count; i += 1) {
     if (!seen.has(i)) rank[i] = ++last;
-  });
-  if (!graph.edges.length) rank.forEach((_, i) => (rank[i] = i));
-  const groups = Array.from({ length: Math.max(...rank) + 1 }, () => [] as number[]);
+  }
+  return rank;
+}
+
+export function rankNodes(graph: FlowGraph): FlowRanked {
+  const { outgoing, pairs } = adjacency(graph);
+  const feedback = graph.edges.length ? feedbackEdges(graph, outgoing, pairs) : new Set<string>();
+  const rank = graph.edges.length
+    ? longestPathRanks(graph.nodes.length, pairs, feedback)
+    : graph.nodes.map((_, i) => i);
+  for (const pair of pairs) {
+    if (rank[pair.to] <= rank[pair.from]) feedback.add(pair.key);
+  }
+  const groups = Array.from({ length: Math.max(0, ...rank) + 1 }, () => [] as number[]);
   rank.forEach((value, i) => groups[value].push(i));
-  return { rank, groups, feedback: new Set() };
+  graph.edges.forEach((edge) => {
+    edge.feedback = feedback.has(edgeKey(edge.from, edge.to));
+  });
+  return { rank, groups, feedback };
 }
