@@ -39,7 +39,7 @@ test('PDF document embeds the same sources and styles with the configured page s
     window.document.write(html);
     const sources = SourceStore.fromDOM(window.document);
     assert.deepEqual(sources.list(), result.blocks);
-    assert.equal(sources.list('slide').length, 12);
+    assert.equal(sources.list('slide').length, 13);
     const styles = [...window.document.querySelectorAll('style')].map((style) => style.textContent);
     assert.equal(styles[0], result.parts.mathCSS);
     assert.equal(styles[1], result.parts.css);

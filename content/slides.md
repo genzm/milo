@@ -271,6 +271,23 @@ GIFも、画像も、ひとつのHTMLの中へ。
 
 <!-- milo: layout=lab -->
 
+# 補足は、外側へ
+
+@diagram layout=ring connect=none geometry=regular note=outside note-style=plain note-link=arrow
+@item clear title="明確" badge=1 level=high
+具体的に話せる。相手が迷わず動けるところまで落としてから話す。
+@item concise title="簡潔" badge=2 level=high
+重要点を短く話せる。長い話を、判断に必要な芯だけにする。
+@item unique title="ユニーク" badge=3 level=high
+独自の洞察がある。他の人が置いていない切り口を一つ足す。
+@enddiagram
+
+`note=outside` は正多角形を崩さず、説明を外向きの矢印でつなぐ。
+
+---
+
+<!-- milo: layout=lab -->
+
 # 中心から広げる
 
 @diagram layout=radial center=problem

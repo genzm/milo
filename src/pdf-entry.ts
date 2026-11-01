@@ -55,7 +55,7 @@ async function renderPdf() {
     const geometry = JSON.stringify(
       [
         ...document.querySelectorAll(
-          '.milo-canvas, .canvas-node, .milo-diagram, .diagram-vertex, .diagram-card',
+          '.milo-canvas, .canvas-node, .milo-diagram, .diagram-vertex, .diagram-card, .diagram-label, .diagram-note',
         ),
       ].map((element) => {
         const rect = element.getBoundingClientRect();

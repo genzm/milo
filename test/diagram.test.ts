@@ -1,7 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
-import { estimateCardSize, layoutDiagram, parseDiagram, resolvedLinks } from '../src/diagram.ts';
+import {
+  estimateCardSize,
+  estimateNoteSize,
+  layoutDiagram,
+  parseDiagram,
+  resolvedLinks,
+  VERTEX_R,
+} from '../src/diagram.ts';
 import { renderSlide } from '../src/render.ts';
 import { SourceStore } from '../src/source.ts';
 
@@ -154,6 +161,31 @@ test('radial hub stays wide enough for a long Japanese title', () => {
   assert.equal(hub.width, needed.width);
 });
 
+test('radial cards stay centered after resize observers remeasure', () => {
+  const { root, close } = render(`@diagram layout=radial center=problem
+@item problem title="顧客の課題"
+@item cost title="コスト"
+@item time title="時間"
+@item quality title="品質"
+@item support title="サポート"
+@link problem -- cost
+@link problem -- time
+@link problem -- quality
+@link problem -- support
+@enddiagram`);
+  try {
+    const hub = root.querySelector('[data-diagram-item="problem"]') as HTMLElement | null;
+    const satellite = root.querySelector('[data-diagram-item="cost"]') as HTMLElement | null;
+    assert.equal(hub?.style.left, '50%');
+    assert.equal(hub?.style.top, '50%');
+    assert.match(hub?.style.transform || '', /translate\(-50%,\s*-50%\)/);
+    assert.match(satellite?.style.transform || '', /translate\(-50%,\s*-50%\)/);
+    assert.equal(root.querySelectorAll('.diagram-edge').length, 4);
+  } finally {
+    close();
+  }
+});
+
 test('radial keeps the center item inward of its satellites', () => {
   const layout = layoutDiagram(
     parseDiagram(
@@ -215,6 +247,183 @@ test('flow diagrams reuse canvas nodes and directed arrows', () => {
     assert.equal(root.querySelectorAll('.canvas-edge').length, 2);
     assert.match(root.querySelector('.canvas-edge')?.getAttribute('marker-end') || '', /^url\(#/);
     assert.match(root.querySelector('.canvas-edge-label')?.textContent || '', /分析|選択/);
+  } finally {
+    close();
+  }
+});
+
+function centers(items: { x: number; y: number; width: number; height: number }[]) {
+  return items.map((item) => ({ x: item.x + item.width / 2, y: item.y + item.height / 2 }));
+}
+
+function assertRegularPolygon(
+  items: { x: number; y: number; width: number; height: number }[],
+  count: number,
+) {
+  assert.equal(items.length, count);
+  const points = centers(items);
+  const cx = points.reduce((sum, point) => sum + point.x, 0) / count;
+  const cy = points.reduce((sum, point) => sum + point.y, 0) / count;
+  const radii = points.map((point) => Math.hypot(point.x - cx, point.y - cy));
+  for (const radius of radii) assert.ok(Math.abs(radius - radii[0]) < 1e-6);
+  const chords = points.map((point, i) => {
+    const next = points[(i + 1) % count];
+    return Math.hypot(point.x - next.x, point.y - next.y);
+  });
+  for (const chord of chords) assert.ok(Math.abs(chord - chords[0]) < 1e-6);
+}
+
+function parseLine(path: string) {
+  const match = /M\s+([-\d.]+)\s+([-\d.]+)\s+L\s+([-\d.]+)\s+([-\d.]+)/.exec(path);
+  assert.ok(match, path);
+  return { x1: Number(match[1]), y1: Number(match[2]), x2: Number(match[3]), y2: Number(match[4]) };
+}
+
+const annotatedTriangle = `@item clear title="明確" badge=1 level=high
+具体的に話せる。相手が迷わず動けるところまで落としてから話す。
+@item concise title="簡潔" badge=2 level=high
+重要点を短く話せる。長い話を、判断に必要な芯だけにする。
+@item unique title="ユニーク" badge=3 level=high
+独自の洞察がある。他の人が置いていない切り口を一つ足す。`;
+
+test('ring note attributes default to inline and opt into outside notes', () => {
+  const inline = parseDiagram(
+    `@item a title="品質"
+@item b title="速度"
+@item c title="コスト"`,
+    'layout=ring',
+  );
+  assert.equal(inline.options.geometry, 'regular');
+  assert.equal(inline.options.noteMode, 'inline');
+  assert.equal(inline.options.noteStyle, 'plain');
+  assert.equal(inline.options.noteLink, 'none');
+  assert.equal(inline.options.height, 500);
+  assert.equal(inline.items[0].noteSide, 'auto');
+
+  const outside = parseDiagram(annotatedTriangle, 'layout=ring connect=none note=outside');
+  assert.equal(outside.options.noteMode, 'outside');
+  assert.equal(outside.options.noteStyle, 'plain');
+  assert.equal(outside.options.noteLink, 'arrow');
+  assert.equal(outside.options.height, 620);
+  assert.equal(outside.options.geometry, 'regular');
+});
+
+test('ring keeps a regular polygon for 3 to 6 vertices, even with long notes', () => {
+  const titles = ['品質', '速度', 'コスト', '安全性', '拡張性', '運用'];
+  for (const count of [3, 4, 5, 6]) {
+    const source = titles
+      .slice(0, count)
+      .map(
+        (title, i) =>
+          `@item n${i} title="${title}"\n長い日本語の補足を外側に置いても頂点は動かない。`,
+      )
+      .join('\n');
+    const plain = layoutDiagram(parseDiagram(source, 'layout=ring connect=none'));
+    const noted = layoutDiagram(parseDiagram(source, 'layout=ring connect=none note=outside'));
+    assertRegularPolygon(plain.items, count);
+    assertRegularPolygon(noted.items, count);
+  }
+});
+
+test('outside notes sit on the outward rays with diagonal arrows from the lower vertices', () => {
+  const layout = layoutDiagram(
+    parseDiagram(annotatedTriangle, 'layout=ring connect=none note=outside note-link=arrow'),
+  );
+  assert.equal(layout.overflow, false);
+  assert.equal(layout.links.length, 0);
+  assert.equal(layout.noteLinks.length, 3);
+  assert.ok(layout.noteLinks.every((link) => link.kind === 'arrow'));
+  assertRegularPolygon(layout.items, 3);
+
+  const [top, left, right] = layout.items;
+  const origin = { x: layout.width / 2, y: layout.height / 2 };
+  const topCenter = { x: top.x + top.width / 2, y: top.y + top.height / 2 };
+  const leftCenter = { x: left.x + left.width / 2, y: left.y + left.height / 2 };
+  const rightCenter = { x: right.x + right.width / 2, y: right.y + right.height / 2 };
+  assert.ok(topCenter.y < leftCenter.y && topCenter.y < rightCenter.y);
+  assert.ok(leftCenter.x < origin.x);
+  assert.ok(rightCenter.x > origin.x);
+
+  const topNote = {
+    x: top.label!.x + top.label!.width / 2,
+    y: top.label!.y + top.label!.height / 2,
+  };
+  const leftNote = {
+    x: left.label!.x + left.label!.width / 2,
+    y: left.label!.y + left.label!.height / 2,
+  };
+  const rightNote = {
+    x: right.label!.x + right.label!.width / 2,
+    y: right.label!.y + right.label!.height / 2,
+  };
+  assert.ok(topNote.y < topCenter.y);
+  assert.ok(leftNote.x < leftCenter.x && leftNote.y > leftCenter.y);
+  assert.ok(rightNote.x > rightCenter.x && rightNote.y > rightCenter.y);
+  assert.ok(
+    Math.hypot(topNote.x - origin.x, topNote.y - origin.y) >
+      Math.hypot(topCenter.x - origin.x, topCenter.y - origin.y),
+  );
+
+  const byId = Object.fromEntries(
+    layout.noteLinks.map((link) => [link.itemId, parseLine(link.path)]),
+  );
+  for (const [item, line] of [
+    [top, byId.clear],
+    [left, byId.concise],
+    [right, byId.unique],
+  ] as const) {
+    const point = { x: item.x + item.width / 2, y: item.y + item.height / 2 };
+    assert.ok(Math.abs(Math.hypot(line.x1 - point.x, line.y1 - point.y) - VERTEX_R) < 1.5);
+  }
+  assert.ok(byId.clear.y2 < byId.clear.y1);
+  assert.ok(byId.concise.x2 < byId.concise.x1 && byId.concise.y2 > byId.concise.y1);
+  assert.ok(byId.unique.x2 > byId.unique.x1 && byId.unique.y2 > byId.unique.y1);
+});
+
+test('note-link switches between none, leader and arrow', () => {
+  const none = layoutDiagram(
+    parseDiagram(annotatedTriangle, 'layout=ring connect=none note=outside note-link=none'),
+  );
+  const leader = layoutDiagram(
+    parseDiagram(annotatedTriangle, 'layout=ring connect=none note=outside note-link=leader'),
+  );
+  assert.equal(none.noteLinks.length, 0);
+  assert.equal(leader.noteLinks.length, 3);
+  assert.ok(leader.noteLinks.every((link) => link.kind === 'leader'));
+});
+
+test('long Japanese notes wrap instead of staying on one line', () => {
+  const size = estimateNoteSize(
+    '具体的に話せる。相手が迷わず動けるところまで落としてから話す。判断の根拠も短く添える。',
+    220,
+  );
+  assert.ok(size.height > 40);
+  assert.ok(size.width <= 220);
+});
+
+test('slide renderer mounts frameless outside notes and a separate note-link layer', () => {
+  const { root, close } = render(`@diagram layout=ring connect=none note=outside
+${annotatedTriangle}
+@enddiagram`);
+  try {
+    assert.equal(root.querySelectorAll('.diagram-vertex').length, 3);
+    assert.equal(root.querySelectorAll('.diagram-note').length, 3);
+    assert.equal(root.querySelectorAll('.diagram-label').length, 0);
+    assert.equal(root.querySelectorAll('.diagram-note-link').length, 3);
+    assert.match(
+      root.querySelector('.diagram-note-link')?.getAttribute('marker-end') || '',
+      /^url\(#/,
+    );
+    assert.equal(root.querySelector('.diagram-edge'), null);
+    assert.match(root.querySelector('[data-diagram-note="clear"]')?.textContent || '', /明確/);
+    assert.match(
+      root.querySelector('[data-diagram-note="clear"]')?.textContent || '',
+      /具体的に話せる/,
+    );
+    assert.equal(
+      root.querySelector('.diagram-note')?.className.includes('diagram-note-plain'),
+      true,
+    );
   } finally {
     close();
   }

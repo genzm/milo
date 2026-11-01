@@ -15,6 +15,11 @@ export type DiagramLinkKind = 'undirected' | 'forward' | 'both';
 export type DiagramStart = 'top' | 'right' | 'bottom' | 'left';
 export type DiagramOrder = 'ccw' | 'cw';
 export type DiagramConnect = 'none' | 'cycle';
+export type DiagramGeometry = 'regular';
+export type DiagramNoteMode = 'inline' | 'outside' | 'none';
+export type DiagramNoteStyle = 'plain' | 'caption';
+export type DiagramNoteLinkKind = 'none' | 'leader' | 'arrow';
+export type DiagramNoteSide = 'auto' | 'top' | 'right' | 'bottom' | 'left';
 
 export interface DiagramItem {
   id: string;
@@ -23,6 +28,8 @@ export interface DiagramItem {
   level: DiagramLevel;
   shape: 'vertex' | 'card';
   markdown: string;
+  noteMode?: DiagramNoteMode;
+  noteSide: DiagramNoteSide;
 }
 
 export interface DiagramLink {
@@ -41,6 +48,10 @@ export interface DiagramOptions {
   center: string;
   width: number;
   height: number;
+  geometry: DiagramGeometry;
+  noteMode: DiagramNoteMode;
+  noteStyle: DiagramNoteStyle;
+  noteLink: DiagramNoteLinkKind;
 }
 
 export interface DiagramScene {
@@ -60,6 +71,7 @@ export interface DiagramPlacedItem extends DiagramBox {
   id: string;
   kind: 'vertex' | 'card';
   label?: DiagramBox;
+  note?: DiagramBox;
 }
 
 export interface DiagramPlacedLink {
@@ -71,19 +83,44 @@ export interface DiagramPlacedLink {
   labelAt: { x: number; y: number };
 }
 
+export interface DiagramNoteLink {
+  itemId: string;
+  path: string;
+  kind: 'leader' | 'arrow';
+}
+
 export interface DiagramLayout {
   width: number;
   height: number;
   items: DiagramPlacedItem[];
   links: DiagramPlacedLink[];
+  noteLinks: DiagramNoteLink[];
+  overflow: boolean;
 }
 
 const NS = 'http://www.w3.org/2000/svg';
 const VERTEX = 92;
-const VERTEX_R = VERTEX / 2;
+export const VERTEX_R = VERTEX / 2;
 const LABEL_GAP = 18;
+const NOTE_GAP = 22;
+const NOTE_STACK = 6;
+const NOTE_MAX = 260;
+const NOTE_FONT = 18;
+const TITLE_FONT = 27;
 const PAD = 28;
 let diagramSequence = 0;
+
+interface Vec {
+  x: number;
+  y: number;
+}
+
+const NOTE_SIDE_VECTOR: Record<Exclude<DiagramNoteSide, 'auto'>, Vec> = {
+  top: { x: 0, y: -1 },
+  right: { x: 1, y: 0 },
+  bottom: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+};
 
 const START_PHI: Record<DiagramStart, number> = {
   top: 0,
@@ -113,6 +150,134 @@ function clampBox(box: DiagramBox, width: number, height: number) {
   box.y = Math.min(Math.max(PAD, box.y), Math.max(PAD, height - PAD - box.height));
 }
 
+function boxCenter(box: DiagramBox): Vec {
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+function normalize(x: number, y: number): Vec {
+  const dist = Math.hypot(x, y) || 1;
+  return { x: x / dist, y: y / dist };
+}
+
+function shiftBox(box: DiagramBox | undefined, dx: number, dy: number) {
+  if (!box) return;
+  box.x += dx;
+  box.y += dy;
+}
+
+function unionBox(a?: DiagramBox, b?: DiagramBox): DiagramBox | undefined {
+  if (!a) return b ? { ...b } : undefined;
+  if (!b) return { ...a };
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    width: Math.max(a.x + a.width, b.x + b.width) - x,
+    height: Math.max(a.y + a.height, b.y + b.height) - y,
+  };
+}
+
+function annotationBox(item: DiagramPlacedItem): DiagramBox | undefined {
+  return unionBox(item.label, item.note);
+}
+
+function shiftAnnotation(item: DiagramPlacedItem, dx: number, dy: number) {
+  shiftBox(item.label, dx, dy);
+  shiftBox(item.note, dx, dy);
+}
+
+function boxLeavesFrame(box: DiagramBox, width: number, height: number, gap = 0) {
+  return (
+    box.x < PAD - gap ||
+    box.y < PAD - gap ||
+    box.x + box.width > width - PAD + gap ||
+    box.y + box.height > height - PAD + gap
+  );
+}
+
+function closestPointOnBox(box: DiagramBox, point: Vec): Vec {
+  const left = box.x,
+    right = box.x + box.width,
+    top = box.y,
+    bottom = box.y + box.height;
+  if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) {
+    const candidates = [
+      { x: left, y: point.y, d: point.x - left },
+      { x: right, y: point.y, d: right - point.x },
+      { x: point.x, y: top, d: point.y - top },
+      { x: point.x, y: bottom, d: bottom - point.y },
+    ];
+    candidates.sort((a, b) => a.d - b.d);
+    return { x: candidates[0].x, y: candidates[0].y };
+  }
+  return {
+    x: Math.min(Math.max(point.x, left), right),
+    y: Math.min(Math.max(point.y, top), bottom),
+  };
+}
+
+function segmentHitsBox(a: Vec, b: Vec, box: DiagramBox, pad = 8) {
+  const minX = box.x - pad,
+    maxX = box.x + box.width + pad,
+    minY = box.y - pad,
+    maxY = box.y + box.height + pad;
+  let t0 = 0,
+    t1 = 1;
+  const dx = b.x - a.x,
+    dy = b.y - a.y;
+  const clip = (p: number, q: number) => {
+    if (Math.abs(p) < 1e-9) return q >= 0;
+    const r = q / p;
+    if (p < 0) {
+      if (r > t1) return false;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return false;
+      if (r < t1) t1 = r;
+    }
+    return true;
+  };
+  return (
+    clip(-dx, a.x - minX) && clip(dx, maxX - a.x) && clip(-dy, a.y - minY) && clip(dy, maxY - a.y)
+  );
+}
+
+function cjkUnits(text: string) {
+  let units = 0;
+  for (const ch of text) units += /[\u3000-\u9fff]/.test(ch) ? 1 : 0.55;
+  return units;
+}
+
+function estimateWrapped(text: string, font: number, maxWidth: number, lineHeight: number) {
+  const units = cjkUnits(text);
+  const width = Math.min(maxWidth, Math.max(48, units * font + 8));
+  const lines = Math.max(1, Math.ceil((units * font) / Math.max(32, width)));
+  return { width, height: lines * font * lineHeight };
+}
+
+export function estimateTitleSize(title: string, maxWidth = NOTE_MAX) {
+  return estimateWrapped(title.trim() || ' ', TITLE_FONT, maxWidth, 1.35);
+}
+
+export function estimateNoteSize(markdown: string, maxWidth = NOTE_MAX) {
+  const plain = markdown.trim().replace(/[#*_`[\]]/g, '');
+  if (!plain) return { width: 0, height: 0 };
+  return estimateWrapped(plain, NOTE_FONT, maxWidth, 1.45);
+}
+
+function resolvedNoteMode(item: DiagramItem, options: DiagramOptions): DiagramNoteMode {
+  return item.noteMode ?? options.noteMode;
+}
+
+function outwardUnit(point: Vec, origin: Vec, side: DiagramNoteSide): Vec {
+  if (side !== 'auto') return NOTE_SIDE_VECTOR[side];
+  const x = point.x - origin.x,
+    y = point.y - origin.y;
+  if (Math.hypot(x, y) < 1e-6) return { x: 0, y: -1 };
+  return normalize(x, y);
+}
+
 function pairKey(from: string, to: string) {
   return from < to ? `${from}::${to}` : `${to}::${from}`;
 }
@@ -128,13 +293,9 @@ function pointOnRing(cx: number, cy: number, radius: number, phi: number) {
 }
 
 export function estimateLabelSize(item: DiagramItem) {
-  const font = 27;
-  let units = 0;
-  for (const ch of item.title) units += /[\u3000-\u9fff]/.test(ch) ? 1 : 0.55;
-  const width = Math.min(260, Math.max(96, units * font + 12));
-  const lines = Math.max(1, Math.ceil((units * font) / 240));
+  const title = estimateTitleSize(item.title, 260);
   const extra = item.markdown.trim() ? Math.min(64, 22 + item.markdown.trim().length * 0.4) : 0;
-  return { width, height: lines * font * 1.35 + extra };
+  return { width: Math.max(96, title.width), height: title.height + extra };
 }
 
 export function estimateCardSize(item: DiagramItem, center: boolean) {
@@ -204,6 +365,16 @@ function itemFrom(
       : 'none',
     shape,
     markdown: markdown.trim(),
+    noteMode:
+      attrs.note !== undefined && attrs.note !== ''
+        ? choice(attrs.note, ['inline', 'outside', 'none'] as const, 'inline', 'note')
+        : undefined,
+    noteSide: choice(
+      attrs.noteSide || attrs['note-side'],
+      ['auto', 'top', 'right', 'bottom', 'left'] as const,
+      'auto',
+      'note-side',
+    ),
   };
 }
 
@@ -213,6 +384,7 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
   if (attrs.layout === 'tree' || attrs.layout === 'free')
     throw new Error('layout は ring / flow / radial です。精密な配置は @canvas を使ってください。');
   const layout = choice(attrs.layout, ['ring', 'flow', 'radial'] as const, 'ring', 'layout');
+  const noteMode = choice(attrs.note, ['inline', 'outside', 'none'] as const, 'inline', 'note');
   const options: DiagramOptions = {
     layout,
     connect: choice(
@@ -231,7 +403,21 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
     ),
     center: attrs.center || '',
     width: finite(attrs.width, 1000)!,
-    height: finite(attrs.height, layout === 'radial' ? 620 : 500)!,
+    height: finite(attrs.height, layout === 'radial' ? 620 : noteMode === 'outside' ? 620 : 500)!,
+    geometry: choice(attrs.geometry, ['regular'] as const, 'regular', 'geometry'),
+    noteMode,
+    noteStyle: choice(
+      attrs.noteStyle || attrs['note-style'],
+      ['plain', 'caption'] as const,
+      'plain',
+      'note-style',
+    ),
+    noteLink: choice(
+      attrs.noteLink || attrs['note-link'],
+      ['none', 'leader', 'arrow'] as const,
+      noteMode === 'outside' ? 'arrow' : 'none',
+      'note-link',
+    ),
   };
   if (options.width <= 0 || options.height <= 0)
     throw new Error('diagram の width / height を確認してください。');
@@ -316,55 +502,273 @@ function labelOutside(
   };
 }
 
-function layoutRing(
-  scene: DiagramScene,
-  labelSizes: { width: number; height: number }[],
-): { items: DiagramPlacedItem[]; radius: number } {
+function ringCenters(scene: DiagramScene, radius: number) {
   const { width, height, start, order } = scene.options;
   const n = scene.items.length;
   const cx = width / 2;
   const cy = height / 2;
-  const sizes = scene.items.map((item, i) => {
-    const raw = labelSizes[i] || estimateLabelSize(item);
-    return { width: Math.min(200, raw.width), height: raw.height };
-  });
-  const minRadius = n < 2 ? 0 : VERTEX / (2 * Math.sin(Math.PI / n)) + 18;
-  const maxLabel = Math.max(40, ...sizes.map((size) => size.height));
-  const maxRadius = Math.min(width, height) / 2 - VERTEX_R - PAD - maxLabel;
-  const radius = Math.max(minRadius, Math.min(Math.max(120, maxRadius), maxRadius));
-
-  const items = scene.items.map((item, i) => {
+  return scene.items.map((item, i) => {
     const phi = n === 1 ? 0 : angle(i, n, start, order);
     const center = n === 1 ? { x: cx, y: cy } : pointOnRing(cx, cy, radius, phi);
-    return {
-      id: item.id,
-      kind: 'vertex' as const,
-      x: center.x - VERTEX_R,
-      y: center.y - VERTEX_R,
-      width: VERTEX,
-      height: VERTEX,
-      label: labelOutside({ cx: center.x, cy: center.y, phi }, sizes[i]),
-    };
+    return { item, i, phi, center };
   });
+}
 
-  for (let iter = 0; iter < 8; iter++) {
-    for (let i = 0; i < items.length; i++) {
-      for (let j = i + 1; j < items.length; j++) {
-        const a = items[i].label,
-          b = items[j].label;
-        if (!a || !b || !overlaps(a, b, 10)) continue;
-        const push = 8;
-        const phiA = n === 1 ? 0 : angle(i, n, start, order);
-        const phiB = angle(j, n, start, order);
-        a.x += Math.sin(phiA) * push;
-        a.y -= Math.cos(phiA) * push;
-        b.x += Math.sin(phiB) * push;
-        b.y -= Math.cos(phiB) * push;
+function vertexItem(
+  item: DiagramItem,
+  center: Vec,
+  extras: { label?: DiagramBox; note?: DiagramBox } = {},
+): DiagramPlacedItem {
+  return {
+    id: item.id,
+    kind: 'vertex',
+    x: center.x - VERTEX_R,
+    y: center.y - VERTEX_R,
+    width: VERTEX,
+    height: VERTEX,
+    ...extras,
+  };
+}
+
+function stackedOutside(
+  origin: Vec,
+  unit: Vec,
+  title: { width: number; height: number },
+  body: { width: number; height: number },
+): { label: DiagramBox; note?: DiagramBox } {
+  const hasBody = body.width > 0 && body.height > 0;
+  const groupW = Math.max(title.width, hasBody ? body.width : 0, 1);
+  const groupH = title.height + (hasBody ? NOTE_STACK + body.height : 0);
+  const half = (Math.abs(unit.x) * groupW + Math.abs(unit.y) * groupH) / 2;
+  const dist = VERTEX_R + NOTE_GAP + half;
+  const x = origin.x + unit.x * dist - groupW / 2;
+  const y = origin.y + unit.y * dist - groupH / 2;
+  const label = {
+    x: x + (groupW - title.width) / 2,
+    y,
+    width: title.width,
+    height: title.height,
+  };
+  const note = hasBody
+    ? {
+        x: x + (groupW - body.width) / 2,
+        y: y + title.height + NOTE_STACK,
+        width: body.width,
+        height: body.height,
+      }
+    : undefined;
+  return { label, note };
+}
+
+function noteLinkPath(vertex: DiagramPlacedItem, annotation: DiagramBox): string | null {
+  const startCenter = boxCenter(vertex);
+  const target = closestPointOnBox(annotation, startCenter);
+  const unit = normalize(target.x - startCenter.x, target.y - startCenter.y);
+  const start = {
+    x: startCenter.x + unit.x * VERTEX_R,
+    y: startCenter.y + unit.y * VERTEX_R,
+  };
+  const end = closestPointOnBox(annotation, start);
+  const dx = end.x - start.x,
+    dy = end.y - start.y,
+    dist = Math.hypot(dx, dy);
+  if (dist < 8) return null;
+  const inset = Math.min(10, dist * 0.18);
+  return `M ${start.x} ${start.y} L ${end.x - (dx / dist) * inset} ${end.y - (dy / dist) * inset}`;
+}
+
+function layoutRing(
+  scene: DiagramScene,
+  measured: {
+    labels?: { width: number; height: number }[];
+    notes?: { width: number; height: number }[];
+  } = {},
+): { items: DiagramPlacedItem[]; radius: number; noteLinks: DiagramNoteLink[]; overflow: boolean } {
+  const { width, height, start, order, noteLink } = scene.options;
+  const n = scene.items.length;
+  const cx = width / 2;
+  const cy = height / 2;
+  const origin = { x: cx, y: cy };
+  const minRadius = n < 2 ? 0 : VERTEX / (2 * Math.sin(Math.PI / n)) + 18;
+  const modes = scene.items.map((item) => resolvedNoteMode(item, scene.options));
+  const hasOutside = modes.some((mode) => mode === 'outside');
+
+  if (!hasOutside) {
+    const sizes = scene.items.map((item, i) => {
+      const raw = measured.labels?.[i] || estimateLabelSize(item);
+      return { width: Math.min(200, raw.width), height: raw.height };
+    });
+    const maxLabel = Math.max(40, ...sizes.map((size) => size.height));
+    const maxRadius = Math.min(width, height) / 2 - VERTEX_R - PAD - maxLabel;
+    const radius = Math.max(minRadius, Math.min(Math.max(120, maxRadius), maxRadius));
+    const items = ringCenters(scene, radius).map(({ item, phi, center }, i) =>
+      vertexItem(
+        item,
+        center,
+        modes[i] === 'none'
+          ? {}
+          : { label: labelOutside({ cx: center.x, cy: center.y, phi }, sizes[i]) },
+      ),
+    );
+    for (let iter = 0; iter < 8; iter++) {
+      for (let i = 0; i < items.length; i++) {
+        for (let j = i + 1; j < items.length; j++) {
+          const a = items[i].label,
+            b = items[j].label;
+          if (!a || !b || !overlaps(a, b, 10)) continue;
+          const push = 8;
+          const phiA = n === 1 ? 0 : angle(i, n, start, order);
+          const phiB = angle(j, n, start, order);
+          a.x += Math.sin(phiA) * push;
+          a.y -= Math.cos(phiA) * push;
+          b.x += Math.sin(phiB) * push;
+          b.y -= Math.cos(phiB) * push;
+        }
       }
     }
+    for (const item of items) if (item.label) clampBox(item.label, width, height);
+    return { items, radius, noteLinks: [], overflow: false };
   }
-  for (const item of items) if (item.label) clampBox(item.label, width, height);
-  return { items, radius };
+
+  const measuredFromDom = Boolean(measured.labels || measured.notes);
+  let maxWidth = NOTE_MAX;
+  let radius = minRadius;
+  let items: DiagramPlacedItem[] = [];
+  let overflow = false;
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const titles = scene.items.map((item, i) => {
+      const raw = measured.labels?.[i] || estimateTitleSize(item.title, maxWidth);
+      return { width: Math.min(maxWidth, Math.max(48, raw.width)), height: raw.height };
+    });
+    const bodies = scene.items.map((item, i) => {
+      if (modes[i] !== 'outside') return { width: 0, height: 0 };
+      const raw = measured.notes?.[i] || estimateNoteSize(item.markdown, maxWidth);
+      return { width: Math.min(maxWidth, raw.width), height: raw.height };
+    });
+    const groups = titles.map((title, i) => {
+      const body = bodies[i];
+      const hasBody = modes[i] === 'outside' && body.width > 0 && body.height > 0;
+      return {
+        width: Math.max(title.width, hasBody ? body.width : 0, 1),
+        height: title.height + (hasBody ? NOTE_STACK + body.height : 0),
+      };
+    });
+    let extent = 40;
+    ringCenters(scene, 1).forEach(({ phi }, i) => {
+      if (modes[i] === 'none') return;
+      const dx = Math.sin(phi),
+        dy = -Math.cos(phi);
+      extent = Math.max(
+        extent,
+        NOTE_GAP + Math.abs(dx) * groups[i].width + Math.abs(dy) * groups[i].height,
+      );
+    });
+    const maxRadius = Math.min(width, height) / 2 - VERTEX_R - PAD - extent;
+    if (attempt === 0) radius = Math.max(minRadius, maxRadius);
+    items = ringCenters(scene, radius).map(({ item, i, phi, center }) => {
+      const mode = modes[i];
+      if (mode === 'none') return vertexItem(item, center);
+      if (mode === 'inline') {
+        return vertexItem(item, center, {
+          label: labelOutside({ cx: center.x, cy: center.y, phi }, titles[i]),
+        });
+      }
+      const unit = outwardUnit(center, origin, item.noteSide);
+      return vertexItem(item, center, stackedOutside(center, unit, titles[i], bodies[i]));
+    });
+
+    const units = items.map((placed, i) =>
+      outwardUnit(boxCenter(placed), origin, scene.items[i].noteSide),
+    );
+    for (let iter = 0; iter < 8; iter++) {
+      for (let i = 0; i < items.length; i++) {
+        for (let j = i + 1; j < items.length; j++) {
+          const a = annotationBox(items[i]),
+            b = annotationBox(items[j]);
+          if (!a || !b || !overlaps(a, b, 10)) continue;
+          shiftAnnotation(items[i], units[i].x * 8, units[i].y * 8);
+          shiftAnnotation(items[j], units[j].x * 8, units[j].y * 8);
+        }
+      }
+    }
+    for (let iter = 0; iter < 6; iter++) {
+      for (let i = 0; i < items.length; i++) {
+        const box = annotationBox(items[i]);
+        if (!box) continue;
+        for (let j = 0; j < items.length; j++) {
+          if (i === j) continue;
+          const other = annotationBox(items[j]);
+          const hitsVertex = overlaps(box, items[j], 6);
+          const hitsNote = other ? overlaps(box, other, 10) : false;
+          if (!hitsVertex && !hitsNote) continue;
+          const tangent = { x: -units[i].y, y: units[i].x };
+          const away = boxCenter(box);
+          const from = hitsNote && other ? boxCenter(other) : boxCenter(items[j]);
+          if ((away.x - from.x) * tangent.x + (away.y - from.y) * tangent.y < 0) {
+            tangent.x *= -1;
+            tangent.y *= -1;
+          }
+          shiftAnnotation(items[i], tangent.x * 6, tangent.y * 6);
+        }
+      }
+    }
+    const chords = resolvedLinks(scene)
+      .map((link) => {
+        const from = items.find((item) => item.id === link.from);
+        const to = items.find((item) => item.id === link.to);
+        return from && to ? { from, to } : null;
+      })
+      .filter((pair): pair is { from: DiagramPlacedItem; to: DiagramPlacedItem } => pair !== null);
+    for (let i = 0; i < items.length; i++) {
+      const box = annotationBox(items[i]);
+      if (!box) continue;
+      for (const chord of chords) {
+        if (chord.from.id === items[i].id || chord.to.id === items[i].id) continue;
+        if (!segmentHitsBox(boxCenter(chord.from), boxCenter(chord.to), box, 6)) continue;
+        shiftAnnotation(items[i], units[i].x * 10, units[i].y * 10);
+      }
+    }
+
+    overflow = items.some((item, i) => {
+      const box = annotationBox(item);
+      if (!box) return boxLeavesFrame(item, width, height, 0);
+      if (boxLeavesFrame(box, width, height, 12)) return true;
+      return items.some((other, j) => {
+        if (i >= j) return false;
+        const otherBox = annotationBox(other);
+        return otherBox ? overlaps(box, otherBox, 4) : false;
+      });
+    });
+    if (!overflow) break;
+    if (radius > minRadius + 0.5) {
+      radius = Math.max(minRadius, radius * 0.9);
+      continue;
+    }
+    if (!measuredFromDom && maxWidth > 160) {
+      maxWidth = Math.max(160, maxWidth * 0.82);
+      continue;
+    }
+    break;
+  }
+
+  for (const item of items) {
+    if (item.label) clampBox(item.label, width, height);
+    if (item.note) clampBox(item.note, width, height);
+  }
+
+  const noteLinks: DiagramNoteLink[] = [];
+  if (noteLink !== 'none') {
+    const kind = noteLink === 'leader' ? 'leader' : 'arrow';
+    for (let i = 0; i < items.length; i++) {
+      if (modes[i] !== 'outside') continue;
+      const box = annotationBox(items[i]);
+      if (!box) continue;
+      const path = noteLinkPath(items[i], box);
+      if (path) noteLinks.push({ itemId: items[i].id, path, kind });
+    }
+  }
+  return { items, radius, noteLinks, overflow };
 }
 
 function rayHalf(size: { width: number; height: number }, phi: number) {
@@ -481,25 +885,45 @@ export function layoutDiagram(
   scene: DiagramScene,
   measured: {
     labels?: { width: number; height: number }[];
+    notes?: { width: number; height: number }[];
     cards?: { width: number; height: number }[];
   } = {},
 ): DiagramLayout {
   const { options } = scene;
-  const items =
-    options.layout === 'radial'
-      ? layoutRadial(
-          scene,
-          measured.cards ||
-            scene.items.map((item) => estimateCardSize(item, item.id === options.center)),
-        )
-      : layoutRing(scene, measured.labels || scene.items.map((item) => estimateLabelSize(item)))
-          .items;
-  const byId = new Map(items.map((item) => [item.id, item]));
+  if (options.layout === 'radial') {
+    const items = layoutRadial(
+      scene,
+      measured.cards ||
+        scene.items.map((item) => estimateCardSize(item, item.id === options.center)),
+    );
+    const byId = new Map(items.map((item) => [item.id, item]));
+    const links = resolvedLinks(scene).map((link) => {
+      const geometry = linkGeometry(byId.get(link.from)!, byId.get(link.to)!);
+      return { ...link, path: geometry.path, labelAt: geometry.labelAt };
+    });
+    return {
+      width: options.width,
+      height: options.height,
+      items,
+      links,
+      noteLinks: [],
+      overflow: false,
+    };
+  }
+  const ring = layoutRing(scene, measured);
+  const byId = new Map(ring.items.map((item) => [item.id, item]));
   const links = resolvedLinks(scene).map((link) => {
     const geometry = linkGeometry(byId.get(link.from)!, byId.get(link.to)!);
     return { ...link, path: geometry.path, labelAt: geometry.labelAt };
   });
-  return { width: options.width, height: options.height, items, links };
+  return {
+    width: options.width,
+    height: options.height,
+    items: ring.items,
+    links,
+    noteLinks: ring.noteLinks,
+    overflow: ring.overflow,
+  };
 }
 
 function levelClass(level: DiagramLevel) {
@@ -605,8 +1029,25 @@ export function mountDiagram(
     orient: 'auto-start-reverse',
   });
   marker.append(svgElement('path', { d: 'M 0 0 L 10 5 L 0 10 z', class: 'diagram-arrow-head' }));
-  defs.append(marker);
+  const noteMarker = svgElement('marker', {
+    id: `${uid}-note-arrow`,
+    viewBox: '0 0 10 10',
+    refX: 8,
+    refY: 5,
+    markerWidth: 5,
+    markerHeight: 5,
+    orient: 'auto-start-reverse',
+  });
+  noteMarker.append(
+    svgElement('path', { d: 'M 0 0 L 10 5 L 0 10 z', class: 'diagram-note-arrow-head' }),
+  );
+  defs.append(marker, noteMarker);
   svg.append(defs);
+
+  const hasOutsideNotes =
+    scene.options.layout === 'ring' &&
+    scene.items.some((item) => resolvedNoteMode(item, scene.options) === 'outside');
+  if (hasOutsideNotes) element.classList.add('diagram-has-notes');
 
   const content = document.createElement('div');
   content.className = 'diagram-content';
@@ -635,64 +1076,164 @@ export function mountDiagram(
     content.append(node);
     return node;
   });
-  const labels = scene.items.map((item) => {
+  const annotations = scene.items.map((item) => {
     if (scene.options.layout !== 'ring') return null;
-    const label = document.createElement('div');
-    label.className = 'diagram-label';
-    label.dataset.diagramLabel = item.id;
-    const title = document.createElement('div');
-    title.className = 'diagram-label-title';
-    title.textContent = item.title;
-    label.append(title);
-    if (item.markdown) {
-      const note = document.createElement('div');
-      note.className = 'diagram-label-note';
-      if (context.renderMarkdown) note.innerHTML = context.renderMarkdown(item.markdown);
-      else note.textContent = item.markdown;
-      label.append(note);
+    const mode = resolvedNoteMode(item, scene.options);
+    if (mode === 'none') return null;
+    const wrap = document.createElement('div');
+    if (mode === 'outside') {
+      wrap.className = `diagram-note diagram-note-${scene.options.noteStyle}`;
+      wrap.dataset.diagramNote = item.id;
+      const title = document.createElement('div');
+      title.className = 'diagram-note-title';
+      title.textContent = item.title;
+      wrap.append(title);
+      if (item.markdown) {
+        const body = document.createElement('div');
+        body.className = 'diagram-note-body';
+        if (context.renderMarkdown) body.innerHTML = context.renderMarkdown(item.markdown);
+        else body.textContent = item.markdown;
+        wrap.append(body);
+      }
+    } else {
+      wrap.className = 'diagram-label';
+      wrap.dataset.diagramLabel = item.id;
+      const title = document.createElement('div');
+      title.className = 'diagram-label-title';
+      title.textContent = item.title;
+      wrap.append(title);
+      if (item.markdown) {
+        const note = document.createElement('div');
+        note.className = 'diagram-label-note';
+        if (context.renderMarkdown) note.innerHTML = context.renderMarkdown(item.markdown);
+        else note.textContent = item.markdown;
+        wrap.append(note);
+      }
     }
-    content.append(label);
-    return label;
+    content.append(wrap);
+    return wrap;
   });
+  const overflowHint = document.createElement('div');
+  overflowHint.className = 'diagram-overflow-hint';
+  overflowHint.hidden = true;
+  overflowHint.textContent = '注釈が領域に収まりません';
+  content.append(overflowHint);
   element.replaceChildren(svg, content);
 
   let disposed = false;
+  let lastSignature = '';
+  const measurePart = (
+    node: Element | null | undefined,
+    fallback: { width: number; height: number },
+    ratio: number,
+  ) => {
+    if (!node) return fallback;
+    const width = (node as HTMLElement).scrollWidth * ratio;
+    const height = (node as HTMLElement).scrollHeight * ratio;
+    return width > 1 ? { width, height } : fallback;
+  };
   const draw = () => {
     if (disposed) return;
     const ratio = element.clientWidth ? scene.options.width / element.clientWidth : 1;
-    labels.forEach((label) => {
-      if (label) label.style.maxWidth = `${(200 / scene.options.width) * 100}%`;
+    annotations.forEach((node, i) => {
+      if (!node) return;
+      const outside = resolvedNoteMode(scene.items[i], scene.options) === 'outside';
+      const cap = outside ? NOTE_MAX : 200;
+      const maxWidth = `${(cap / scene.options.width) * 100}%`;
+      if (node.style.maxWidth !== maxWidth) node.style.maxWidth = maxWidth;
     });
-    const measuredLabels = labels.map((label, i) => {
-      if (!label) return estimateLabelSize(scene.items[i]);
-      const width = Math.min(200, label.scrollWidth * ratio);
-      const height = label.scrollHeight * ratio;
-      return width > 1 ? { width, height } : estimateLabelSize(scene.items[i]);
+    const measuredLabels = annotations.map((node, i) => {
+      const item = scene.items[i];
+      const mode = resolvedNoteMode(item, scene.options);
+      if (mode === 'outside') {
+        return measurePart(
+          node?.querySelector('.diagram-note-title') || node,
+          estimateTitleSize(item.title),
+          ratio,
+        );
+      }
+      if (!node) return estimateLabelSize(item);
+      const width = Math.min(200, node.scrollWidth * ratio);
+      const height = node.scrollHeight * ratio;
+      return width > 1 ? { width, height } : estimateLabelSize(item);
+    });
+    const measuredNotes = annotations.map((node, i) => {
+      const item = scene.items[i];
+      if (resolvedNoteMode(item, scene.options) !== 'outside') return { width: 0, height: 0 };
+      return measurePart(
+        node?.querySelector('.diagram-note-body'),
+        estimateNoteSize(item.markdown),
+        ratio,
+      );
     });
     const measuredCards = nodes.map((node, i) => {
-      if (node.classList.contains('diagram-card')) {
-        node.style.width = 'max-content';
-        node.style.height = 'auto';
-        node.style.transform = 'none';
-      }
       const width = node.scrollWidth * ratio;
       const height = node.scrollHeight * ratio;
       return width > 1
         ? { width, height }
         : estimateCardSize(scene.items[i], scene.items[i].id === scene.options.center);
     });
-    const layout = layoutDiagram(scene, { labels: measuredLabels, cards: measuredCards });
+    const layout = layoutDiagram(scene, {
+      labels: measuredLabels,
+      notes: measuredNotes,
+      cards: measuredCards,
+    });
+    const signature = JSON.stringify({
+      o: layout.overflow,
+      n: layout.noteLinks.map((link) => link.path),
+      i: layout.items.map((item) => [
+        Math.round(item.x),
+        Math.round(item.y),
+        item.label && [
+          Math.round(item.label.x),
+          Math.round(item.label.y),
+          Math.round(item.label.width),
+          Math.round(item.label.height),
+        ],
+        item.note && [
+          Math.round(item.note.x),
+          Math.round(item.note.y),
+          Math.round(item.note.width),
+          Math.round(item.note.height),
+        ],
+      ]),
+    });
+    if (signature === lastSignature) return;
+    lastSignature = signature;
     const byId = new Map(layout.items.map((item) => [item.id, item]));
     nodes.forEach((node, i) => {
       const box = byId.get(scene.items[i].id)!;
       applyBox(node, box, layout.width, layout.height, box.kind === 'card' ? 'center' : 'size');
     });
-    labels.forEach((label, i) => {
-      const box = byId.get(scene.items[i].id)?.label;
-      if (!label || !box) return;
-      applyBox(label, box, layout.width, layout.height);
+    annotations.forEach((node, i) => {
+      const placed = byId.get(scene.items[i].id);
+      if (!node || !placed) return;
+      const box =
+        resolvedNoteMode(scene.items[i], scene.options) === 'outside'
+          ? annotationBox(placed)
+          : placed.label;
+      if (!box) {
+        node.style.display = 'none';
+        return;
+      }
+      node.style.display = '';
+      applyBox(node, box, layout.width, layout.height);
     });
+    overflowHint.hidden = !layout.overflow;
+    element.classList.toggle('is-overflow', layout.overflow);
+    if (layout.overflow) element.setAttribute('data-diagram-overflow', 'true');
+    else element.removeAttribute('data-diagram-overflow');
+    svg.querySelector('.diagram-note-layer')?.remove();
     svg.querySelector('.diagram-edge-layer')?.remove();
+    const noteLayer = svgElement('g', { class: 'diagram-note-layer' });
+    for (const link of layout.noteLinks) {
+      const attrs: Record<string, string | number> = {
+        d: link.path,
+        class: `diagram-note-link is-${link.kind}`,
+      };
+      if (link.kind === 'arrow') attrs['marker-end'] = `url(#${uid}-note-arrow)`;
+      noteLayer.append(svgElement('path', attrs));
+    }
     const layer = svgElement('g', { class: 'diagram-edge-layer' });
     for (const link of layout.links) {
       const attrs: Record<string, string | number> = {
@@ -717,13 +1258,13 @@ export function mountDiagram(
           ),
         );
     }
-    svg.append(layer);
+    svg.append(noteLayer, layer);
   };
   draw();
   const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(draw);
   observer?.observe(element);
   nodes.forEach((node) => observer?.observe(node));
-  labels.forEach((label) => label && observer?.observe(label));
+  annotations.forEach((node) => node && observer?.observe(node));
   return {
     update: draw,
     dispose: () => {

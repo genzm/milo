@@ -302,6 +302,10 @@
   overflow: visible;
   isolation: isolate;
 
+  &.diagram-has-notes {
+    max-height: 620px;
+  }
+
   .diagram-connections,
   .diagram-content {
     position: absolute;
@@ -320,7 +324,9 @@
   }
   .diagram-vertex,
   .diagram-card,
-  .diagram-label {
+  .diagram-label,
+  .diagram-note,
+  .diagram-overflow-hint {
     position: absolute;
     box-sizing: border-box;
   }
@@ -375,6 +381,57 @@
     line-height: inherit;
     color: inherit;
     font-weight: inherit;
+  }
+  .diagram-note {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    box-shadow: none;
+    color: var(--slide-ink);
+    text-align: center;
+    pointer-events: none;
+  }
+  .diagram-note-title {
+    font-size: var(--slide-text-body);
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: -0.03em;
+    overflow-wrap: anywhere;
+  }
+  .diagram-note-body {
+    font-size: var(--slide-text-label);
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--slide-ink);
+    overflow-wrap: anywhere;
+  }
+  .diagram-note-body :is(h1, h2, h3, h4, h5, h6, p, ul, ol) {
+    margin: 0;
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+    font-weight: inherit;
+  }
+  .diagram-note-caption .diagram-note-title::before {
+    content: '';
+    display: inline-block;
+    width: 0.35em;
+    height: 0.35em;
+    margin-right: 0.35em;
+    margin-bottom: 0.12em;
+    border-radius: 50%;
+    background: var(--accent);
+    vertical-align: middle;
+  }
+  .diagram-overflow-hint {
+    right: 8px;
+    bottom: 4px;
+    font-size: var(--slide-text-footer);
+    color: var(--slide-muted);
+    pointer-events: none;
   }
   .diagram-card {
     display: flex;
@@ -436,6 +493,12 @@
     box-shadow: inset 0 0 0 3px var(--accent);
     color: var(--slide-ink);
   }
+  .diagram-note-layer {
+    z-index: 0;
+  }
+  .diagram-edge-layer {
+    z-index: 1;
+  }
   .diagram-edge {
     fill: none;
     stroke: var(--slide-ink);
@@ -443,7 +506,15 @@
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
   }
-  .diagram-arrow-head {
+  .diagram-note-link {
+    fill: none;
+    stroke: color-mix(in srgb, var(--slide-ink) 28%, var(--slide-muted));
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .diagram-arrow-head,
+  .diagram-note-arrow-head {
     fill: context-stroke;
   }
   .diagram-edge-label {
