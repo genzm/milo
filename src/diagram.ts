@@ -24,7 +24,7 @@ export { usesSpatialRadial };
 
 export const DIAGRAM_FRAME: Record<DiagramLayoutKind, { width: number; height: number }> = {
   ring: { width: 1000, height: 500 },
-  flow: { width: 1000, height: 500 },
+  flow: { width: 1280, height: 560 },
   radial: { width: 1040, height: 580 },
   field: { width: 1280, height: 580 },
 };
@@ -1241,6 +1241,8 @@ export function mountDiagram(
   const scene = parseDiagram(source, rawOptions);
   if (scene.options.layout === 'flow') {
     element.classList.add('milo-diagram', 'diagram-layout-flow');
+    element.style.setProperty('--diagram-display-width', `${scene.options.width}px`);
+    element.style.setProperty('--diagram-display-height', `${scene.options.height}px`);
     return mountCanvasScene(element, toCanvasScene(scene), context);
   }
 

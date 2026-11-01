@@ -312,6 +312,11 @@
   overflow: visible;
   isolation: isolate;
 
+  &.diagram-layout-flow {
+    --diagram-display-width: 1280px;
+    --diagram-display-height: 560px;
+    max-height: none;
+  }
   &.diagram-layout-radial {
     --diagram-display-width: 1040px;
     --diagram-display-height: 580px;
@@ -638,4 +643,7 @@
     font-size: var(--slide-text-label);
     font-weight: 700;
   }
+}
+:is(.column-block, .panel-block, .grid-block) .milo-diagram.diagram-layout-flow {
+  width: 100%;
 }

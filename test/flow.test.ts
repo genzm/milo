@@ -85,7 +85,9 @@ test('diagram height=480 is not overwritten by canvas auto-height', () => {
   try {
     const canvas = root.querySelector('.milo-canvas') as unknown as HTMLElement;
     assert.ok(canvas);
-    assert.equal(canvas.style.aspectRatio.replace(/\s/g, ''), '1000/480');
+    assert.equal(canvas.style.aspectRatio.replace(/\s/g, ''), '1280/480');
+    assert.equal(canvas.style.getPropertyValue('--diagram-display-width'), '1280px');
+    assert.ok(canvas.classList.contains('diagram-layout-flow'));
   } finally {
     close();
   }

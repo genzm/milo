@@ -321,10 +321,13 @@ test('field renderer mounts dots, axes, zones and a cluster legend', () => {
 test('each diagram layout can set its own display frame', () => {
   const field = parseDiagram('@item a title="A" x=0 y=0', 'layout=field');
   const radial = parseDiagram('@item a title="A"', 'layout=radial');
+  const flow = parseDiagram('@item a title="A"', 'layout=flow');
   const wide = parseDiagram('@item a title="A" x=0 y=0', 'layout=field width=1400 height=700');
   assert.equal(field.options.width, DIAGRAM_FRAME.field.width);
   assert.equal(field.options.height, DIAGRAM_FRAME.field.height);
   assert.equal(radial.options.width, DIAGRAM_FRAME.radial.width);
+  assert.equal(flow.options.width, DIAGRAM_FRAME.flow.width);
+  assert.equal(DIAGRAM_FRAME.flow.width, 1280);
   assert.equal(wide.options.width, 1400);
   const { root, close } = render(`@diagram layout=field width=1400 height=700
 @item a title="施策A" x=-0.7 y=0.6
