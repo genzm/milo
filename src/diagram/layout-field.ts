@@ -133,7 +133,12 @@ export function layoutField(
       frame,
     );
     zone.labelBox = result.box;
-    obstacles.push(result.box);
+    obstacles.push({
+      x: result.box.x - 10,
+      y: result.box.y - 8,
+      width: result.box.width + 20,
+      height: result.box.height + 16,
+    });
     overflow = overflow || result.overflow || boxLeaves(result.box, frame, 2);
   }
   const placed = nodes.map((node, i) => {
