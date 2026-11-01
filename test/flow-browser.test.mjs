@@ -53,7 +53,9 @@ test('flow v2 stays readable and stable in Chromium', { timeout: 60_000 }, async
           inlineFont: node.style.fontSize,
         };
       });
-      const paths = [...slide.querySelectorAll('.canvas-edge')].map((path) => path.getAttribute('d') || '');
+      const paths = [...slide.querySelectorAll('.canvas-edge')].map(
+        (path) => path.getAttribute('d') || '',
+      );
       let nodeOverlap = false;
       for (let i = 0; i < nodes.length; i += 1) {
         for (let j = i + 1; j < nodes.length; j += 1) {
@@ -79,7 +81,11 @@ test('flow v2 stays readable and stable in Chromium', { timeout: 60_000 }, async
     assert.equal(node.inlineFont, '');
     assert.ok(Number.parseFloat(node.fontSize) >= 18);
   }
-  assert.ok(serial.paths.every((path) => path.includes(' C ')));
+  assert.ok(serial.paths.every((path) => path.startsWith('M ')));
+  assert.equal(
+    serial.paths.every((path) => path.includes(' C ')),
+    false,
+  );
   const flow = await page.evaluate(() => {
     const slide = document.querySelector('.slide');
     const diagram = document.querySelector('.diagram-layout-flow');
@@ -98,7 +104,10 @@ test('flow v2 stays readable and stable in Chromium', { timeout: 60_000 }, async
   const deep = measured[2];
   assert.equal(deep.nodes.length, 7);
   assert.equal(deep.nodeOverlap, false);
-  assert.equal(deep.overflow.includes('NODE_OVERLAP') || deep.overflow.includes('EDGE_COLLISION'), false);
+  assert.equal(
+    deep.overflow.includes('NODE_OVERLAP') || deep.overflow.includes('EDGE_COLLISION'),
+    false,
+  );
   const fixed = measured[3];
   assert.ok(fixed.overflow);
   assert.match(fixed.hint, /収まりません|切れています|余白が足りません/);

@@ -366,6 +366,41 @@ test('parallel edges between the same nodes keep distinct paths', () => {
   }
 });
 
+test('auto routing keeps three ranks, parallel edges and a long return clear', () => {
+  const scene = parseCanvas(
+    `@node in\n### 入力
+@node a1\n### 経路A
+@node a2\n### 経路B
+@node mid\n### 一次統合
+@node b1\n### 詳細A
+@node b2\n### 詳細B
+@node out\n### 最終統合
+@edge in --> a1
+@edge in --> a2
+@edge a1 --> mid
+@edge a2 --> mid
+@edge mid --> b1
+@edge mid --> b2
+@edge b1 --> out
+@edge b2 --> out
+@edge a1 --> mid label="並行"
+@edge out --> in label="計画を見直して入力条件を更新する"`,
+    'layout=flow direction=right route=auto width=1280',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  assert.ok(layout.edgePaths.some((path) => path.role === 'bus' || path.role === 'stem'));
+  assert.ok(layout.edgePaths.some((path) => path.from === 'out' && path.to === 'in'));
+  assert.equal(
+    layout.diagnostics.some(
+      (item) =>
+        item.code === 'NODE_OVERLAP' ||
+        item.code === 'EDGE_COLLISION' ||
+        item.code === 'FRAME_OVERFLOW',
+    ),
+    false,
+  );
+});
+
 test('three-rank branch-merge and a long return stay layered', () => {
   const scene = parseCanvas(
     `@node in\n### 入力
@@ -406,6 +441,22 @@ test('three-rank branch-merge and a long return stay layered', () => {
     ),
     false,
   );
+});
+
+test('flow ranks stay packed and centered in the frame', () => {
+  const layout = layoutFlowFromCanvas(
+    parseCanvas(
+      `@node a\n### 入力\n-->\n@node b\n### 分析\n-->\n@node c\n### 判断\n-->\n@node d\n### 実行`,
+      'layout=flow direction=right width=1280',
+    ),
+  );
+  const frames = [...layout.nodeFrames.values()].sort((a, b) => a.x - b.x);
+  const gaps = frames.slice(1).map((frame, i) => frame.x - (frames[i].x + frames[i].width));
+  assert.ok(gaps.every((value) => value <= FLOW.PREFERRED_GAP + 1));
+  const left = frames[0].x;
+  const right = 1280 - (frames[frames.length - 1].x + frames[frames.length - 1].width);
+  assert.ok(Math.abs(left - right) < 8);
+  assert.ok(frames[0].x >= FLOW.PADDING);
 });
 
 test('route=auto keeps serial edges straight and shares a trunk on branch-merge', () => {

@@ -9,6 +9,7 @@ import {
   type CanvasRoute,
   type CanvasScene,
 } from './canvas';
+import { FLOW, FLOW_ROUTES } from './flow/types.ts';
 import { parseSemanticSpan, parseSemanticValue } from './diagram/coords.ts';
 import { perimeterLink } from './diagram/geometry.ts';
 import { estimateFieldLabel } from './diagram/labels.ts';
@@ -527,7 +528,7 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
       'right',
       'direction',
     ),
-    route: choice(attrs.route, ['auto', 'curve', 'straight', 'elbow'] as const, 'curve', 'route'),
+    route: choice(attrs.route, FLOW_ROUTES, 'auto', 'route'),
     center: attrs.center || '',
     width: finite(attrs.width, DIAGRAM_FRAME[layout].width)!,
     ...parseDiagramHeight(attrs, layout, noteMode),
@@ -1178,7 +1179,7 @@ function toCanvasScene(scene: DiagramScene): CanvasScene {
       width: scene.options.width,
       height: scene.options.height,
       autoHeight: scene.options.autoHeight,
-      gap: 54,
+      gap: FLOW.PREFERRED_GAP,
       route: scene.options.route,
     },
     nodes: scene.items.map((item) => ({

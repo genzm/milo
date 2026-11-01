@@ -5,6 +5,7 @@ import { routeConnection } from './flow/route.ts';
 import {
   FLOW,
   FLOW_DIAGNOSTIC_MESSAGE,
+  FLOW_ROUTES,
   type FlowDiagnostic,
   type FlowEdgePath,
 } from './flow/types.ts';
@@ -132,9 +133,7 @@ function edgeFrom(attrs: Record<string, string>): CanvasEdge {
     from: attrs.from,
     to: attrs.to,
     label: attrs.label || '',
-    route: attrs.route
-      ? choice<CanvasRoute>(attrs.route, ['auto', 'curve', 'straight', 'elbow'], 'curve', 'route')
-      : undefined,
+    route: attrs.route ? choice<CanvasRoute>(attrs.route, FLOW_ROUTES, 'auto', 'route') : undefined,
     tone: choice(attrs.tone, ['default', 'accent', 'muted'], 'default', 'tone'),
     dashed: attrs.dashed === 'true',
     arrows: choice(attrs.arrows, ['none', 'start', 'end', 'both'], 'end', 'arrows'),
@@ -154,8 +153,8 @@ export function parseCanvas(source: string, rawOptions = ''): CanvasScene {
     width: finite(attrs.width, 1000)!,
     height: autoHeight ? 420 : finite(attrs.height, 420)!,
     autoHeight,
-    gap: finite(attrs.gap, 54)!,
-    route: choice(attrs.route, ['auto', 'curve', 'straight', 'elbow'], 'curve', 'route'),
+    gap: finite(attrs.gap, FLOW.PREFERRED_GAP)!,
+    route: choice(attrs.route, FLOW_ROUTES, 'auto', 'route'),
   };
   if (options.width <= 0 || options.height <= 0 || options.gap < 0)
     throw new Error('canvas の width / height / gap を確認してください。');

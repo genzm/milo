@@ -44,13 +44,19 @@ export function placeNodes(
   );
   const occupied = groupPrimary.reduce((sum, value) => sum + value, 0);
   const rankCount = ranked.groups.length;
-  const primaryGap =
-    rankCount === 1 ? 0 : Math.max(gap, (primarySize - padding * 2 - occupied) / (rankCount - 1));
+  const inner = Math.max(0, primarySize - padding * 2);
+  const packed = occupied + gap * Math.max(0, rankCount - 1);
+  const usedGap =
+    rankCount > 1 && packed > inner + 0.5
+      ? Math.max(FLOW.MIN_GAP, (inner - occupied) / (rankCount - 1))
+      : gap;
+  const usedPacked = occupied + usedGap * Math.max(0, rankCount - 1);
+  const origin = padding + Math.max(0, (inner - usedPacked) / 2);
   const primaryPositions: number[] = [];
-  let primaryCursor = padding;
+  let primaryCursor = origin;
   groupPrimary.forEach((length, i) => {
     primaryPositions.push(primaryCursor);
-    primaryCursor += length + (i < rankCount - 1 ? primaryGap : 0);
+    primaryCursor += length + (i < rankCount - 1 ? usedGap : 0);
   });
   const frames = new Map<string, FlowFrame>();
   ranked.groups.forEach((members, groupIndex) => {

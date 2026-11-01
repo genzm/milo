@@ -538,7 +538,10 @@ function routeLegacy(
     if (!from || !to) return [];
     const edgeIndex = edge.index ?? index;
     const sides = sidesFor(graph, Boolean(edge.feedback));
-    const centered = usesAuto(edge, graph) && !edge.feedback;
+    const pairCount = graph.edges.filter(
+      (item) => item.from === edge.from && item.to === edge.to && !skip.has(item.index),
+    ).length;
+    const centered = usesAuto(edge, graph) && !edge.feedback && pairCount === 1;
     const outTotal = centered ? 1 : totals.get(`${edge.from}:${sides.out}`) || 1;
     const inTotal = centered ? 1 : totals.get(`${edge.to}:${sides.inn}`) || 1;
     const outIndex = centered ? 1 : bump(`${edge.from}:${sides.out}:i`);
@@ -573,7 +576,7 @@ function routeAuto(graph: FlowGraph, frames: Map<string, FlowFrame>): FlowEdgePa
     byFrom.set(edge.from, group);
   }
   for (const edges of byFrom.values()) {
-    if (edges.length < 2) continue;
+    if (new Set(edges.map((edge) => edge.to)).size < 2) continue;
     if (emitFanOut(graph, frames, edges, paths)) edges.forEach((edge) => assigned.add(edge.index));
   }
   const byTo = new Map<string, FlowEdge[]>();
@@ -584,7 +587,7 @@ function routeAuto(graph: FlowGraph, frames: Map<string, FlowFrame>): FlowEdgePa
     byTo.set(edge.to, group);
   }
   for (const edges of byTo.values()) {
-    if (edges.length < 2) continue;
+    if (new Set(edges.map((edge) => edge.from)).size < 2) continue;
     if (emitFanIn(graph, frames, edges, paths)) edges.forEach((edge) => assigned.add(edge.index));
   }
   return [...paths, ...routeLegacy(graph, frames, assigned)];

@@ -31,7 +31,7 @@ test('flow, free and hybrid node placement share one frame model', () => {
   const flow = parseCanvas('@node a\nA\n@node b dx=12 dy=5\nB\n@edge a --> b', 'direction=down');
   const frames = layoutCanvas(flow, [80, 90]);
   assert.equal(flow.options.autoHeight, true);
-  assert.equal(canvasHeight(flow, [80, 90]), 292);
+  assert.equal(canvasHeight(flow, [80, 90]), 254);
   assert.ok(frames[1].y > frames[0].y);
   assert.equal(frames[1].height, 90);
 
