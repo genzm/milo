@@ -67,19 +67,21 @@ export function placeAnchoredLabel(
   preferred: Vec,
   obstacles: Box[],
   frame: SpatialFrame,
-): { box: Box; overflow: boolean } {
+): { box: Box; overflow: boolean; gap: number } {
   const ranked = [...LABEL_DIRS].sort((a, b) => {
     const da = a.x * preferred.x + a.y * preferred.y;
     const db = b.x * preferred.x + b.y * preferred.y;
     return db - da;
   });
-  for (const dir of ranked) {
-    const box = labelAlong(anchor, size, dir);
-    if (boxLeaves(box, frame, 4)) continue;
-    if (obstacles.some((other) => overlaps(box, other, 8))) continue;
-    return { box, overflow: false };
+  for (const gap of [12, 30, 48]) {
+    for (const dir of ranked) {
+      const box = labelAlong(anchor, size, dir, gap);
+      if (boxLeaves(box, frame, 4)) continue;
+      if (obstacles.some((other) => overlaps(box, other, 8))) continue;
+      return { box, overflow: false, gap };
+    }
   }
-  return { box: labelAlong(anchor, size, preferred), overflow: true };
+  return { box: labelAlong(anchor, size, preferred), overflow: true, gap: 12 };
 }
 
 function zoneCorner(

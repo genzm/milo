@@ -151,7 +151,7 @@ export function layoutField(
     for (const other of nodes) {
       if (other.id !== node.id && overlaps(result.box, other, 4)) overflow = true;
     }
-    return { ...node, label: result.box };
+    return { ...node, label: result.box, labelGap: result.gap };
   });
 
   const byId = new Map(placed.map((item) => [item.id, item]));
@@ -167,7 +167,7 @@ export function layoutField(
     return [{ ...link, path: geometry.path, labelAt: geometry.labelAt }];
   });
   const noteLinks = placed.flatMap((item) => {
-    if (!item.label) return [];
+    if (!item.label || item.labelGap <= 12) return [];
     const path = leaderPath(item, item.label, item.kind !== 'card');
     return path ? [{ itemId: item.id, path, kind: 'leader' as const }] : [];
   });

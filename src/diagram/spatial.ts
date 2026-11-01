@@ -28,7 +28,7 @@ export interface SemanticPoint {
 }
 
 export const SPATIAL_PAD = 56;
-export const DOT = 16;
+export const DOT = 12;
 export const DISTANCE_RANK: Record<SpatialDistance, number> = {
   near: 0.5,
   mid: 0.72,

@@ -1174,14 +1174,19 @@ function applyBox(
   box: DiagramBox,
   width: number,
   height: number,
-  mode: 'size' | 'center' = 'size',
+  mode: 'size' | 'center' | 'dot' = 'size',
 ) {
-  if (mode === 'center') {
+  if (mode === 'center' || mode === 'dot') {
     element.style.left = `${((box.x + box.width / 2) / width) * 100}%`;
     element.style.top = `${((box.y + box.height / 2) / height) * 100}%`;
+    element.style.transform = 'translate(-50%, -50%)';
+    if (mode === 'dot') {
+      element.style.width = '';
+      element.style.height = '';
+      return;
+    }
     element.style.width = 'max-content';
     element.style.height = 'auto';
-    element.style.transform = 'translate(-50%, -50%)';
     return;
   }
   element.style.left = `${(box.x / width) * 100}%`;
@@ -1420,7 +1425,7 @@ export function mountDiagram(
         box,
         layout.width,
         layout.height,
-        box.kind === 'card' || box.kind === 'dot' ? 'center' : 'size',
+        box.kind === 'card' ? 'center' : box.kind === 'dot' ? 'dot' : 'size',
       );
     });
     annotations.forEach((node, i) => {

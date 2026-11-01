@@ -349,8 +349,8 @@
     font-size: inherit;
   }
   .diagram-dot {
-    width: 16px;
-    height: 16px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     background: var(--accent);
     border: 2px solid var(--accent);

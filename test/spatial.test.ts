@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
 import { layoutDiagram, parseDiagram, usesSpatialRadial } from '../src/diagram.ts';
-import { overlaps } from '../src/diagram/geometry.ts';
+import { leaderPath, overlaps } from '../src/diagram/geometry.ts';
 import { textBox } from '../src/diagram/labels.ts';
 import { semanticToDisplay, spatialFrame } from '../src/diagram/spatial.ts';
 import { renderSlide } from '../src/render.ts';
@@ -164,6 +164,28 @@ test('field keeps data points fixed while labels can move', () => {
       centerOf(a.label).y - centerOf(b.label).y,
     ) > 4,
   );
+});
+
+test('field omits nearby leaders and keeps the marker size', () => {
+  const lonely = layoutDiagram(parseDiagram(`@item a title="施策A" x=-0.7 y=0.6`, 'layout=field'));
+  assert.equal(lonely.noteLinks.length, 0);
+  assert.equal(
+    leaderPath({ x: 100, y: 100, width: 12, height: 12 }, { x: 118, y: 92, width: 40, height: 20 }),
+    null,
+  );
+  assert.ok(
+    leaderPath({ x: 100, y: 100, width: 12, height: 12 }, { x: 160, y: 70, width: 40, height: 20 }),
+  );
+  const { root, close } = render(`@diagram layout=field
+@item a title="施策A" x=-0.7 y=0.6
+@enddiagram`);
+  try {
+    const dot = root.querySelector('.diagram-dot');
+    assert.ok(dot);
+    assert.ok(!String(dot.getAttribute('style') || '').includes('max-content'));
+  } finally {
+    close();
+  }
 });
 
 test('zones and clusters decorate field space without moving items', () => {

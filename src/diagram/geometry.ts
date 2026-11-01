@@ -72,7 +72,7 @@ export function leaderPath(from: Box, to: Box, circular = true): string | null {
   const dx = end.x - start.x,
     dy = end.y - start.y,
     dist = Math.hypot(dx, dy);
-  if (dist < 10) return null;
+  if (dist < 22) return null;
   const inset = Math.min(8, dist * 0.16);
   return `M ${start.x} ${start.y} L ${end.x - (dx / dist) * inset} ${end.y - (dy / dist) * inset}`;
 }
