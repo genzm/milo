@@ -131,6 +131,7 @@ export const FLOW = {
   BODY_PX: 18,
   MIN_HEIGHT: 160,
   HEIGHT_PAD: 68,
+  FEEDBACK_PAD: 56,
 };
 
 export const FLOW_DIAGNOSTIC_MESSAGE: Record<FlowDiagnosticCode, string> = {

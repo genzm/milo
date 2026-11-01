@@ -417,6 +417,7 @@ export function mountCanvasScene(
     });
     const seen = new Set<string>();
     const unique = diagnostics.filter((item) => {
+      if (item.code === 'CYCLE_DETECTED') return false;
       if (seen.has(item.code)) return false;
       seen.add(item.code);
       return true;

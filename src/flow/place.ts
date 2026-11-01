@@ -23,7 +23,8 @@ export function contentHeight(
       )
     : groups.reduce((sum, members) => sum + Math.max(...members.map((i) => sizes[i].height)), 0) +
       gap * Math.max(0, groups.length - 1);
-  return Math.max(FLOW.MIN_HEIGHT, Math.ceil(packed + FLOW.HEIGHT_PAD));
+  const feedbackPad = graph.edges.some((edge) => edge.feedback) ? FLOW.FEEDBACK_PAD * 2 : 0;
+  return Math.max(FLOW.MIN_HEIGHT, Math.ceil(packed + FLOW.HEIGHT_PAD + feedbackPad));
 }
 
 export function placeNodes(

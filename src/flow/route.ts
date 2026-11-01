@@ -1,9 +1,13 @@
-import type { FlowEdgePath, FlowFrame, FlowGraph, FlowRoute } from './types.ts';
+import {
+  FLOW,
+  type FlowEdgePath,
+  type FlowFrame,
+  type FlowGraph,
+  type FlowRoute,
+} from './types.ts';
 
 type Side = 'top' | 'right' | 'bottom' | 'left';
 type Point = { x: number; y: number };
-
-const CLEAR = 16;
 
 function portPoint(frame: FlowFrame, side: Side, t: number): Point {
   const x0 = frame.x;
@@ -79,10 +83,28 @@ function polylineHits(points: Point[], obstacles: FlowFrame[]) {
   return false;
 }
 
+function labelFor(points: Point[]) {
+  let best = 0;
+  let bestLen = -1;
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const len = Math.hypot(points[i + 1].x - points[i].x, points[i + 1].y - points[i].y);
+    if (len > bestLen) {
+      best = i;
+      bestLen = len;
+    }
+  }
+  const a = points[best];
+  const b = points[best + 1];
+  const horizontal = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y);
+  return {
+    x: (a.x + b.x) / 2,
+    y: horizontal ? Math.max(a.y, b.y) + 18 : (a.y + b.y) / 2 - 8,
+  };
+}
+
 function pathOf(points: Point[], route: FlowRoute) {
   if (points.length < 2) return { path: '', label: { x: 0, y: 0 } };
-  const mid = points[Math.floor(points.length / 2)];
-  const label = { x: mid.x, y: mid.y - 8 };
+  const label = labelFor(points);
   if (route === 'straight' || points.length === 2) {
     return {
       path: `M ${points[0].x} ${points[0].y} L ${points[points.length - 1].x} ${points[points.length - 1].y}`,
@@ -140,7 +162,7 @@ function elbow(start: Point, end: Point, horizontalFirst: boolean): Point[] {
 }
 
 function around(start: Point, end: Point, bounds: FlowFrame, side: Side): Point[] {
-  const box = inflate(bounds, CLEAR);
+  const box = inflate(bounds, FLOW.FEEDBACK_PAD);
   if (side === 'bottom') {
     const y = box.y + box.height;
     return [start, { x: start.x, y }, { x: end.x, y }, end];

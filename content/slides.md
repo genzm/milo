@@ -295,7 +295,7 @@ GIFも、画像も、ひとつのHTMLの中へ。
 
 <!-- milo: layout=lab -->
 
-# 流れは、書くだけ
+# A. 直列フロー
 
 @diagram layout=flow direction=right
 @item input title="入力"
@@ -307,13 +307,13 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @link judge -> run
 @enddiagram
 
-同じ `@item` と `@link` で、処理の流れにもできる。4つでも、文字を縮めずに並べる。
+4ノードでも文字が極端に折り返されず、均等に配置される。
 
 ---
 
 <!-- milo: layout=lab -->
 
-# 分岐しても、階層は揃う
+# B. 分岐・合流
 
 @diagram layout=flow direction=right
 @item start title="入力"
@@ -326,27 +326,43 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @link pathB -> join
 @enddiagram
 
-分岐と合流は同じ段に置く。線は交差させない。
+分岐・合流の階層が揃い、線の交差が最小限になる。
 
 ---
 
 <!-- milo: layout=lab -->
 
-# 循環は、戻す
+# C. 縦方向フロー
+
+@diagram layout=flow direction=down
+@item find title="課題発見"
+@item cause title="原因分析"
+@item act title="打ち手" level=high
+@link find -> cause
+@link cause -> act
+@enddiagram
+
+横に収まらない構成でも、縦方向を選べる。
+
+---
+
+<!-- milo: layout=lab -->
+
+# D. フィードバックループ
 
 @canvas direction=right route=straight
 @node plan
 ### 計画
 -->
-@node act
+@node do
 ### 実行
 -->
-@node see tone=accent
+@node see
 ### 検証
 @edge see --> plan dashed=true tone=accent label=フィードバック
 @endcanvas
 
-循環があってもノードは一列。戻りは外側の線にする。
+循環があってもノードを不規則に並べず、戻り線で示す。
 
 ---
 

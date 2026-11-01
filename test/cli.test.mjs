@@ -108,6 +108,7 @@ Hello
       'slide-18',
       'slide-19',
       'slide-20',
+      'slide-21',
     ],
   );
   assert.deepEqual(json(deck.blocks.find((b) => b.id === 'manifest').text), {

@@ -229,7 +229,8 @@ test('feedback edges travel around the figure instead of through nodes', () => {
   const ys = [...back.path.matchAll(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g)].map((match) =>
     Number(match[2]),
   );
-  assert.ok(Math.max(...ys) > mid.y + mid.height);
+  assert.ok(Math.max(...ys) > mid.y + mid.height + 24);
+  assert.ok(back.label.y > mid.y + mid.height);
 });
 
 test('free canvas placement is unchanged by the flow engine', () => {
