@@ -2,7 +2,7 @@ import type { RenderContext } from './directives';
 import { layoutFlowFromCanvas } from './flow/layout.ts';
 import { estimateNodeHeight } from './flow/measure.ts';
 import { routeConnection } from './flow/route.ts';
-import { FLOW_DIAGNOSTIC_MESSAGE, type FlowDiagnostic } from './flow/types.ts';
+import { FLOW, FLOW_DIAGNOSTIC_MESSAGE, type FlowDiagnostic } from './flow/types.ts';
 
 export type CanvasDirection = 'right' | 'left' | 'down' | 'up';
 export type CanvasLayout = 'flow' | 'free';
@@ -337,25 +337,31 @@ export function mountCanvasScene(
   let disposed = false;
   const draw = () => {
     if (disposed) return;
-    elements.forEach((item, i) => {
-      const vertical = scene.options.direction === 'down' || scene.options.direction === 'up';
-      const width = scene.nodes[i].width ?? (vertical ? 250 : 220);
-      item.style.width = `${(width / scene.options.width) * 100}%`;
-      item.style.minHeight = '';
-    });
     const ratio = element.clientWidth ? scene.options.width / element.clientWidth : 1;
-    const measured = elements.map((item, i) => {
-      if (scene.nodes[i].height !== undefined) return scene.nodes[i].height!;
-      const height = item.scrollHeight * ratio;
-      return height > 1 ? height : estimatedHeight(scene.nodes[i]);
-    });
+    const atWidth = new Map<number, number[]>();
+    for (const candidate of FLOW.WIDTH_CANDIDATES) {
+      elements.forEach((item, i) => {
+        const width = scene.nodes[i].width ?? candidate;
+        item.style.width = `${(width / scene.options.width) * 100}%`;
+        item.style.minHeight = '';
+      });
+      atWidth.set(
+        candidate,
+        elements.map((item, i) => {
+          if (scene.nodes[i].height !== undefined) return scene.nodes[i].height!;
+          const height = item.scrollHeight * ratio;
+          return height > 1 ? height : estimatedHeight(scene.nodes[i]);
+        }),
+      );
+    }
+    const measured = { heights: atWidth.get(FLOW.PREFERRED_WIDTH) || [], atWidth };
     const layout = scene.options.layout === 'flow' ? layoutFlowFromCanvas(scene, measured) : null;
-    scene.options.height = layout?.height ?? canvasHeight(scene, measured);
+    scene.options.height = layout?.height ?? canvasHeight(scene, measured.heights);
     element.style.aspectRatio = `${scene.options.width} / ${scene.options.height}`;
     svg.setAttribute('viewBox', `0 0 ${scene.options.width} ${scene.options.height}`);
     const frames = layout
       ? scene.nodes.map((node) => layout.nodeFrames.get(node.id)!)
-      : layoutCanvas(scene, measured);
+      : layoutCanvas(scene, measured.heights);
     elements.forEach((item, i) => {
       const frame = frames[i];
       item.style.left = `${(frame.x / scene.options.width) * 100}%`;

@@ -109,11 +109,50 @@ B
     );
     assert.match(
       root.querySelector('.canvas-overflow-hint')?.textContent || '',
-      /収まりません|切れています/,
+      /収まりません|切れています|余白が足りません/,
     );
   } finally {
     close();
   }
+});
+
+test('four serial flow nodes fit without clipping Japanese titles', () => {
+  const scene = parseCanvas(
+    `@node a\n### 入力\n-->\n@node b\n### 分析\n-->\n@node c\n### 判断\n-->\n@node d\n### 実行`,
+    'layout=flow direction=right width=1000',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  const frames = [...layout.nodeFrames.values()];
+  assert.equal(frames.length, 4);
+  for (const frame of frames) {
+    assert.ok(frame.width >= 180 && frame.width <= 360);
+    assert.ok(frame.x >= 0 && frame.x + frame.width <= 1000 + 1);
+    assert.ok(frame.y >= 0);
+  }
+  const right = Math.max(...frames.map((frame) => frame.x + frame.width));
+  assert.ok(right <= 1000 + 1);
+  assert.equal(
+    layout.diagnostics.some(
+      (item) => item.code === 'TEXT_OVERFLOW' || item.code === 'FRAME_OVERFLOW',
+    ),
+    false,
+  );
+  const widths = new Set(frames.map((frame) => frame.width));
+  assert.equal(widths.size === 1 || widths.size === 4, true);
+});
+
+test('long flow body grows height instead of shrinking type', () => {
+  const scene = parseCanvas(
+    `@node a\n### 入力\n長い日本語の本文を折り返しても文字サイズは変えない。\n-->\n@node b\n### 実行\nこちらも説明を少し長く書く。`,
+    'layout=flow direction=right',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  const a = layout.nodeFrames.get('a')!;
+  assert.ok(a.height >= 76);
+  assert.equal(
+    layout.diagnostics.some((item) => item.code === 'TEXT_OVERFLOW'),
+    false,
+  );
 });
 
 test('free canvas placement is unchanged by the flow engine', () => {
