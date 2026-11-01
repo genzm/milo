@@ -408,6 +408,102 @@ test('three-rank branch-merge and a long return stay layered', () => {
   );
 });
 
+test('route=auto keeps serial edges straight and shares a trunk on branch-merge', () => {
+  const serial = layoutFlowFromCanvas(
+    parseCanvas(
+      `@node a\n### 入力\n-->\n@node b\n### 実行`,
+      'layout=flow direction=right route=auto',
+    ),
+  );
+  assert.match(serial.edgePaths[0].path, / L /);
+  assert.equal(serial.edgePaths[0].path.includes(' C '), false);
+
+  const scene = parseCanvas(
+    `@node start\n### 入力
+@node a\n### 経路A
+@node b\n### 経路B
+@node join\n### 統合
+@edge start --> a
+@edge start --> b
+@edge a --> join
+@edge b --> join`,
+    'layout=flow direction=right route=auto',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  const start = layout.nodeFrames.get('start')!;
+  const a = layout.nodeFrames.get('a')!;
+  const join = layout.nodeFrames.get('join')!;
+  const vertical = (path: string) => {
+    const pts = [...path.matchAll(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g)].map((match) => ({
+      x: Number(match[1]),
+      y: Number(match[2]),
+    }));
+    const xs: number[] = [];
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      if (Math.abs(pts[i].x - pts[i + 1].x) < 1 && Math.abs(pts[i].y - pts[i + 1].y) > 8) {
+        xs.push(pts[i].x);
+      }
+    }
+    return xs;
+  };
+  const splitXs = layout.edgePaths.flatMap((path) =>
+    path.from === 'start' ? vertical(path.path) : [],
+  );
+  const mergeXs = layout.edgePaths.flatMap((path) =>
+    path.to === 'join' ? vertical(path.path) : [],
+  );
+  assert.ok(layout.edgePaths.some((path) => path.role === 'bus' || path.role === 'stem'));
+  assert.ok(splitXs.length);
+  assert.ok(splitXs.every((x) => x > start.x + start.width && x < a.x));
+  assert.equal(new Set(splitXs.map((x) => Math.round(x))).size, 1);
+  assert.ok(mergeXs.length);
+  assert.ok(mergeXs.every((x) => x > a.x + a.width && x < join.x));
+  assert.equal(new Set(mergeXs.map((x) => Math.round(x))).size, 1);
+  assert.equal(
+    layout.diagnostics.some(
+      (item) => item.code === 'NODE_OVERLAP' || item.code === 'EDGE_COLLISION',
+    ),
+    false,
+  );
+
+  const parsed = parseDiagram(
+    `@item input title="入力"
+@item a title="経路A"
+@item b title="経路B"
+@item merge title="統合"
+@link input -> a
+@link input -> b
+@link a -> merge
+@link b -> merge`,
+    'layout=flow route=auto',
+  );
+  assert.equal(parsed.options.route, 'auto');
+  const { root, close } = render(`@diagram layout=flow route=auto
+@item input title="入力"
+@item a title="経路A"
+@item b title="経路B"
+@item merge title="統合" level=high
+@link input -> a
+@link input -> b
+@link a -> merge
+@link b -> merge
+@enddiagram`);
+  try {
+    const paths = [...root.querySelectorAll('.canvas-edge')].map(
+      (path) => path.getAttribute('d') || '',
+    );
+    assert.ok(paths.length > 4);
+    assert.ok(paths.every((path) => path.includes(' L ') || path.startsWith('M ')));
+    assert.equal(
+      [...root.querySelectorAll('.canvas-edge')].filter((path) => path.getAttribute('marker-end'))
+        .length >= 3,
+      true,
+    );
+  } finally {
+    close();
+  }
+});
+
 test('free canvas placement is unchanged by the flow engine', () => {
   const free = parseCanvas(
     '@node a frame=10,20,210,100\nA\n@node b x=300 y=40 pinned\nB',

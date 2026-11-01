@@ -2,11 +2,16 @@ import type { RenderContext } from './directives';
 import { layoutFlowFromCanvas } from './flow/layout.ts';
 import { estimateNodeHeight } from './flow/measure.ts';
 import { routeConnection } from './flow/route.ts';
-import { FLOW, FLOW_DIAGNOSTIC_MESSAGE, type FlowDiagnostic } from './flow/types.ts';
+import {
+  FLOW,
+  FLOW_DIAGNOSTIC_MESSAGE,
+  type FlowDiagnostic,
+  type FlowEdgePath,
+} from './flow/types.ts';
 
 export type CanvasDirection = 'right' | 'left' | 'down' | 'up';
 export type CanvasLayout = 'flow' | 'free';
-export type CanvasRoute = 'curve' | 'straight' | 'elbow';
+export type CanvasRoute = 'auto' | 'curve' | 'straight' | 'elbow';
 export type CanvasArrows = 'none' | 'start' | 'end' | 'both';
 
 interface CanvasOptions {
@@ -128,7 +133,7 @@ function edgeFrom(attrs: Record<string, string>): CanvasEdge {
     to: attrs.to,
     label: attrs.label || '',
     route: attrs.route
-      ? choice<CanvasRoute>(attrs.route, ['curve', 'straight', 'elbow'], 'curve', 'route')
+      ? choice<CanvasRoute>(attrs.route, ['auto', 'curve', 'straight', 'elbow'], 'curve', 'route')
       : undefined,
     tone: choice(attrs.tone, ['default', 'accent', 'muted'], 'default', 'tone'),
     dashed: attrs.dashed === 'true',
@@ -150,7 +155,7 @@ export function parseCanvas(source: string, rawOptions = ''): CanvasScene {
     height: autoHeight ? 420 : finite(attrs.height, 420)!,
     autoHeight,
     gap: finite(attrs.gap, 54)!,
-    route: choice(attrs.route, ['curve', 'straight', 'elbow'], 'curve', 'route'),
+    route: choice(attrs.route, ['auto', 'curve', 'straight', 'elbow'], 'curve', 'route'),
   };
   if (options.width <= 0 || options.height <= 0 || options.gap < 0)
     throw new Error('canvas の width / height / gap を確認してください。');
@@ -373,33 +378,50 @@ export function mountCanvasScene(
     svg.querySelector('.canvas-edge-layer')?.remove();
     const layer = svgElement('g', { class: 'canvas-edge-layer' });
     const byId = new Map(scene.nodes.map((node, i) => [node.id, frames[i]]));
-    const routed = new Map((layout?.edgePaths || []).map((item) => [item.index, item]));
-    for (const [index, edge] of scene.edges.entries()) {
-      const geometry =
-        routed.get(index) ||
-        connection(byId.get(edge.from)!, byId.get(edge.to)!, edge.route || scene.options.route);
+    const routed: { item: FlowEdgePath; edge: CanvasEdge | undefined }[] = layout?.edgePaths?.length
+      ? layout.edgePaths.map((item) => ({ item, edge: scene.edges[item.index] }))
+      : scene.edges.map((edge, index) => {
+          const geometry = connection(
+            byId.get(edge.from)!,
+            byId.get(edge.to)!,
+            edge.route || scene.options.route,
+          );
+          const item: FlowEdgePath = {
+            index,
+            from: edge.from,
+            to: edge.to,
+            path: geometry.path,
+            label: geometry.label,
+            role: 'edge',
+          };
+          return { item, edge };
+        });
+    const labeled = new Set<number>();
+    for (const { item, edge } of routed) {
+      if (!edge) continue;
+      const arrows = item.arrows ?? edge.arrows;
       const attrs: Record<string, string | number> = {
-        d: geometry.path,
+        d: item.path,
         class: `canvas-edge canvas-edge-${edge.tone}${edge.dashed ? ' is-dashed' : ''}`,
       };
-      if (edge.arrows === 'end' || edge.arrows === 'both')
-        attrs['marker-end'] = `url(#${uid}-arrow)`;
-      if (edge.arrows === 'start' || edge.arrows === 'both')
-        attrs['marker-start'] = `url(#${uid}-arrow)`;
+      if (arrows === 'end' || arrows === 'both') attrs['marker-end'] = `url(#${uid}-arrow)`;
+      if (arrows === 'start' || arrows === 'both') attrs['marker-start'] = `url(#${uid}-arrow)`;
       layer.append(svgElement('path', attrs));
-      if (edge.label)
+      if (edge.label && item.role !== 'stem' && item.role !== 'bus' && !labeled.has(item.index)) {
+        labeled.add(item.index);
         layer.append(
           svgElement(
             'text',
             {
-              x: geometry.label.x,
-              y: geometry.label.y,
+              x: item.label.x,
+              y: item.label.y,
               class: 'canvas-edge-label',
               'text-anchor': 'middle',
             },
             edge.label,
           ),
         );
+      }
     }
     svg.append(layer);
     const diagnostics = [...(layout?.diagnostics || [])];

@@ -79,6 +79,7 @@ export function validateFlow(
     }
   }
   const labels = paths.flatMap((path) => {
+    if (path.role === 'stem' || path.role === 'bus') return [];
     const edge = graph.edges[path.index] || graph.edges.find((item) => item.index === path.index);
     if (!edge?.label) return [];
     const size = estimateEdgeLabel(edge.label);

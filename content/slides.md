@@ -315,7 +315,7 @@ GIFも、画像も、ひとつのHTMLの中へ。
 
 # B. 分岐・合流
 
-@diagram layout=flow direction=right
+@diagram layout=flow direction=right route=auto
 @item start title="入力"
 @item pathA title="経路A"
 @item pathB title="経路B"

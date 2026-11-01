@@ -527,7 +527,7 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
       'right',
       'direction',
     ),
-    route: choice(attrs.route, ['curve', 'straight', 'elbow'] as const, 'curve', 'route'),
+    route: choice(attrs.route, ['auto', 'curve', 'straight', 'elbow'] as const, 'curve', 'route'),
     center: attrs.center || '',
     width: finite(attrs.width, DIAGRAM_FRAME[layout].width)!,
     ...parseDiagramHeight(attrs, layout, noteMode),

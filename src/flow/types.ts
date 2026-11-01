@@ -1,5 +1,7 @@
 export type FlowDirection = 'right' | 'left' | 'down' | 'up';
-export type FlowRoute = 'curve' | 'straight' | 'elbow';
+export type FlowRoute = 'auto' | 'curve' | 'straight' | 'elbow';
+export type FlowArrows = 'none' | 'start' | 'end' | 'both';
+export const FLOW_ROUTES = ['auto', 'curve', 'straight', 'elbow'] as const;
 export type FlowShape = 'card' | 'round' | 'ellipse' | 'diamond' | 'plain';
 
 export interface FlowNode {
@@ -88,6 +90,8 @@ export interface FlowEdgePath {
   to: string;
   path: string;
   label: { x: number; y: number };
+  arrows?: FlowArrows;
+  role?: 'edge' | 'stem' | 'bus' | 'stub';
 }
 
 export type FlowDiagnosticCode =
@@ -136,6 +140,8 @@ export const FLOW = {
   MIN_HEIGHT: 160,
   HEIGHT_PAD: 68,
   FEEDBACK_PAD: 56,
+  TRUNK_MIN: 16,
+  TRUNK_MAX: 28,
 };
 
 export const FLOW_DIAGNOSTIC_MESSAGE: Record<FlowDiagnosticCode, string> = {
