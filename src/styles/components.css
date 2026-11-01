@@ -272,6 +272,12 @@
     stroke-width: 2;
     vector-effect: non-scaling-stroke;
   }
+  &.canvas-layout-flow .canvas-edge {
+    stroke: color-mix(in srgb, var(--slide-ink) 28%, var(--slide-muted));
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: miter;
+  }
   .canvas-edge-accent {
     stroke: var(--accent);
   }

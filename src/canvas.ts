@@ -304,14 +304,15 @@ export function mountCanvasScene(
     viewBox: `0 0 ${scene.options.width} ${scene.options.height}`,
     'aria-hidden': 'true',
   }) as SVGSVGElement;
+  const flowMarks = scene.options.layout === 'flow';
   const defs = svgElement('defs', {}),
     marker = svgElement('marker', {
       id: `${uid}-arrow`,
       viewBox: '0 0 10 10',
-      refX: 8.2,
+      refX: flowMarks ? 9 : 8.2,
       refY: 5,
-      markerWidth: 7,
-      markerHeight: 7,
+      markerWidth: flowMarks ? 5 : 7,
+      markerHeight: flowMarks ? 5 : 7,
       orient: 'auto-start-reverse',
     });
   marker.append(svgElement('path', { d: 'M 0 0 L 10 5 L 0 10 z', class: 'canvas-arrow-head' }));

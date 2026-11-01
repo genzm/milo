@@ -229,6 +229,24 @@ test('route=curve keeps a cubic for a two-point edge', () => {
   assert.equal(layout.edgePaths[0].path.includes(' L '), false);
 });
 
+test('flow edges use the thin gray arrows from outside notes', () => {
+  const { root, close } = render(`@diagram layout=flow
+@item a title="入力"
+@item b title="実行"
+@link a -> b
+@enddiagram`);
+  try {
+    const canvas = root.querySelector('.milo-canvas') as unknown as HTMLElement;
+    const marker = root.querySelector('marker') as unknown as SVGMarkerElement;
+    assert.ok(canvas.classList.contains('canvas-layout-flow'));
+    assert.equal(marker?.getAttribute('markerWidth'), '5');
+    assert.equal(marker?.getAttribute('markerHeight'), '5');
+    assert.ok(root.querySelector('.canvas-edge')?.getAttribute('marker-end'));
+  } finally {
+    close();
+  }
+});
+
 test('diagram route=curve is forwarded to the flow engine', () => {
   const parsed = parseDiagram(
     `@item a title="入力"
