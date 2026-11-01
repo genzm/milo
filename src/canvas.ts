@@ -372,12 +372,13 @@ export function mountCanvasScene(
     svg.querySelector('.canvas-edge-layer')?.remove();
     const layer = svgElement('g', { class: 'canvas-edge-layer' });
     const byId = new Map(scene.nodes.map((node, i) => [node.id, frames[i]]));
+    const routed = new Map(
+      (layout?.edgePaths || []).map((item) => [`${item.from}->${item.to}`, item]),
+    );
     for (const edge of scene.edges) {
-      const geometry = connection(
-        byId.get(edge.from)!,
-        byId.get(edge.to)!,
-        edge.route || scene.options.route,
-      );
+      const geometry =
+        routed.get(`${edge.from}->${edge.to}`) ||
+        connection(byId.get(edge.from)!, byId.get(edge.to)!, edge.route || scene.options.route);
       const attrs: Record<string, string | number> = {
         d: geometry.path,
         class: `canvas-edge canvas-edge-${edge.tone}${edge.dashed ? ' is-dashed' : ''}`,

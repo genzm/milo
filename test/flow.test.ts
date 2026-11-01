@@ -200,6 +200,38 @@ test('cycles become a ranked line plus a feedback diagnostic', () => {
   assert.ok(xs[1] < xs[2]);
 });
 
+test('flow edges leave from the node perimeter and avoid a third node', () => {
+  const scene = parseCanvas(
+    `@node a\n### 入力\n@node b\n### 経路A\n@node c\n### 経路B\n@node d\n### 統合\n@edge a --> b\n@edge a --> c\n@edge b --> d\n@edge c --> d`,
+    'layout=flow direction=right route=elbow',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  const a = layout.nodeFrames.get('a')!;
+  const b = layout.nodeFrames.get('b')!;
+  const first = layout.edgePaths.find((path) => path.from === 'a' && path.to === 'b')!;
+  const nums = [...first.path.matchAll(/(-?\d+(?:\.\d+)?)/g)].map((match) => Number(match[1]));
+  assert.ok(Math.abs(nums[0] - (a.x + a.width)) < 2);
+  assert.ok(Math.abs(nums[nums.length - 2] - b.x) < 2);
+  assert.equal(
+    layout.diagnostics.some((item) => item.code === 'EDGE_COLLISION'),
+    false,
+  );
+});
+
+test('feedback edges travel around the figure instead of through nodes', () => {
+  const scene = parseCanvas(
+    `@node plan\n### 計画\n@node do\n### 実行\n@node see\n### 検証\n@edge plan --> do\n@edge do --> see\n@edge see --> plan`,
+    'layout=flow direction=right route=elbow',
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  const back = layout.edgePaths.find((path) => path.from === 'see' && path.to === 'plan')!;
+  const mid = layout.nodeFrames.get('do')!;
+  const ys = [...back.path.matchAll(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g)].map((match) =>
+    Number(match[2]),
+  );
+  assert.ok(Math.max(...ys) > mid.y + mid.height);
+});
+
 test('free canvas placement is unchanged by the flow engine', () => {
   const free = parseCanvas(
     '@node a frame=10,20,210,100\nA\n@node b x=300 y=40 pinned\nB',

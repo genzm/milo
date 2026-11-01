@@ -1,3 +1,4 @@
+import { edgeHitsNode } from './route.ts';
 import {
   diagnostic,
   type FlowDiagnostic,
@@ -23,7 +24,7 @@ function leaves(box: FlowFrame, width: number, height: number, slack = 1) {
 export function validateFlow(
   graph: FlowGraph,
   frames: Map<string, FlowFrame>,
-  _paths: FlowEdgePath[],
+  paths: FlowEdgePath[],
   measures: FlowNodeMeasure[],
 ): FlowDiagnostic[] {
   const diagnostics: FlowDiagnostic[] = [];
@@ -66,5 +67,34 @@ export function validateFlow(
   }
   const cyclic = graph.edges.filter((edge) => edge.feedback).map((edge) => edge.from);
   if (cyclic.length) diagnostics.push(diagnostic('CYCLE_DETECTED', [...new Set(cyclic)]));
+  for (const path of paths) {
+    for (const node of graph.nodes) {
+      if (node.id === path.from || node.id === path.to) continue;
+      const box = frames.get(node.id);
+      if (box && edgeHitsNode(path.path, box)) {
+        diagnostics.push(diagnostic('EDGE_COLLISION', [path.from, path.to, node.id]));
+      }
+    }
+  }
+  const labels = paths
+    .filter((path) =>
+      graph.edges.some((edge) => edge.from === path.from && edge.to === path.to && edge.label),
+    )
+    .map((path) => ({
+      id: `${path.from}->${path.to}`,
+      box: { x: path.label.x - 24, y: path.label.y - 10, width: 48, height: 18 },
+    }));
+  for (const label of labels) {
+    for (const node of graph.nodes) {
+      const box = frames.get(node.id);
+      if (box && overlaps(label.box, box))
+        diagnostics.push(diagnostic('EDGE_LABEL_COLLISION', [node.id]));
+    }
+    for (const other of labels) {
+      if (other.id > label.id && overlaps(label.box, other.box)) {
+        diagnostics.push(diagnostic('EDGE_LABEL_COLLISION', [label.id, other.id]));
+      }
+    }
+  }
   return diagnostics;
 }
