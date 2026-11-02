@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { testDeckHtml } from './helpers/deck.mjs';
 import { SourceStore, serializeBlock, encode, decode, json, END_MARKER } from '../src/source.ts';
 import { Autosaver, type FileHandle } from '../src/save.ts';
+const builtHtml = await testDeckHtml();
+
 const fixture = (eol = '\n') =>
   (
     '\ufeff<!doctype html>\n<meta name="milo" content="1">\n<!-- untouched: 日本語 🧪 &amp; -->\n' +
@@ -87,7 +89,7 @@ test('blocks can be added/removed and snapshots restored without DOM serializati
   assert.equal(s.html, source);
 });
 test('new sources stay inside their readable kind section when group markers exist', () => {
-  const html = readFileSync('dist/milo.html', 'utf8'),
+  const html = builtHtml,
     s = SourceStore.fromHTML(html),
     original = s.list('slide').map((b) => b.id);
   s.add({ id: 'slide-new', kind: 'slide', name: 'new.md', text: '# New' }, 'slide-02');
@@ -120,7 +122,7 @@ test('binding preserves the selected raw file, replays drafts, and rejects a mis
   );
 });
 test('binding replays the physical slide order edited before a file handle is connected', () => {
-  const html = readFileSync('dist/milo.html', 'utf8'),
+  const html = builtHtml,
     disk = SourceStore.fromHTML(html),
     original = disk.list('slide').map((b) => b.id),
     boot = disk.snapshot();
@@ -329,7 +331,7 @@ test('a failed post-write verification never advances the baseline until a retry
   save.dispose();
 });
 test('built artifact contains one kernel and all dependencies; a source edit preserves the toolbox bytes', () => {
-  const html = readFileSync('dist/milo.html', 'utf8'),
+  const html = builtHtml,
     s = SourceStore.fromHTML(html);
   assert.equal(s.list().length, 23);
   assert.equal(s.list('slide').length, 21);

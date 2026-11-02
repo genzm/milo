@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { launchTestBrowser } from './helpers/browser.mjs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -139,19 +139,14 @@ test(
   'five real diagram types keep their geometry in PDF, editor resize and presentation',
   { timeout: 90_000 },
   async (t) => {
-    const { chromium } = await import('playwright');
-    let executablePath = chromium.executablePath();
-    if (!existsSync(executablePath))
-      executablePath = executablePath.replace('chrome-mac-x64', 'chrome-mac-arm64');
-    if (!existsSync(executablePath)) return t.skip('Chromium is not installed');
+    const browser = await launchTestBrowser(t);
+    if (!browser) return;
     const dir = await mkdtemp(join(tmpdir(), 'milo-diagram-regression-'));
     t.after(() => rm(dir, { recursive: true, force: true }));
     const result = await compile({
       input: fileURLToPath(new URL('./fixtures/diagram-regressions.md', import.meta.url)),
       out: join(dir, 'slides.html'),
     });
-    const browser = await chromium.launch({ executablePath, headless: true });
-    t.after(() => browser.close());
     const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await page.setContent(await createPdfHtml(result.deck, result.parts));
     await waitForPdfReady(page);

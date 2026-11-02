@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { testDeckHtml } from './helpers/deck.mjs';
 import { Window } from 'happy-dom';
 import { EditorView } from '@codemirror/view';
 import { SourceStore, json } from '../src/source.ts';
+
+const builtHtml = await testDeckHtml();
 
 // DOM-based integration, not an actual Chromium or native file-picker test.
 function appFixture(html: string) {
@@ -30,7 +32,7 @@ function appFixture(html: string) {
   store.setText('manifest', '{\n  "title": "Fixture"\n}\n');
   return store.html!;
 }
-const initial = appFixture(readFileSync('dist/milo.html', 'utf8'));
+const initial = appFixture(builtHtml);
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function until(fn: () => boolean, message: string, ms = 3000) {
   const started = Date.now();

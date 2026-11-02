@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { launchTestBrowser } from './helpers/browser.mjs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -11,25 +11,13 @@ import slideSize from '../src/slide-size.json' with { type: 'json' };
 
 const fixture = join(dirname(fileURLToPath(import.meta.url)), 'fixtures/same-side-radial.md');
 
-function resolveChromium(executablePath) {
-  if (existsSync(executablePath)) return executablePath;
-  const arm = executablePath.replace('chrome-mac-x64', 'chrome-mac-arm64');
-  return existsSync(arm) ? arm : '';
-}
-
 test('same-side radial overlap warning is visible in Chromium', { timeout: 60_000 }, async (t) => {
-  const { chromium } = await import('playwright');
-  const executablePath = resolveChromium(chromium.executablePath());
-  if (!executablePath) {
-    t.skip('Chromium is not installed');
-    return;
-  }
+  const browser = await launchTestBrowser(t);
+  if (!browser) return;
   const dir = await mkdtemp(join(tmpdir(), 'milo-radial-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const result = await compile({ input: fixture, out: join(dir, 'slides.html') });
   const html = await createPdfHtml(result.deck, result.parts);
-  const browser = await chromium.launch({ executablePath, headless: true, timeout: 30_000 });
-  t.after(() => browser.close());
   const page = await browser.newPage({ viewport: slideSize });
   await page.route('**/*', (route) => route.abort());
   await page.setContent(html, { waitUntil: 'load', timeout: 30_000 });
