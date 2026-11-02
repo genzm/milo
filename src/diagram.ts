@@ -1,3 +1,4 @@
+import { svgElement } from './svg.ts';
 import { esc, type RenderContext } from './directives';
 import {
   atAttributes,
@@ -184,7 +185,6 @@ export interface DiagramLayout {
   legend: DiagramLegendItem[];
 }
 
-const NS = 'http://www.w3.org/2000/svg';
 const VERTEX = 92;
 export const VERTEX_R = VERTEX / 2;
 const LABEL_GAP = 18;
@@ -214,13 +214,6 @@ const START_PHI: Record<DiagramStart, number> = {
   bottom: Math.PI,
   left: -Math.PI / 2,
 };
-
-function svgElement(tag: string, attrs: Record<string, string | number>, text?: string) {
-  const element = document.createElementNS(NS, tag);
-  for (const [key, value] of Object.entries(attrs)) element.setAttribute(key, String(value));
-  if (text !== undefined) element.textContent = text;
-  return element;
-}
 
 function overlaps(a: DiagramBox, b: DiagramBox, gap = 8) {
   return (

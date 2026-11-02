@@ -34,6 +34,10 @@ npm run check
 | `src/canvas.ts` | `@canvas` |
 | `src/diagram.ts` | `@diagram` の構文と描画 |
 | `src/flow/` | 流れ図の配置と経路 |
+| `src/flow/geometry.ts` | 線と枠の衝突判定、座標・曲線のサンプリング |
+| `src/flow/path.ts` | SVGパスとラベル位置、迂回経路の選択 |
+| `src/flow/route.ts` / `route-free.ts` | 階層配置 / 自由配置の接続点と経路 |
+| `src/svg.ts` | Canvas・Diagram共通のSVG要素生成 |
 | `src/diagram/` | ring 以外の空間配置 |
 | `src/app.ts` | 編集画面 |
 | `src/save.ts` | 自動保存 |

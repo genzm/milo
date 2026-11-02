@@ -1,5 +1,37 @@
 import { FLOW, type FlowFrame, type FlowGraph, type FlowRanked } from './types.ts';
 
+/** Ordering constraints between aligned blocks; null means a cyclic or overlapping alignment. */
+function separationConstraints(
+  candidate: number[],
+  ranks: number[][],
+  crossSizes: number[],
+  gap: number,
+) {
+  const edges = new Map<number, Map<number, number>>();
+  for (const id of candidate) edges.set(id, new Map());
+  for (const members of ranks) {
+    // An alignment block may contain only one node per rank.
+    if (new Set(members.map((i) => candidate[i])).size !== members.length) return null;
+    for (let j = 1; j < members.length; j++) {
+      const a = members[j - 1],
+        b = members[j];
+      const distance = (crossSizes[a] + crossSizes[b]) / 2 + gap;
+      const next = edges.get(candidate[a])!;
+      next.set(candidate[b], Math.max(next.get(candidate[b]) || 0, distance));
+    }
+  }
+  const degree = new Map([...edges.keys()].map((id) => [id, 0]));
+  for (const next of edges.values())
+    for (const id of next.keys()) degree.set(id, degree.get(id)! + 1);
+  const order = [...degree.keys()].filter((id) => degree.get(id) === 0);
+  for (let i = 0; i < order.length; i++)
+    for (const id of edges.get(order[i])!.keys()) {
+      degree.set(id, degree.get(id)! - 1);
+      if (degree.get(id) === 0) order.push(id);
+    }
+  return order.length === edges.size ? { edges, order } : null;
+}
+
 /** Align central branches across ranks, then compact without changing rank order. */
 export function alignBranches(
   graph: FlowGraph,
@@ -15,34 +47,9 @@ export function alignBranches(
   const crossCenter = (box: FlowFrame) => (horizontal ? box.y : box.x) + crossSize(box) / 2;
   const index = new Map(graph.nodes.map((node, i) => [node.id, i]));
   let blocks = graph.nodes.map((_, i) => i);
-  const constraints = (candidate: number[]) => {
-    const edges = new Map<number, Map<number, number>>();
-    for (const id of candidate) edges.set(id, new Map());
-    for (const members of ranked.groups) {
-      // An alignment block may contain only one node per rank.
-      if (new Set(members.map((i) => candidate[i])).size !== members.length) return null;
-      for (let j = 1; j < members.length; j++) {
-        const a = members[j - 1],
-          b = members[j];
-        const distance =
-          (crossSize(frames.get(graph.nodes[a].id)!) + crossSize(frames.get(graph.nodes[b].id)!)) /
-            2 +
-          gap;
-        const next = edges.get(candidate[a])!;
-        next.set(candidate[b], Math.max(next.get(candidate[b]) || 0, distance));
-      }
-    }
-    const degree = new Map([...edges.keys()].map((id) => [id, 0]));
-    for (const next of edges.values())
-      for (const id of next.keys()) degree.set(id, degree.get(id)! + 1);
-    const order = [...degree.keys()].filter((id) => degree.get(id) === 0);
-    for (let i = 0; i < order.length; i++)
-      for (const id of edges.get(order[i])!.keys()) {
-        degree.set(id, degree.get(id)! - 1);
-        if (degree.get(id) === 0) order.push(id);
-      }
-    return order.length === edges.size ? { edges, order } : null;
-  };
+  const crossSizes = graph.nodes.map((node) => crossSize(frames.get(node.id)!));
+  const constraints = (candidate: number[]) =>
+    separationConstraints(candidate, ranked.groups, crossSizes, gap);
   const join = (a: number, b: number) => {
     if (blocks[a] === blocks[b]) return;
     const candidate = blocks.map((id) => (id === blocks[b] ? blocks[a] : id));
@@ -82,11 +89,14 @@ export function alignBranches(
     for (const [next, distance] of edges.get(id)!)
       positions.set(next, Math.max(positions.get(next)!, positions.get(id)! + distance));
 
+  const blockCounts = new Map<number, number>();
+  for (const id of blocks) blockCounts.set(id, (blockCounts.get(id) || 0) + 1);
+
   // For even fan-outs / fan-ins, center an unconstrained node between the two
   // middle neighbors. Bound it by the same rank-separation constraints.
   for (const groups of [incoming, outgoing])
     for (const [node, neighbors] of groups) {
-      if (neighbors.length % 2 || blocks.filter((id) => id === blocks[node]).length !== 1) continue;
+      if (neighbors.length % 2 || blockCounts.get(blocks[node]) !== 1) continue;
       const middle = neighbors.length / 2;
       const wanted =
         (positions.get(blocks[neighbors[middle - 1]])! +

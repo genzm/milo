@@ -1,5 +1,5 @@
 import { estimateEdgeLabel } from './measure.ts';
-import { edgeHitsNode } from './route.ts';
+import { edgeHitsNode } from './geometry.ts';
 import {
   diagnostic,
   edgeKey,

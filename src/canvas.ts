@@ -1,3 +1,4 @@
+import { svgElement } from './svg.ts';
 import type { RenderContext } from './directives';
 import { layoutFlowFromCanvas } from './flow/layout.ts';
 import { estimateNodeHeight } from './flow/measure.ts';
@@ -58,7 +59,6 @@ export interface CanvasFrame {
   height: number;
 }
 
-const NS = 'http://www.w3.org/2000/svg';
 let canvasSequence = 0;
 
 export function finite(value: string | undefined, fallback?: number): number | undefined {
@@ -277,13 +277,6 @@ export function layoutCanvas(scene: CanvasScene, measured: number[] = []): Canva
 export function canvasDiagnostics(scene: CanvasScene, measured: number[] = []): FlowDiagnostic[] {
   if (scene.options.layout === 'free') return [];
   return layoutFlowFromCanvas(scene, measured).diagnostics;
-}
-
-function svgElement(tag: string, attrs: Record<string, string | number>, text?: string) {
-  const element = document.createElementNS(NS, tag);
-  for (const [key, value] of Object.entries(attrs)) element.setAttribute(key, String(value));
-  if (text !== undefined) element.textContent = text;
-  return element;
 }
 
 export function connection(from: CanvasFrame, to: CanvasFrame, route: CanvasRoute) {

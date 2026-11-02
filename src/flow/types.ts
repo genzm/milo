@@ -24,6 +24,7 @@ export interface FlowEdge {
   to: string;
   label: string;
   route?: FlowRoute;
+  arrows?: FlowArrows;
   feedback?: boolean;
 }
 
@@ -64,6 +65,7 @@ export interface FlowSceneInput {
     to: string;
     label: string;
     route?: FlowRoute;
+    arrows?: FlowArrows;
   }>;
 }
 

@@ -736,3 +736,36 @@ test('free row and column connections stay straight when card centers differ sli
       assert.equal(vertical ? x0 : y0, vertical ? x1 : y1);
     }
 });
+
+test('all branch arrow modes stay on node boundaries instead of bus junctions', () => {
+  for (const arrows of ['none', 'start', 'end', 'both'])
+    for (const merge of [false, true]) {
+      const { root, close } = render(`@canvas route=auto
+@node hub\nHub
+@node a\nA
+@node b\nB
+@edge ${merge ? 'a --> hub' : 'hub --> a'} arrows=${arrows}
+@edge ${merge ? 'b --> hub' : 'hub --> b'} arrows=${arrows}
+@endcanvas`);
+      try {
+        const stem = root.querySelector('[data-edge-role="stem"]')!;
+        const stubs = [...root.querySelectorAll('[data-edge-role="stub"]')];
+        assert.equal(
+          stem.hasAttribute(merge ? 'marker-end' : 'marker-start'),
+          arrows === 'both' || arrows === (merge ? 'end' : 'start'),
+        );
+        assert.equal(stem.hasAttribute(merge ? 'marker-start' : 'marker-end'), false);
+        for (const stub of stubs) {
+          assert.equal(
+            stub.hasAttribute(merge ? 'marker-start' : 'marker-end'),
+            arrows === 'both' || arrows === (merge ? 'start' : 'end'),
+          );
+          assert.equal(stub.hasAttribute(merge ? 'marker-end' : 'marker-start'), false);
+        }
+        const bus = root.querySelector('[data-edge-role="bus"]')!;
+        assert.equal(bus.hasAttribute('marker-start') || bus.hasAttribute('marker-end'), false);
+      } finally {
+        close();
+      }
+    }
+});
