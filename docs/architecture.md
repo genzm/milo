@@ -28,20 +28,24 @@ milo は原稿を単一 HTML にコンパイルし、その HTML が自分の原
 
 PDF 用 HTML は編集 UI を含みません。`src/pdf-entry.ts` が全スライドを描き、Playwright の Chromium が `src/slide-size.json` の寸法で印刷します。外部リクエストは中断します。
 
-`npm run build` は `cli/build.mjs` が `content` を `dist/milo.html` にし、同時に `marp/milo.css` を生成します。Marp テーマはスライドのタイポグラフィと `cover` / `section` / `media` / `essay` に限られ、キャンバス、ダイアグラム、ステップ、カードは含めません。`marp/milo.css` は生成物です。
+`npm run build` は `cli/build.mjs` が `content` を `dist/milo.html` にし、同時に `marp/milo.css` を生成します。CSS は `cli/styles.mjs` が `src/style.css` から1つにまとめ、フォントは `cli/fonts.mjs`、テーマの変換は `cli/marp-theme.mjs` です。Marp テーマはスライドのタイポグラフィと `cover` / `section` / `media` / `essay` です。`lab` は通常スライドのスタイルそのものとして入ります。キャンバス、ダイアグラム、ステップ、カード、列、`@impact`、チェック項目は含めません。`marp/milo.css` は生成物です。
 
 ## 描画
 
-`src/app.ts` が編集・保存・表示の操作をつなぎます。`src/app/session.ts` が原稿・選択・比較基準を持ち、編集失敗時には原稿と選択を戻します。ナビゲーションと原稿・素材パネルは `src/app/navigation.ts`、`inspector.ts` に分けています。編集後の画面更新・自動保存・下書き保存の順序と待ち時間は `src/app/updates.ts` が管理します。
+`src/app.ts` が編集・保存・表示の操作をつなぎます。画面の骨組みは `src/app/shell.ts` です。`src/app/session.ts` が原稿・選択・比較基準を持ち、編集失敗時には原稿と選択を戻します。一覧は `src/app/navigation.ts`、原稿・素材・設定は `src/app/inspector.ts` です。
 
-`src/render.ts` の `renderSlide` は、`src/markdown/slide.ts` で表示用 Markdown を準備し、`src/render/blocks.ts` でブロックを DOM に配置します。共通のブロック解析は `src/markdown/blocks.mjs` です。入れ子の展開順序を維持し、再配置と後片付けは `src/render/lifecycle.ts` に登録します。
+編集のあと、`src/app/updates.ts` はプレビューを約 220ms、ブラウザ内の下書きを約 150ms で予約します。ファイルへの自動保存は、その場で `src/save.ts` の `Autosaver` に渡します。停止して約 500ms、入力が続くときは最初の変更から約 2 秒です。
 
-- 数式、`==アクセント==`、`++下線++`、行末の `@align`
-- `@box` `@panel` `@grid` `@stack` `@columns` `@steps` `@impact` `@footer`
-- `@canvas` は `src/canvas.ts`、`@diagram` は `src/diagram.ts`
-- `::image{asset="…"}` 形式の画像ディレクティブ
+`src/render.ts` の `renderSlide` は、`src/markdown/slide.ts` で表示用 Markdown を準備し、`src/render/blocks.ts` でブロックを DOM に配置します。共通のブロック解析は `src/markdown/blocks.mjs`、属性は `src/markdown/attributes.mjs` です。入れ子の展開順序を維持し、再配置と後片付けは `src/render/lifecycle.ts` に登録します。
 
-流れ図の配置は `src/flow/` です。順位づけ、整列、経路、寸法、警告を分けています。`route=auto` は直列を直線、分岐と合流を共有幹線にします。`src/diagram.ts` は既存の公開 API を再エクスポートします。ダイアグラムは `src/diagram/parse.ts` で解析し、`layout.ts` が ring / radial / field の配置を選び、`mount.ts` が DOM の生成と実測を担当します。構文解析と配置計算は DOM 描画モジュールに依存しません。flow レイアウトのダイアグラムは、キャンバスと同じ流れ図を使います。
+- 数式、`==アクセント==`、`++下線++`、行末の `@align`、チェック項目、Markdown 画像は `src/markdown/slide.ts`
+- `@box` `@panel` `@grid` `@stack` `@columns` `@steps` `@impact` `@footer` の構文は `src/markdown/blocks.mjs`、DOM は `src/render/blocks.ts`
+- `@canvas` は `src/canvas.ts`、`@diagram` の公開入口は `src/diagram.ts`
+- `::image{asset="…"}` は `src/directives.ts`。ダブルクリックで素材を開くのはこの形式です
+
+流れ図は `src/flow/layout.ts` が、順位、寸法、配置、経路、警告の順に進めます。中央の枝を揃えるのは `src/flow/align.ts` です。`route=auto` は直列を直線、分岐と合流を共有幹線にします。階層配置の経路は `src/flow/route.ts`、自由配置は `src/flow/route-free.ts`、パスとラベルは `src/flow/path.ts`、衝突と曲線のサンプルは `src/flow/geometry.ts` です。
+
+`src/diagram.ts` は公開 API を再エクスポートします。解析は `src/diagram/parse.ts` です。`src/diagram/layout.ts` は ring / radial / field を振り分けます。ring は `layout-ring.ts`、`side` も `distance` も無い radial は `layout-classic-radial.ts`、どちらかがある radial は `layout-radial.ts`、field は `layout-field.ts` です。`connect=cycle` の辺と輪郭への接続は `src/diagram/links.ts` です。DOM と実測は `src/diagram/mount.ts` と `src/diagram/measure.ts` です。flow のダイアグラムは、ここでキャンバスと同じ流れ図に渡します。構文解析と配置計算は DOM 描画モジュールに依存しません。
 
 ## 保存
 

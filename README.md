@@ -156,8 +156,8 @@ $$
 文字サイズ、余白、色は `src/styles/tokens.css` です。スライドの寸法は `src/slide-size.json` の 1600×900 です。
 
 ```css
---slide-text-body: 30px;
---slide-leading-body: 1.55;
+--slide-text-body: 27px;
+--slide-leading-body: 1.75;
 --slide-radius: 24px;
 ```
 

@@ -26,11 +26,11 @@ documentId: lab-notes
 
 | 値 | 見た目 |
 | --- | --- |
-| `cover` | アクセント色の面に白文字の表紙 |
-| `section` | 章扉。見出しの左に白い棒 |
+| `cover` | 内側にアクセント色の面。文字は白 |
+| `section` | 面全体がアクセント色の章扉。見出しの左に白い棒。文字は白 |
 | `lab` | 通常のスライド。指定が無いときの既定 |
 | `media` | 画像の高さを抑える |
-| `essay` | 本文を少し小さくする |
+| `essay` | 見出しを小さくした文章向け。本文の大きさは `lab` と同じ |
 
 ## 本文
 
@@ -60,6 +60,12 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 ```
 
 `title` を書くとキャプションになります。GIF は HTML では動きます。PDF では印刷時の静止フレームです。
+
+独立した行の `::image` でも同じ素材を出せます。設定は `名前="値"` です。`asset` がパス、`alt` が代替文、`caption` がキャプションです。編集画面でこの画像をダブルクリックすると、素材タブが開きます。
+
+```markdown
+::image{asset="./assets/flow.gif" alt="図" caption="キャプション"}
+```
 
 ## ブロック
 
@@ -167,10 +173,10 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 | `direction` | `right` / `left` / `down` / `up`。既定は `right` |
 | `route` | `auto` / `curve` / `straight` / `elbow`。既定は `auto` |
 | `width` | 幅。既定は 1000 |
-| `height` | 数値、または flow での `auto`。省略と `auto` は内容に合わせて伸びる |
-| `gap` | ノード間隔。0 以上 |
+| `height` | 数値、または flow での `auto`。flow の省略と `auto` は内容に合わせて伸びる。`free` の既定は 420 |
+| `gap` | ノード間隔。0 以上。既定は 48 |
 
-`route=auto` は、直列を直線にし、分岐と合流を共有幹線付きの直交線にします。横に収まらないときは `direction=down` を書きます。循環は戻り線になり、ノードを不規則に並べ直しません。はみ出しは警告として残します。
+`route=auto` は、直列を直線にし、分岐と合流を共有幹線付きの直交線にします。横に収まらないときは `direction=down` を書きます。循環は戻り線になります。表示する警告は、重なり、文字切れ、領域超過、線の横断、ラベルの衝突、余白不足です。
 
 `layout=free` の `height` は数値です。`height=auto` は使えません。ノードの位置は `x` `y`、または `frame=x,y,width,height` です。`dx` `dy` は流れ配置のあとに足すずれで、`pinned=true` はその座標を固定します。
 
@@ -182,7 +188,9 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 ## ダイアグラム
 
-`@diagram` は要素と関係を宣言し、配置だけ切り替えます。中に書けるのは `@item`、`@link`、`@zone`、`@cluster` です。`layout` は `ring` / `flow` / `radial` / `field` です。既定は `ring` です。座標を1つずつ置くときは `@canvas` を使います。
+`@diagram` は要素と関係を宣言し、配置だけ切り替えます。中に書けるのは `@item`、`@link`、`@zone`、`@cluster` です。`layout` は `ring` / `flow` / `radial` / `field` です。既定は `ring` です。`tree` と `free` は使えません。座標を1つずつ置くときは `@canvas` を使います。
+
+既定の領域は、ring が 1000×500、flow が 1280×560、radial が 1040×580、field が 1280×580 です。`width` と `height` で変えられます。`note=outside` のとき、高さの下限は 620 です。`height=auto` は flow だけで使え、省略した高さも内容に合わせて伸びます。
 
 各 `@item` には ID と `title` が必要です。タイトルのあとの行は説明です。
 
@@ -232,7 +240,7 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 ### radial
 
-最初の `@item` が中心です。`center=id` で変えられます。周囲の項目に `side`（`top` / `right` / `bottom` / `left`）と `distance`（`near` / `mid` / `far`）を付けると、中心からの方向と距離を宣言できます。省略した項目はリング上に並びます。
+最初の `@item` が中心です。`center=id` で変えられます。周囲の項目に `side`（`top` / `right` / `bottom` / `left`）と `distance`（`near` / `mid` / `far`）を付けると、中心からの方向と距離を宣言できます。どちらかを1つでも書くと、その宣言で周囲を置きます。書かなかった周囲の項目は、`start` と `order` に沿ってリング上に並びます。どちらも書かないときは、カード同士が重ならない半径に置き、領域に収まらないときは全体を縮小します。縮尺が読めないときは「文字が小さくて読めません」、同じ方向に収まらないときは「同じ方向のカードが重なっています」と出します。`connect` の既定は `none` です。`connect=cycle` は中心を除いた周囲を結びます。
 
 ```markdown
 @diagram layout=radial
@@ -244,7 +252,7 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 ### field
 
-`-1` から `1` の意味座標です。各 `@item` に `x` と `y` が必要です。別名は x が `left` / `center` / `right`、y が `bottom` / `middle` / `top` です。`guide=axes` で軸を描き、`x-low` `x-high` `y-low` `y-high` で端のラベルを付けます。
+`-1` から `1` の意味座標です。各 `@item` に `x` と `y` が必要です。別名は x が `left` / `center` / `right`、y が `bottom` / `middle` / `center` / `top` です。y の `center` は `middle` と同じ 0 です。`guide=axes` で軸を描き、`x-low` `x-high` `y-low` `y-high` で端のラベルを付けます。
 
 ```markdown
 @diagram layout=field guide=axes x-low="内部" x-high="外部" y-low="短期" y-high="長期"
@@ -253,6 +261,6 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 @enddiagram
 ```
 
-`@zone id x="-1:0" y="0:1" label="領域"` は矩形の領域です。範囲は `min:max` です。`@cluster id title="今" tone=muted` と、項目の `cluster=now` で所属を表します。`tone` は `accent` / `muted` / `ink` / `soft` です。`cluster-region=halo` で所属の輪を描きます。
+`@zone id x="-1:0" y="0:1" label="領域"` は矩形の領域です。範囲は `min:max` です。`@cluster id title="今" tone=muted` と、項目の `cluster=now` で所属を表します。`tone` は `accent` / `muted` / `ink` / `soft` です。`@cluster` が無い所属も凡例に出ます。色は宣言が無ければ accent、muted、ink、soft の順です。`cluster-region=halo` で所属の輪を描きます。別の所属を飲み込む輪は描かず、領域超過として出します。
 
 `shape` は `vertex` / `card` / `dot` です。既定は ring が `vertex`、field が `dot`、それ以外が `card` です。

@@ -28,20 +28,40 @@ npm run check
 | `cli/compile.mjs` | 原稿の読み込み、画像の埋め込み、単一 HTML |
 | `cli/document.mjs` | frontmatter とスライド分割 |
 | `cli/pdf.mjs` | PDF |
-| `cli/build.mjs` | 配布用 HTML と Marp テーマ |
+| `cli/build.mjs` | 配布用 HTML と Marp テーマの起動 |
+| `cli/marp-theme.mjs` | Marp テーマの CSS |
+| `cli/styles.mjs` | `src/style.css` を1つの CSS にまとめる |
 | `cli/fonts.mjs` | スライド用フォントの埋め込みと Marp 向けの参照 |
-| `src/render.ts` / `src/render/` | 描画の組み立て、ブロックの DOM 配置、後片付け |
-| `src/markdown/` | CLI と表示側の共通ブロック構文、属性、表示用 Markdown |
-| `src/canvas.ts` | `@canvas` |
+| `src/render.ts` | `renderSlide`。表示準備と DOM 配置をつなぐ |
+| `src/markdown/slide.ts` | 数式、強調、下線、`@align`、チェック、Markdown 画像 |
+| `src/markdown/blocks.mjs` | ブロック構文。CLI と表示で共有 |
+| `src/markdown/attributes.mjs` | `名前=値` と行頭の `#id` |
+| `src/render/blocks.ts` | ブロックの DOM |
+| `src/render/lifecycle.ts` | 再配置と後片付け |
+| `src/canvas.ts` | `@canvas` の解析と描画 |
 | `src/diagram.ts` | `@diagram` の公開 API |
-| `src/flow/` | 流れ図の配置と経路 |
-| `src/flow/geometry.ts` | 線と枠の衝突判定、座標・曲線のサンプリング |
-| `src/flow/path.ts` | SVGパスとラベル位置、迂回経路の選択 |
+| `src/diagram/parse.ts` | `@diagram` の解析 |
+| `src/diagram/layout.ts` | ring / radial / field の振り分け |
+| `src/diagram/layout-ring.ts` | ring |
+| `src/diagram/layout-classic-radial.ts` | `side` も `distance` も無い radial |
+| `src/diagram/layout-radial.ts` | `side` または `distance` がある radial |
+| `src/diagram/layout-field.ts` | field、zone、cluster |
+| `src/diagram/links.ts` | `connect=cycle` の辺と、輪郭への接続 |
+| `src/diagram/mount.ts` | ダイアグラムの DOM。flow はキャンバスへ渡す |
+| `src/diagram/measure.ts` | 枠線込みの実寸 |
+| `src/flow/layout.ts` | 順位、寸法、配置、経路、警告の順 |
+| `src/flow/align.ts` | `route=auto` の中央の枝を揃える |
 | `src/flow/route.ts` / `route-free.ts` | 階層配置 / 自由配置の接続点と経路 |
-| `src/svg.ts` | Canvas・Diagram共通のSVG要素生成 |
-| `src/diagram/` | ダイアグラムの解析、ring / radial / field 配置、DOM 描画 |
-| `src/app.ts` / `src/app/` | 操作の接続、文書状態、編集 UI、更新予約 |
-| `src/save.ts` | 自動保存 |
+| `src/flow/path.ts` | SVG パス、ラベル位置、迂回 |
+| `src/flow/geometry.ts` | 線と枠の衝突、曲線のサンプリング |
+| `src/svg.ts` | Canvas・Diagram 共通の SVG 要素 |
+| `src/app.ts` | 操作の接続 |
+| `src/app/shell.ts` | 編集画面の HTML |
+| `src/app/session.ts` | 原稿、選択、開いたときとの比較 |
+| `src/app/navigation.ts` | 一覧とページ送り |
+| `src/app/inspector.ts` | 原稿、素材、設定 |
+| `src/app/updates.ts` | プレビュー（約 220ms）と下書き（約 150ms）の予約 |
+| `src/save.ts` | 自動保存。停止約 500ms、継続時は約 2 秒 |
 | `src/drafts.ts` | ブラウザ内の下書き |
 | `src/source.ts` | HTML 内ソースの読み書き |
 | `src/styles/` | 見た目。入口は `src/style.css` |
@@ -53,12 +73,12 @@ npm run check
 
 新しいレイアウト名を足すときは、`src/slide-layout.mjs` の `LAYOUTS`、編集画面の選択、`src/styles/layouts.css`、Marp 側の取り込みを揃えます。
 
-記法を足すときは `src/render.ts` にパーサを置き、対応するテストを `test/` に追加します。キャンバスとダイアグラムは、Markdown 本文を解釈する前に行単位で構造だけ読みます。コードフェンスの中は構造行にしません。
+ブロック記法は `src/markdown/blocks.mjs` と `src/render/blocks.ts`、行内の記法は `src/markdown/slide.ts` に置きます。対応するテストは `test/` に追加します。キャンバスとダイアグラムは、Markdown 本文を解釈する前に行単位で構造だけ読みます。コードフェンスの中は構造行にしません。
 
 ## テストの置き場所
 
-`test/core.test.ts` と `test/render-blocks.test.ts` が記法、`test/canvas.test.ts` と `test/flow.test.ts` が流れ図、`test/diagram.test.ts` と `test/diagrams.test.ts` がダイアグラムです。CLI と PDF は `test/cli.test.mjs`、`test/pdf.test.mjs`、`test/build.test.mjs` です。ブラウザ上の描画は `test/flow-browser.test.mjs`、`test/diagram-browser.test.mjs`、`test/diagram-regressions-browser.test.mjs` です。
+`test/core.test.ts` と `test/render-blocks.test.ts` が記法です。流れ図は `test/canvas.test.ts`、`test/flow.test.ts`、`test/flow-geometry.test.ts`、ブラウザでは `test/flow-browser.test.mjs` です。ダイアグラムは `test/diagram.test.ts`、`test/diagrams.test.ts`、`test/spatial.test.ts`、ブラウザでは `test/diagram-browser.test.mjs` と `test/diagram-regressions-browser.test.mjs` です。編集画面は `test/app.test.ts`、`test/session.test.ts`、`test/drafts.test.ts` です。CLI、PDF、ビルド、Marp、原稿分割、レイアウト名、素材は `test/cli.test.mjs`、`test/pdf.test.mjs`、`test/build.test.mjs`、`test/marp-theme.test.mjs`、`test/document.test.mjs`、`test/slide-layout.test.mjs`、`test/assets.test.ts`、`test/asset-refs.test.ts` です。
 
-全体テストは現在のソースから一時ディレクトリに検証用 HTML を生成するため、`dist/milo.html` や事前のビルドには依存しません。図の接続・測定・配置の修正方針と回帰検証は [図の接続・配置の修正](diagram-layout-fixes.md) を参照してください。
+全体テストは現在のソースから一時ディレクトリに検証用 HTML を生成するため、`dist/milo.html` や事前のビルドには依存しません。
 
 サンプル原稿は `content/slides.md` と `marp/example.md` です。
