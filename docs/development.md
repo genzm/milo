@@ -30,16 +30,17 @@ npm run check
 | `cli/pdf.mjs` | PDF |
 | `cli/build.mjs` | 配布用 HTML と Marp テーマ |
 | `cli/fonts.mjs` | スライド用フォントの埋め込みと Marp 向けの参照 |
-| `src/render.ts` | Markdown とブロック記法 |
+| `src/render.ts` / `src/render/` | 描画の組み立て、ブロックの DOM 配置、後片付け |
+| `src/markdown/` | CLI と表示側の共通ブロック構文、属性、表示用 Markdown |
 | `src/canvas.ts` | `@canvas` |
-| `src/diagram.ts` | `@diagram` の構文と描画 |
+| `src/diagram.ts` | `@diagram` の公開 API |
 | `src/flow/` | 流れ図の配置と経路 |
 | `src/flow/geometry.ts` | 線と枠の衝突判定、座標・曲線のサンプリング |
 | `src/flow/path.ts` | SVGパスとラベル位置、迂回経路の選択 |
 | `src/flow/route.ts` / `route-free.ts` | 階層配置 / 自由配置の接続点と経路 |
 | `src/svg.ts` | Canvas・Diagram共通のSVG要素生成 |
-| `src/diagram/` | ring 以外の空間配置 |
-| `src/app.ts` | 編集画面 |
+| `src/diagram/` | ダイアグラムの解析、ring / radial / field 配置、DOM 描画 |
+| `src/app.ts` / `src/app/` | 操作の接続、文書状態、編集 UI、更新予約 |
 | `src/save.ts` | 自動保存 |
 | `src/drafts.ts` | ブラウザ内の下書き |
 | `src/source.ts` | HTML 内ソースの読み書き |

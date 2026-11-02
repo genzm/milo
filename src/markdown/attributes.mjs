@@ -16,3 +16,15 @@ function atAttributes(source) {
   return attributes;
 }
 export { atAttributes };
+
+export function finite(value, fallback) {
+  if (value === void 0 || value === '') return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number)) throw new Error(`数値を確認してください: ${value}`);
+  return number;
+}
+export function choice(value, choices, fallback, name) {
+  if (value === void 0 || value === '') return fallback;
+  if (choices.includes(value)) return value;
+  throw new Error(`${name} は ${choices.join(' / ')} から選んでください。`);
+}

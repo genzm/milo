@@ -12,7 +12,7 @@ milo は原稿を単一 HTML にコンパイルし、その HTML が自分の原
 
 各ブロックの本文は `amp-lt-v1` です。`&` を `&amp;`、`<` を `&lt;`、NUL を `&#0;` にします。実装は `src/source-format.mjs` です。`src/source.ts` の `SourceStore` が HTML からブロックを読み、ID 重複や区画の欠損を拒否します。
 
-`manifest` は JSONC で、少なくとも `title` とスライド ID の並びを持ちます。スライド本文は、区切り前の Markdown そのものです。画像は `mime:` 行と本体を持つ asset ブロックで、GIF / PNG / JPEG / WebP は Base64、SVG はテキストです。
+`manifest` は JSONC で、文書の `title` を持ちます。スライドの順序は HTML 内の slide ブロックの物理順序です。スライド本文は、区切り前の Markdown そのものです。画像は `mime:` 行と本体を持つ asset ブロックで、GIF / PNG / JPEG / WebP は Base64、SVG はテキストです。
 
 実行時は `meta name="milo" content="1"` と、設定・スライド・素材それぞれの終端コメント、`<!-- END MILO SOURCES -->` が揃ったファイルだけを milo 形式として開きます。
 
@@ -20,7 +20,7 @@ milo は原稿を単一 HTML にコンパイルし、その HTML が自分の原
 
 `milo <パス>` は `cli/milo.mjs` から `compile` を呼びます。
 
-1. `cli/document.mjs` が frontmatter を分け、`---` でスライドに割り、画像参照を集めます。
+1. `cli/document.mjs` が frontmatter を分け、トップレベルの `---` でスライドに割り、画像参照を集めます。ブロック構文は表示側と同じ `src/markdown/blocks.mjs` で解析します。ブロック内部の水平線は分割せず、コード中の画像ディレクティブは素材参照として扱いません。
 2. 各スライドの `<!-- milo: … -->` を `src/slide-layout.mjs` が検査します。
 3. 相対パスの画像を asset ブロックにします。同じファイルは1回だけ埋めます。
 4. esbuild が `src/app.ts` を IIFE にまとめ、KaTeX と Noto Sans JP、YakuHanJP を CSS へ埋めます。
@@ -32,15 +32,17 @@ PDF 用 HTML は編集 UI を含みません。`src/pdf-entry.ts` が全スラ�
 
 ## 描画
 
-`src/app.ts` が画面を組み、表示中のスライドを `src/render.ts` の `renderSlide` に渡します。`renderSlide` は markdown-it に milo のブロックを足します。
+`src/app.ts` が編集・保存・表示の操作をつなぎます。`src/app/session.ts` が原稿・選択・比較基準を持ち、編集失敗時には原稿と選択を戻します。ナビゲーションと原稿・素材パネルは `src/app/navigation.ts`、`inspector.ts` に分けています。編集後の画面更新・自動保存・下書き保存の順序と待ち時間は `src/app/updates.ts` が管理します。
+
+`src/render.ts` の `renderSlide` は、`src/markdown/slide.ts` で表示用 Markdown を準備し、`src/render/blocks.ts` でブロックを DOM に配置します。共通のブロック解析は `src/markdown/blocks.mjs` です。入れ子の展開順序を維持し、再配置と後片付けは `src/render/lifecycle.ts` に登録します。
 
 - 数式、`==アクセント==`、`++下線++`、行末の `@align`
 - `@box` `@panel` `@grid` `@stack` `@columns` `@steps` `@impact` `@footer`
 - `@canvas` は `src/canvas.ts`、`@diagram` は `src/diagram.ts`
 - `::image{asset="…"}` 形式の画像ディレクティブ
 
-流れ図の配置は `src/flow/` です。順位づけ、整列、経路、寸法、警告を分けています。`route=auto` は直列を直線、分岐と合流を共有幹線にします。ダイアグラムの ring / radial / field は `src/diagram/` にあります。flow レイアウトのダイアグラムは、キャンバスと同じ流れ図を使います。
+流れ図の配置は `src/flow/` です。順位づけ、整列、経路、寸法、警告を分けています。`route=auto` は直列を直線、分岐と合流を共有幹線にします。`src/diagram.ts` は既存の公開 API を再エクスポートします。ダイアグラムは `src/diagram/parse.ts` で解析し、`layout.ts` が ring / radial / field の配置を選び、`mount.ts` が DOM の生成と実測を担当します。構文解析と配置計算は DOM 描画モジュールに依存しません。flow レイアウトのダイアグラムは、キャンバスと同じ流れ図を使います。
 
 ## 保存
 
-`src/save.ts` の `Autosaver` が File System Access API で、接続した HTML を読み書きします。書く前にファイルが基準と違うときは衝突にします。`src/drafts.ts` は、接続前の編集と衝突時の原稿をブラウザのキャッシュへ置きます。キャッシュのキーは HTML の `milo-id`（frontmatter の `documentId`）です。
+`src/save.ts` の `Autosaver` が File System Access API で、接続した HTML を読み書きします。書く前にファイルが基準と違うときは衝突にします。`src/drafts.ts` は、接続前の編集と衝突時の原稿をブラウザのキャッシュへ置きます。キャッシュのキーは HTML の `milo-id`（frontmatter の `documentId`）と、フラグメントを除いた文書 URL の組み合わせです。

@@ -1,5 +1,5 @@
-import { atAttributes } from './markdown/attributes.mjs';
-export { atAttributes } from './markdown/attributes.mjs';
+import { atAttributes, finite, choice } from './markdown/attributes.mjs';
+export { atAttributes, finite, choice } from './markdown/attributes.mjs';
 import { svgElement } from './svg.ts';
 import type { RenderContext } from './directives';
 import { layoutFlowFromCanvas } from './flow/layout.ts';
@@ -62,24 +62,6 @@ export interface CanvasFrame {
 }
 
 let canvasSequence = 0;
-
-export function finite(value: string | undefined, fallback?: number): number | undefined {
-  if (value === undefined || value === '') return fallback;
-  const number = Number(value);
-  if (!Number.isFinite(number)) throw new Error(`数値を確認してください: ${value}`);
-  return number;
-}
-
-export function choice<T extends string>(
-  value: string | undefined,
-  choices: readonly T[],
-  fallback: T,
-  name: string,
-): T {
-  if (value === undefined || value === '') return fallback;
-  if ((choices as readonly string[]).includes(value)) return value as T;
-  throw new Error(`${name} は ${choices.join(' / ')} から選んでください。`);
-}
 
 function nodeFrom(attrs: Record<string, string>, markdown: string, index: number): CanvasNode {
   const frame = attrs.frame?.split(',').map((part) => finite(part.trim()));
