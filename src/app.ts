@@ -1,106 +1,33 @@
+import { $, icon, appMarkup } from './app/shell';
+import { EditorSession } from './app/session';
+import { EditUpdates } from './app/updates';
+import { updateNavigation } from './app/navigation';
+import { refreshInspector as renderInspector } from './app/inspector';
 import slideSize from './slide-size.json';
-import { slideFrameMarkup, slideNumber } from './slide-frame';
-import { LAYOUTS, slideLayout, setSlideLayout, type SlideLayout } from './slide-layout.mjs';
-import { SourceStore, json, normalize, type Kind } from './source';
+import { slideNumber } from './slide-frame';
+import { SourceStore, type Kind } from './source';
 import { Autosaver, readFile, type FileHandle } from './save';
-import { renderSlide, esc, assetURL, type Rendered } from './render';
+import { renderSlide, esc, type Rendered } from './render';
 import { cacheGet, cacheSet } from './cache';
 import { DraftStore } from './drafts';
 import { SourceEditor } from './editor';
 import { readImageAsset } from './assets';
 
-interface Manifest {
-  title: string;
-  slides: string[];
-}
 const { width: SLIDE_WIDTH, height: SLIDE_HEIGHT } = slideSize;
 document.documentElement.style.setProperty('--slide-width', `${SLIDE_WIDTH}px`);
 document.documentElement.style.setProperty('--slide-height', `${SLIDE_HEIGHT}px`);
-const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-const paths: Record<string, string> = {
-  play: 'm8 5 11 7-11 7Z',
-  code: 'm8 5-6 7 6 7m8-14 6 7-6 7m-5 2 2-18',
-  plus: 'M12 5v14M5 12h14',
-  left: 'm14 5-7 7 7 7',
-  right: 'm10 5 7 7-7 7',
-  link: 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',
-  close: 'm6 6 12 12M6 18 18 6',
-  file: 'M14 2H5v20h14V7Zm0 0v6h5M8 13h8M8 17h6',
-  image: 'M3 3h18v18H3zM3 16l5-5 5 6 4-4 4 4M15 7h.01',
-  copy: 'M8 8h12v13H8zM4 16H2V2h13v3',
-  trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',
-  up: 'm5 14 7-7 7 7',
-  down: 'm5 10 7 7 7-7',
-};
-const icon = (name: string) =>
-  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.file}"/></svg>`;
 const app = $('app');
 const sourceEditor = new SourceEditor();
-let store = SourceStore.fromDOM(document),
-  boot = store.snapshot(),
-  opening = store.snapshot();
-let current = 0,
-  present = false,
-  activeBlock = '',
-  rendered: Rendered | null = null;
-let activeTab: Kind = 'slide',
+const session = new EditorSession(SourceStore.fromDOM(document));
+let present = false,
+  rendered: Rendered | null = null,
   remembered: FileHandle | null = null,
-  binding = false,
-  renderTimer: ReturnType<typeof setTimeout> | null = null,
-  cacheTimer: ReturnType<typeof setTimeout> | null = null;
-let manifest: Manifest = {
-  title: 'milo',
-  slides: store.list('slide').map((b) => b.id),
-};
-let manifestError = '';
+  binding = false;
 const docId = document.querySelector('meta[name="milo-id"]')?.getAttribute('content') || 'milo';
 const cacheKey = docId + '|' + location.href.split('#')[0];
-const drafts = new DraftStore(cacheKey, store, opening.blocks);
-function readManifest() {
-  try {
-    const m = json<any>(store.get('manifest').text),
-      slides = store.list('slide').map((b) => b.id);
-    if (!m || typeof m.title !== 'string' || !slides.length)
-      throw new Error('title と1枚以上のスライドを指定してください。');
-    for (const id of slides) slideLayout(store.get(id).text);
-    manifest = { title: m.title, slides };
-    manifestError = '';
-    current = Math.max(0, Math.min(current, slides.length - 1));
-  } catch (e: any) {
-    manifestError = e.message;
-    manifest.slides = store.list('slide').map((b) => b.id);
-    current = Math.max(0, Math.min(current, manifest.slides.length - 1));
-  }
-}
-function currentId() {
-  return manifest.slides[current] || store.list('slide')[0]?.id;
-}
-function titleOf(id: string) {
-  return store.blocks.get(id)?.text.match(/^#\s+(.+)$/m)?.[1] || store.blocks.get(id)?.name || id;
-}
-function layoutOf(id: string) {
-  try {
-    return slideLayout(store.get(id).text) ?? 'lab';
-  } catch {
-    return 'lab';
-  }
-}
-function slideOrderChanged() {
-  const before = opening.blocks.filter((b) => b.kind === 'slide');
-  const after = store.list('slide');
-  return before.length !== after.length || before.some((b, i) => b.id !== after[i].id);
-}
-function sourceChanged() {
-  return (
-    slideOrderChanged() ||
-    store.list().length !== opening.blocks.length ||
-    opening.blocks.some(
-      (b) => !store.blocks.has(b.id) || normalize(store.get(b.id).text) !== normalize(b.text),
-    )
-  );
-}
+const drafts = new DraftStore(cacheKey, session.store, session.opening.blocks);
 const saver = new Autosaver(
-  () => store.html,
+  () => session.store.html,
   () => {
     updateSave();
     if (saver.state === 'saved' && !saver.dirty()) void drafts.archive(saver);
@@ -109,23 +36,7 @@ const saver = new Autosaver(
   },
 );
 
-app.innerHTML = `
-<header class="app-header">
-  <div class="brand"><span>milo</span></div>
-  <div class="document-name"><span class="document-dot"></span><span id="document-title"></span></div>
-  <div class="header-actions"><button id="save-state" class="save-state" title="保存の状態"><span class="status-dot"></span><span id="save-label"></span></button><button id="connect" class="button primary">${icon('link')}<span>自動保存を接続</span></button><button id="present" class="button">${icon('play')}<span>発表する</span></button></div>
-</header>
-<div id="save-notice" class="save-notice" hidden><span id="save-notice-text"></span><button id="resolve-save" class="text-button"></button></div>
-<div class="workspace">
-  <aside class="sidebar" aria-label="スライド一覧"><div class="sidebar-heading"><span id="slide-count"></span></div><nav id="slides"></nav><div class="slide-operations"><button id="move-up" class="icon-button" title="前へ移動" aria-label="スライドを前へ移動">${icon('up')}</button><button id="move-down" class="icon-button" title="後ろへ移動" aria-label="スライドを後ろへ移動">${icon('down')}</button><button id="duplicate" class="icon-button" title="複製" aria-label="スライドを複製">${icon('copy')}</button><button id="remove-slide" class="icon-button" title="削除" aria-label="スライドを削除">${icon('trash')}</button></div><button id="add-slide" class="add-slide">${icon('plus')}スライドを追加</button></aside>
-  <main class="main-stage"><div class="stage-topline"><div class="stage-tools"><button id="diff" class="text-button">変更を見る <span id="change-count"></span></button></div></div>
-    <div class="stage-scroll" id="stage-scroll"><div class="slide-viewport" id="slide-viewport"><article class="slide" id="slide">${slideFrameMarkup(true)}</article></div></div>
-    <div class="stage-bottom"><nav class="pagination" aria-label="ページ送り"><button id="previous" class="icon-button" aria-label="前のスライド">${icon('left')}</button><span id="page-number"></span><button id="next" class="icon-button" aria-label="次のスライド">${icon('right')}</button></nav></div>
-  </main>
-  <aside class="inspector" aria-label="原稿と素材の編集"><div class="inspector-tabs" role="tablist"><button data-tab="slide" role="tab">原稿</button><button data-tab="asset" role="tab">素材</button><button data-tab="manifest" role="tab">設定</button></div>
-    <div class="inspector-heading"><div class="source-select"><select id="source-select" aria-label="編集するソース"></select><button id="add-source" class="icon-button" aria-label="ソースを追加">${icon('plus')}</button></div></div><div id="inspector-extra"></div><div id="source-editor" class="source-editor"></div><div class="inspector-footer"><span id="source-kind"></span><span>変更は自動で反映</span></div>
-  </aside>
-</div><div id="toast" class="toast" role="status" hidden></div><input type="file" id="asset-input" accept="image/gif,image/png,image/jpeg,image/webp,image/svg+xml" hidden><dialog id="dialog"><div class="dialog-top"><h2 id="dialog-title"></h2><button id="dialog-close" class="icon-button" aria-label="閉じる">${icon('close')}</button></div><div id="dialog-content"></div></dialog>`;
+app.innerHTML = appMarkup;
 
 function toast(text: string) {
   const el = $('toast');
@@ -152,7 +63,7 @@ function updateSave() {
   else if (state === 'conflict') label = '外部変更で停止';
   else if (state === 'permission') label = '許可が必要';
   else if (state === 'error') label = '保存できません';
-  else if (sourceChanged()) label = '未接続 · 未保存';
+  else if (session.sourceChanged()) label = '未接続 · 未保存';
   $('save-label').textContent = label;
   $('save-state').dataset.state = state;
   $('save-state').title = saver.handle ? `${saver.handle.name} · ${label}` : label;
@@ -176,197 +87,79 @@ function updateSave() {
   }
 }
 function updateNav() {
-  readManifest();
-  document.title = manifest.title + ' — milo';
-  $('document-title').textContent = manifest.title;
-  $('slide-count').textContent = String(manifest.slides.length).padStart(2, '0');
-  $('slides').innerHTML = manifest.slides
-    .map((id, i) => {
-      const text = store.get(id).text,
-        kind = /!\[[^\]]*]\([^)]+\)/.test(text) || text.includes('::image') ? 'image' : 'text',
-        layout = layoutOf(id);
-      const art =
-        kind === 'image'
-          ? '<div class="thumb-image">GIF <span>↗</span></div>'
-          : '<div class="thumb-lines"><i></i><i></i><i></i></div>';
-      return `<button class="slide-thumb ${i === current ? 'active' : ''}" data-index="${i}" aria-label="スライド ${i + 1}: ${esc(titleOf(id))}" ${i === current ? 'aria-current="page"' : ''}><span class="thumb-number">${String(i + 1).padStart(2, '0')}</span><span class="thumb-paper thumb-${esc(layout)}"><strong>${esc(titleOf(id))}</strong>${art}</span></button>`;
-    })
-    .join('');
-  $('slides')
-    .querySelectorAll<HTMLButtonElement>('button')
-    .forEach((b) => (b.onclick = () => go(Number(b.dataset.index))));
-  $('page-number').textContent = current === 0 ? '' : `${current + 1} / ${manifest.slides.length}`;
-  $<HTMLButtonElement>('previous').disabled = current <= 0;
-  $<HTMLButtonElement>('next').disabled = current >= manifest.slides.length - 1;
-  $<HTMLButtonElement>('move-up').disabled = current <= 0;
-  $<HTMLButtonElement>('move-down').disabled = current >= manifest.slides.length - 1;
-  $<HTMLButtonElement>('remove-slide').disabled = manifest.slides.length <= 1;
-  const layoutSelect = document.getElementById('layout-select') as HTMLSelectElement | null;
-  if (layoutSelect && activeTab === 'slide' && store.blocks.has(activeBlock))
-    layoutSelect.value = layoutOf(activeBlock);
-  const changed =
-    store.list().filter((b) => opening.blocks.find((o) => o.id === b.id)?.text !== b.text).length +
-    opening.blocks.filter((b) => !store.blocks.has(b.id)).length +
-    Number(slideOrderChanged());
-  $('change-count').textContent = changed ? String(changed) : '';
+  updateNavigation(session, go);
 }
 function refreshSlide() {
-  if (renderTimer) {
-    clearTimeout(renderTimer);
-    renderTimer = null;
-  }
+  updates.cancelRender();
   rendered?.dispose();
-  readManifest();
-  const id = currentId();
+  session.readManifest();
+  const id = session.currentId();
   if (!id) return;
-  $('slide').className = 'slide layout-' + layoutOf(id);
-  $('slide-series').textContent = slideNumber(current, manifest.slides.length);
+  $('slide').className = 'slide layout-' + session.layoutOf(id);
+  $('slide-series').textContent = slideNumber(session.current, session.manifest.slides.length);
   try {
-    rendered = renderSlide($('slide-content'), store.get(id).text, {
-      store,
+    rendered = renderSlide($('slide-content'), session.store.get(id).text, {
+      store: session.store,
       present: () => present,
       patchSource: (from, to, replacement) =>
         mutate(() => {
-          const text = store.get(id).text;
+          const text = session.store.get(id).text;
           if (from < 0 || to < from || to > text.length) return;
-          store.setText(id, text.slice(0, from) + replacement + text.slice(to));
+          session.store.setText(id, text.slice(0, from) + replacement + text.slice(to));
         }),
       inspect: selectBlock,
     });
   } catch (e: any) {
     $('slide-content').innerHTML = `<div class="block-error">${esc(e.message)}</div>`;
   }
-  if (manifestError) {
+  if (session.manifestError) {
     const el = document.createElement('div');
     el.className = 'manifest-error';
-    el.textContent = '文書設定のエラー: ' + manifestError;
+    el.textContent = '文書設定のエラー: ' + session.manifestError;
     $('slide-content').prepend(el);
   }
 }
-function scheduleRender() {
-  if (renderTimer) clearTimeout(renderTimer);
-  renderTimer = setTimeout(refreshSlide, 220);
-}
-function scheduleCache() {
-  if (cacheTimer) clearTimeout(cacheTimer);
-  cacheTimer = setTimeout(() => {
-    cacheTimer = null;
+const updates = new EditUpdates({
+  navigation: updateNav,
+  saveState: updateSave,
+  editor: syncEditor,
+  render: refreshSlide,
+  save: () => saver.schedule(),
+  cache: () => {
     if (saver.handle && !saver.dirty()) void drafts.archive(saver);
-    else if (!saver.handle && !sourceChanged()) void drafts.discard();
+    else if (!saver.handle && !session.sourceChanged()) void drafts.discard();
     else void drafts.persist();
-  }, 150);
-}
-function afterChange() {
-  updateNav();
-  updateSave();
-  syncEditor();
-  scheduleRender();
-  saver.schedule();
-  scheduleCache();
-}
-function mutate(fn: () => void) {
-  const before = store.snapshot(),
-    revision = store.revision;
+  },
+});
+function mutate(fn: () => void): boolean {
   try {
-    fn();
-    if (store.revision === revision) return;
-    afterChange();
+    if (session.mutate(fn)) updates.changed();
+    return true;
   } catch (e: any) {
-    store.restore(before);
     toast(e.message);
+    return false;
   }
 }
 function syncEditor() {
-  if (store.blocks.has(activeBlock)) sourceEditor.sync(store.get(activeBlock).text);
+  if (session.store.blocks.has(session.activeBlock))
+    sourceEditor.sync(session.store.get(session.activeBlock).text);
 }
 function selectBlock(id: string) {
-  if (!store.blocks.has(id)) return;
-  activeBlock = id;
-  activeTab = store.get(id).kind;
+  if (!session.store.blocks.has(id)) return;
+  session.activeBlock = id;
+  session.activeTab = session.store.get(id).kind;
   refreshInspector();
 }
-const langLabels: Partial<Record<Kind, string>> = {
-  slide: 'MARKDOWN + TeX',
-  asset: 'EMBEDDED ASSET',
-  manifest: 'JSONC / DOCUMENT',
-};
 function refreshInspector() {
-  sourceEditor.destroy();
-  if (!store.blocks.has(activeBlock) || store.get(activeBlock).kind !== activeTab)
-    activeBlock = activeTab === 'slide' ? currentId() : store.list(activeTab)[0]?.id || '';
-  document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => {
-    b.classList.toggle('active', b.dataset.tab === activeTab);
-    b.setAttribute('aria-selected', String(b.dataset.tab === activeTab));
-  });
-  const list = store.list(activeTab),
-    select = $<HTMLSelectElement>('source-select');
-  select.innerHTML = list
-    .map((b, i) => {
-      const label =
-        b.kind === 'slide' ? `#${String(i + 1).padStart(2, '0')} — ${titleOf(b.id)}` : b.name;
-      return `<option value="${esc(b.id)}">${esc(label)}${b.kind === 'slide' ? '' : ' · ' + esc(b.id)}</option>`;
-    })
-    .join('');
-  select.value = activeBlock;
-  $('source-kind').textContent = langLabels[activeTab] || '';
-  $('add-source').hidden = activeTab === 'manifest';
-  const extra = $('inspector-extra');
-  extra.replaceChildren();
-  $('source-editor').replaceChildren();
-  if (!activeBlock) {
-    $('source-editor').innerHTML = '<div class="empty-source">＋から新しく追加できます。</div>';
-    return;
-  }
-  const b = store.get(activeBlock);
-  if (activeTab === 'slide') {
-    extra.innerHTML = `<div class="layout-control"><label>レイアウト <select id="layout-select"><option value="cover">表紙</option><option value="section">章扉</option><option value="lab">実験</option><option value="media">メディア</option><option value="essay">文章</option></select></label></div>`;
-    $<HTMLSelectElement>('layout-select').value = layoutOf(b.id);
-    $('layout-select').onchange = (e) =>
-      mutate(() => {
-        const layout = (e.target as HTMLSelectElement).value as SlideLayout;
-        if (!LAYOUTS.includes(layout)) return;
-        store.setText(b.id, setSlideLayout(store.get(b.id).text, layout));
-      });
-  }
-  if (activeTab === 'asset') {
-    let src = '';
-    try {
-      src = assetURL(b.text);
-    } catch {}
-    $('source-editor').innerHTML =
-      `<div class="asset-panel"><div class="asset-preview">${src ? `<img src="${esc(src)}" alt="${esc(b.name)}">` : '読み込めない画像です。'}</div><strong>${esc(b.name)}</strong><p>${(b.text.length / 1024).toFixed(1)} KB · HTMLに埋め込み済み</p><button id="replace-asset" class="button">${icon('image')}画像を差し替える</button><button id="insert-asset" class="text-button">現在のスライドに挿入</button><p class="asset-reference">参照ID <code>${esc(b.id)}</code></p><p class="asset-drop-note">GIF・PNG・JPEG・WebP・SVG<br>このパネルにドロップしても差し替えできます。</p></div>`;
-    $('replace-asset').onclick = () => chooseAsset(b.id);
-    $('insert-asset').onclick = () => {
-      const id = currentId();
-      mutate(() =>
-        store.setText(id, store.get(id).text + `\n\n![画像](${b.name || 'asset:' + b.id})\n`),
-      );
-      toast('現在のスライドに追加しました。');
-    };
-    const panel = $('source-editor');
-    panel.ondragover = (e) => {
-      e.preventDefault();
-    };
-    panel.ondrop = (e) => {
-      e.preventDefault();
-      const file = e.dataTransfer?.files[0];
-      if (file) void importAsset(file, b.id);
-    };
-    return;
-  }
-  $('source-editor').ondragover = null;
-  $('source-editor').ondrop = null;
-  sourceEditor.mount($('source-editor'), b, (text) => {
-    mutate(() => store.setText(b.id, text));
-  });
+  renderInspector(session, sourceEditor, { mutate, chooseAsset, importAsset, toast });
 }
 
 function go(index: number) {
-  current = Math.max(0, Math.min(index, manifest.slides.length - 1));
+  session.current = Math.max(0, Math.min(index, session.manifest.slides.length - 1));
   updateNav();
   refreshSlide();
-  if (activeTab === 'slide') {
-    activeBlock = currentId();
+  if (session.activeTab === 'slide') {
+    session.activeBlock = session.currentId();
     refreshInspector();
   }
 }
@@ -407,44 +200,47 @@ function unique(prefix: string) {
 }
 function addSlide(duplicate = false) {
   const id = unique('slide'),
-    old = currentId(),
-    before = manifest.slides[current + 1] || null;
-  mutate(() => {
-    store.add(
-      {
-        id,
-        kind: 'slide',
-        name: id + '.md',
-        text: duplicate
-          ? store.get(old).text
-          : '<!-- milo: layout=essay -->\n\n# 新しい問い\n\nここから、考えを続ける。\n',
-      },
-      before,
-    );
-  });
-  current = manifest.slides.indexOf(id);
-  activeTab = 'slide';
-  activeBlock = id;
-  go(current);
+    old = session.currentId(),
+    before = session.manifest.slides[session.current + 1] || null;
+  if (
+    !mutate(() => {
+      session.store.add(
+        {
+          id,
+          kind: 'slide',
+          name: id + '.md',
+          text: duplicate
+            ? session.store.get(old).text
+            : '<!-- milo: layout=essay -->\n\n# 新しい問い\n\nここから、考えを続ける。\n',
+        },
+        before,
+      );
+    })
+  )
+    return;
+  session.current = session.manifest.slides.indexOf(id);
+  session.activeTab = 'slide';
+  session.activeBlock = id;
+  go(session.current);
 }
 function moveSlide(delta: number) {
-  const ids = [...manifest.slides],
-    to = current + delta;
+  const ids = [...session.manifest.slides],
+    to = session.current + delta;
   if (to < 0 || to >= ids.length) return;
-  [ids[current], ids[to]] = [ids[to], ids[current]];
+  [ids[session.current], ids[to]] = [ids[to], ids[session.current]];
   const id = ids[to],
     before = ids[to + 1] || null;
-  mutate(() => store.moveBefore(id, before));
-  current = to;
+  if (!mutate(() => session.store.moveBefore(id, before))) return;
+  session.current = to;
   go(to);
 }
 function removeSlide() {
-  if (manifest.slides.length <= 1) return;
+  if (session.manifest.slides.length <= 1) return;
   if (!confirm('このスライドを削除しますか？この操作は取り消せません。')) return;
-  const id = currentId();
-  mutate(() => store.remove(id));
-  activeBlock = currentId();
-  go(current);
+  const id = session.currentId();
+  if (!mutate(() => session.store.remove(id))) return;
+  session.activeBlock = session.currentId();
+  go(session.current);
 }
 async function connect() {
   if (binding) return;
@@ -496,7 +292,7 @@ async function connect() {
 async function bindHandle(handle: FileHandle) {
   const original = await readFile(handle),
     disk = SourceStore.fromHTML(original);
-  store.attach(disk, boot);
+  session.store.attach(disk, session.boot);
   remembered = handle;
   saver.bind(handle, original);
   await cacheSet('handle:' + cacheKey, handle);
@@ -519,13 +315,12 @@ async function resolveSave() {
       }
       const text = await readFile(saver.handle!);
       const disk = SourceStore.fromHTML(text);
-      store.restore(disk.snapshot());
-      boot = store.snapshot();
-      opening = store.snapshot();
-      drafts.rebase(opening.blocks);
+      session.store.restore(disk.snapshot());
+      session.rebase();
+      drafts.rebase(session.opening.blocks);
       saver.bind(saver.handle!, text);
       updateNav();
-      activeBlock = currentId();
+      session.activeBlock = session.currentId();
       refreshInspector();
       refreshSlide();
       toast('外部の内容を読み込みました。未保存の編集はブラウザに退避しています。');
@@ -547,18 +342,18 @@ async function resolveSave() {
   }
 }
 function showDiff() {
-  const ids = new Set([...opening.blocks.map((b) => b.id), ...store.blocks.keys()]);
+  const ids = new Set([...session.opening.blocks.map((b) => b.id), ...session.store.blocks.keys()]);
   let html = '';
-  if (slideOrderChanged()) {
-    const before = opening.blocks
+  if (session.slideOrderChanged()) {
+    const before = session.opening.blocks
       .filter((b) => b.kind === 'slide')
       .map((b) => b.text.match(/^#\s+(.+)$/m)?.[1] || b.name);
-    const after = store.list('slide').map((b) => titleOf(b.id));
+    const after = session.store.list('slide').map((b) => session.titleOf(b.id));
     html += `<section class="diff-section"><h3>スライドの順序</h3><p>変更前: ${esc(before.join(' → '))}</p><p>変更後: ${esc(after.join(' → '))}</p></section>`;
   }
   for (const id of ids) {
-    const old = opening.blocks.find((b) => b.id === id),
-      b = store.blocks.get(id);
+    const old = session.opening.blocks.find((b) => b.id === id),
+      b = session.store.blocks.get(id);
     if (old?.text === b?.text) continue;
     if ((b || old)?.kind === 'asset') {
       html += `<section class="diff-section"><h3>${esc(id)}</h3><p>画像素材を${!old ? '追加' : !b ? '削除' : '変更'}しました。</p></section>`;
@@ -597,10 +392,13 @@ async function importAsset(file: File, replaceId: string | null) {
   try {
     const content = await readImageAsset(file);
     const id = replaceId || unique('asset');
-    mutate(() => {
-      if (replaceId) store.setText(id, content);
-      else store.add({ id, kind: 'asset', name: file.name, text: content });
-    });
+    if (
+      !mutate(() => {
+        if (replaceId) session.store.setText(id, content);
+        else session.store.add({ id, kind: 'asset', name: file.name, text: content });
+      })
+    )
+      return;
     selectBlock(id);
     toast('画像をHTMLに埋め込みました。');
   } catch (e: any) {
@@ -612,11 +410,11 @@ $('asset-input').onchange = (e) => {
   if (file) void importAsset(file, replaceAssetId);
 };
 $('add-source').onclick = () => {
-  if (activeTab === 'slide') {
+  if (session.activeTab === 'slide') {
     addSlide();
     return;
   }
-  if (activeTab === 'asset') {
+  if (session.activeTab === 'asset') {
     chooseAsset();
     return;
   }
@@ -625,15 +423,18 @@ $('source-select').onchange = (e) => selectBlock((e.target as HTMLSelectElement)
 document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(
   (b) =>
     (b.onclick = () => {
-      activeTab = b.dataset.tab as Kind;
-      activeBlock = activeTab === 'slide' ? currentId() : store.list(activeTab)[0]?.id || '';
+      session.activeTab = b.dataset.tab as Kind;
+      session.activeBlock =
+        session.activeTab === 'slide'
+          ? session.currentId()
+          : session.store.list(session.activeTab)[0]?.id || '';
       refreshInspector();
     }),
 );
 $('connect').onclick = () => void connect();
 $('present').onclick = () => setPresent(!present);
-$('previous').onclick = () => go(current - 1);
-$('next').onclick = () => go(current + 1);
+$('previous').onclick = () => go(session.current - 1);
+$('next').onclick = () => go(session.current + 1);
 $('add-slide').onclick = () => addSlide();
 $('duplicate').onclick = () => addSlide(true);
 $('remove-slide').onclick = removeSlide;
@@ -677,26 +478,23 @@ document.addEventListener('keydown', (e) => {
   if (target.closest('input,textarea,select,.cm-editor,[contenteditable="true"]')) return;
   if (e.key === 'ArrowRight') {
     e.preventDefault();
-    go(current + 1);
+    go(session.current + 1);
   } else if (e.key === 'ArrowLeft') {
     e.preventDefault();
-    go(current - 1);
+    go(session.current - 1);
   } else if (e.key === 'Escape' && present) setPresent(false);
   else if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) setPresent(!present);
 });
 window.addEventListener('beforeunload', (e) => {
-  if ((saver.handle && saver.dirty()) || (!saver.handle && sourceChanged())) {
+  if ((saver.handle && saver.dirty()) || (!saver.handle && session.sourceChanged())) {
     e.preventDefault();
     e.returnValue = '';
   }
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
-    if (cacheTimer) {
-      clearTimeout(cacheTimer);
-      cacheTimer = null;
-    }
-    if ((saver.handle && saver.dirty()) || (!saver.handle && sourceChanged()))
+    updates.cancelCache();
+    if ((saver.handle && saver.dirty()) || (!saver.handle && session.sourceChanged()))
       void drafts.persist('hidden');
     void saver.flush();
   }
@@ -738,9 +536,9 @@ async function tryResume() {
   }
   updateSave();
 }
-readManifest();
+session.readManifest();
 updateNav();
-activeBlock = currentId();
+session.activeBlock = session.currentId();
 refreshInspector();
 refreshSlide();
 const slideResizeObserver =
