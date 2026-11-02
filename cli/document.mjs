@@ -1,7 +1,6 @@
 import MarkdownIt from 'markdown-it';
+import { registerMiloBlocks } from '../src/markdown/blocks.mjs';
 import { parseDocument as parseYamlDocument } from 'yaml';
-
-const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
 
 function normalize(source) {
   return source.replace(/\r\n?/g, '\n');
@@ -57,11 +56,8 @@ function collectImageRef(token, map, refs) {
     refs.set(src, map ? map[0] : undefined);
   };
   if (token.type === 'image') add(token.attrGet('src'));
-  if (token.type === 'inline' || token.type === 'text') {
-    for (const match of String(token.content || '').matchAll(/::image\{([^}]*)\}/g)) {
-      const asset = /asset\s*=\s*"([^"]*)"/.exec(match[1]);
-      if (asset) add(asset[1]);
-    }
+  if (token.type === 'milo_directive' && token.meta.directive.name === 'image') {
+    add(token.meta.directive.attrs.asset);
   }
 }
 
@@ -85,73 +81,38 @@ function makeSlides(lines, separators) {
   return slides;
 }
 
-function canvasRanges(lines) {
-  const ranges = [];
-  let outerFence = '';
-  for (let start = 0; start < lines.length; start++) {
-    const line = lines[start].trim();
-    if (outerFence) {
-      if (new RegExp(`^${outerFence[0]}{${outerFence.length},}\\s*$`).test(line)) outerFence = '';
-      continue;
-    }
-    const outerOpening = /^(?:`{3,}|~{3,})/.exec(line);
-    if (outerOpening) {
-      outerFence = outerOpening[0];
-      continue;
-    }
-    if (!/^@canvas(?:\s|$)/.test(line)) continue;
-    let innerFence = '';
-    for (let end = start + 1; end < lines.length; end++) {
-      const text = lines[end].trim();
-      if (innerFence) {
-        if (new RegExp(`^${innerFence[0]}{${innerFence.length},}\\s*$`).test(text)) innerFence = '';
-        continue;
-      }
-      const innerOpening = /^(?:`{3,}|~{3,})/.exec(text);
-      if (innerOpening) {
-        innerFence = innerOpening[0];
-        continue;
-      }
-      if (text === '@endcanvas') {
-        ranges.push([start, end + 1]);
-        start = end;
-        break;
-      }
-      if (end === lines.length - 1) {
-        ranges.push([start, lines.length]);
-        start = end;
-      }
-    }
-  }
-  return ranges;
-}
-
-function insideRanges(line, ranges) {
-  return ranges.some(([start, end]) => line >= start && line < end);
-}
-
 export function parseTalkMarkdown(source) {
   const { meta, body } = splitFrontmatter(source);
   const lines = body.split('\n');
+  const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
+  registerMiloBlocks(md);
   const tokens = md.parse(body, {});
   const separators = [];
   const imageRefs = new Map();
-  const canvases = canvasRanges(lines);
 
-  visit(tokens, (token, map) => {
-    collectImageRef(token, map, imageRefs);
-
+  visit(tokens, (token) => {
     if (
       token.type === 'hr' &&
       token.level === 0 &&
       token.map &&
-      lines[token.map[0]]?.trim() === '---' &&
-      !insideRanges(token.map[0], canvases)
+      lines[token.map[0]]?.trim() === '---'
     ) {
       separators.push(token.map[0]);
       return;
     }
   });
+
+  // Custom blocks are opaque to slide splitting. Walk their bodies separately for
+  // assets, retaining original line offsets for useful slide-number diagnostics.
+  const collect = (items, offset = 0) => {
+    visit(items, (token, map) => {
+      collectImageRef(token, map ? [map[0] + offset, map[1] + offset] : undefined, imageRefs);
+      for (const nested of token.meta?.sources || []) {
+        collect(md.parse(nested.source, {}), offset + nested.line);
+      }
+    });
+  };
+  collect(tokens);
 
   return {
     meta,

@@ -1,3 +1,4 @@
+import { registerMiloBlocks, lineText, type StepGroup } from './markdown/blocks.mjs';
 import MarkdownIt from 'markdown-it';
 import katex from 'katex';
 import { atAttributes, mountCanvas } from './canvas';
@@ -8,7 +9,6 @@ import {
   esc,
   resolveAssetRef,
   showError,
-  type Directive,
   type RenderContext,
 } from './directives';
 
@@ -17,52 +17,8 @@ export interface Rendered {
   update: () => void;
   dispose: () => void;
 }
-interface ParsedDirective extends Directive {
-  error?: string;
-}
-
-function lineText(state: any, line: number) {
-  return state.src.slice(state.bMarks[line] + state.tShift[line], state.eMarks[line]);
-}
-
-// Only structural lines participate in milo block delimiters. Fenced code
-// can contain literal @endbox, @column, etc. without ending the block.
-function* structuralLines(state: any, from: number, end: number): Generator<[number, string]> {
-  let fence = '';
-  for (let line = from; line < end; line++) {
-    const text = lineText(state, line).trim();
-    if (fence) {
-      if (new RegExp(`^${fence[0]}{${fence.length},}\\s*$`).test(text)) fence = '';
-      continue;
-    }
-    const opening = /^(?:`{3,}|~{3,})/.exec(text);
-    if (opening) {
-      fence = opening[0];
-      continue;
-    }
-    yield [line, text];
-  }
-}
-
-interface PairedBlock {
-  source: string;
-  options?: string;
-  error?: string;
-}
-
 const CARD_TONES = ['accent', 'default', 'muted', 'dark'] as const;
 type CardTone = (typeof CARD_TONES)[number];
-
-interface StepItem {
-  attrs: Record<string, string>;
-  source: string;
-}
-
-interface StepGroup {
-  options: string;
-  steps: StepItem[];
-  error?: string;
-}
 
 function parseTone(kind: string, raw: string | undefined, fallback: CardTone) {
   const attrs = atAttributes(raw || '');
@@ -78,120 +34,6 @@ function integerOption(name: string, value: string | undefined, fallback: number
   if (!Number.isInteger(n) || n < min)
     throw new Error(`${name} は${min}以上の整数にしてください。`);
   return n;
-}
-
-function registerPairedBlock(
-  md: InstanceType<typeof MarkdownIt>,
-  name: string,
-  blocks: PairedBlock[],
-  config: { className: string; tag?: string; attributes?: boolean; nested?: boolean },
-) {
-  const opening = config.attributes
-    ? new RegExp(`^@${name}(?:\\s+([\\s\\S]*))?\\s*$`)
-    : new RegExp(`^@${name}$`);
-  const closing = `@end${name}`;
-  md.block.ruler.before(
-    'fence',
-    `milo-${name}`,
-    (state: any, line: number, end: number, silent: boolean) => {
-      if (state.sCount[line] - state.blkIndent >= 4) return false;
-      const match = opening.exec(lineText(state, line).trim());
-      if (!match) return false;
-      let finish = end,
-        depth = 1;
-      for (const [cursor, text] of structuralLines(state, line + 1, end)) {
-        if (config.nested && opening.test(text)) depth++;
-        else if (text === closing && --depth === 0) {
-          finish = cursor;
-          break;
-        }
-      }
-      if (silent) return true;
-      const token = state.push(`milo_${name}`, '', 0);
-      token.meta = {
-        index:
-          blocks.push({
-            source:
-              finish < end ? state.src.slice(state.bMarks[line + 1], state.bMarks[finish]) : '',
-            options: match[1] || '',
-            ...(finish >= end ? { error: `${name}を閉じる ${closing} がありません。` } : {}),
-          }) - 1,
-      };
-      const next = finish < end ? finish + 1 : end;
-      token.map = [line, next];
-      state.line = next;
-      return true;
-    },
-  );
-  const tag = config.tag ?? 'div';
-  md.renderer.rules[`milo_${name}`] = (tokens, index) =>
-    `<${tag} class="${config.className}" data-${name}="${tokens[index].meta!.index}"></${tag}>\n`;
-}
-
-function parseSteps(groups: StepGroup[]) {
-  return (state: any, line: number, end: number, silent: boolean) => {
-    const header = /^@steps(?:\s+([\s\S]*))?$/.exec(lineText(state, line).trim());
-    if (state.sCount[line] - state.blkIndent >= 4 || !header) return false;
-    let cursor = line + 1,
-      depth = 1,
-      stepStart = -1,
-      stepAttrs: Record<string, string> = {},
-      error = '';
-    const steps: StepItem[] = [];
-    const flush = (at: number) => {
-      if (stepStart < 0) return;
-      steps.push({
-        attrs: stepAttrs,
-        source: state.src.slice(state.bMarks[stepStart], state.bMarks[at]),
-      });
-      stepStart = -1;
-    };
-    for (const [structuralLine, text] of structuralLines(state, line + 1, end)) {
-      cursor = structuralLine;
-      if (/^@steps(?:\s|$)/.test(text)) {
-        depth++;
-        continue;
-      }
-      if (text === '@endsteps') {
-        if (--depth === 0) {
-          flush(cursor);
-          break;
-        }
-        continue;
-      }
-      if (depth !== 1) continue;
-      const step = /^@step(?:\s+([\s\S]*))?$/.exec(text);
-      if (step) {
-        flush(cursor);
-        try {
-          stepAttrs = atAttributes(step[1] || '');
-        } catch (e: any) {
-          error = e.message;
-          break;
-        }
-        stepStart = cursor + 1;
-      } else if (stepStart < 0 && text) {
-        error = 'steps の内容は @step で囲んでください。';
-        break;
-      }
-    }
-    if (!error && depth > 0) cursor = end;
-    if (silent) return true;
-    if (!error && cursor >= end) error = 'stepsを閉じる @endsteps がありません。';
-    if (!error && !steps.length) error = 'steps には1つ以上の @step が必要です。';
-    const token = state.push('milo_steps', '', 0);
-    token.meta = {
-      index:
-        groups.push({
-          options: header[1] || '',
-          steps,
-          error: error || undefined,
-        }) - 1,
-    };
-    token.map = [line, cursor < end ? cursor + 1 : end];
-    state.line = cursor < end ? cursor + 1 : end;
-    return true;
-  };
 }
 
 function renderSteps(group: StepGroup, md: InstanceType<typeof MarkdownIt>) {
@@ -275,14 +117,6 @@ function alignBlocks(state: any) {
   }
 }
 
-function args(raw: string): Record<string, string> {
-  const a: Record<string, string> = {};
-  const leftovers = raw.replace(/([\w-]+)\s*=\s*"([^"\r\n]*)"/g, (_, k, v) => ((a[k] = v), ''));
-  if (leftovers.trim())
-    throw new Error('ディレクティブの設定は name="value" の形式で書いてください。');
-  return a;
-}
-
 function maskMiloComments(source: string) {
   return source.replace(/^[ \t]*<!--\s*milo:[\s\S]*?-->[ \t]*(?:\r?\n|$)/gm, (comment) =>
     comment.replace(/[^\r\n]/g, ' '),
@@ -327,134 +161,23 @@ function prepareTaskItems(source: string, tasks: TaskItem[]) {
 export function renderSlide(root: HTMLElement, source: string, ctx: RenderContext): Rendered {
   const layoutUpdates: (() => void)[] = [],
     disposals: (() => void)[] = [];
-  const directives: ParsedDirective[] = [];
-  const canvases: { source: string; options: string; error?: string }[] = [];
-  const diagrams: { source: string; options: string; error?: string }[] = [];
-  const boxes: { source: string; options: string; error?: string }[] = [];
-  const panels: PairedBlock[] = [];
-  const grids: PairedBlock[] = [];
-  const stacks: PairedBlock[] = [];
-  const steps: StepGroup[] = [];
-  const columns: { sources: string[]; error?: string }[] = [];
-  const impacts: { source: string; error?: string }[] = [];
-  const footers: { source: string; error?: string }[] = [];
   const tasks: TaskItem[] = [];
   const display = prepareTaskItems(maskMiloComments(source), tasks);
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
   md.core.ruler.before('inline', 'milo_align', alignBlocks);
-  registerPairedBlock(md, 'box', boxes, {
-    className: 'box-block slide-card',
-    attributes: true,
-    nested: true,
-  });
-  registerPairedBlock(md, 'panel', panels, {
-    className: 'panel-block slide-card',
-    attributes: true,
-    nested: true,
-  });
-  registerPairedBlock(md, 'grid', grids, {
-    className: 'grid-block',
-    attributes: true,
-    nested: true,
-  });
-  registerPairedBlock(md, 'stack', stacks, {
-    className: 'stack-block',
-    attributes: true,
-    nested: true,
-  });
-  md.block.ruler.before(
-    'fence',
-    'milo-columns',
-    (s: any, line: number, end: number, silent: boolean) => {
-      if (s.sCount[line] - s.blkIndent >= 4 || lineText(s, line).trim() !== '@columns')
-        return false;
-      let cursor = line + 1,
-        depth = 1,
-        columnStart = -1,
-        error = '';
-      const sources: string[] = [];
-      for (const [structuralLine, text] of structuralLines(s, line + 1, end)) {
-        cursor = structuralLine;
-        if (text === '@columns') {
-          depth++;
-          continue;
-        }
-        if (text === '@endcolumns') {
-          if (--depth === 0) {
-            if (columnStart >= 0) error = 'columnを閉じる @endcolumn がありません。';
-            break;
-          }
-          continue;
-        }
-        if (depth !== 1) continue;
-        if (text === '@column') {
-          if (columnStart >= 0) {
-            error = 'columnを閉じる @endcolumn がありません。';
-            break;
-          }
-          columnStart = cursor + 1;
-        } else if (text === '@endcolumn') {
-          if (columnStart < 0) {
-            error = '@endcolumn に対応する @column がありません。';
-            break;
-          }
-          sources.push(s.src.slice(s.bMarks[columnStart], s.bMarks[cursor]));
-          columnStart = -1;
-        } else if (columnStart < 0 && text) {
-          error = '@columns の内容は @column で囲んでください。';
-          break;
-        }
-      }
-      if (!error && depth > 0) cursor = end;
-      if (silent) return true;
-      if (!error && cursor >= end) error = 'columnsを閉じる @endcolumns がありません。';
-      if (!error && sources.length < 2) error = 'columnsには2つ以上の @column が必要です。';
-      const token = s.push('milo_columns', '', 0);
-      token.meta = { index: columns.push({ sources, error: error || undefined }) - 1 };
-      token.map = [line, cursor < end ? cursor + 1 : end];
-      s.line = cursor < end ? cursor + 1 : end;
-      return true;
-    },
-  );
-  md.renderer.rules.milo_columns = (tokens, index) =>
-    `<div class="columns-block" data-columns="${tokens[index].meta!.index}"></div>\n`;
-  md.block.ruler.before('fence', 'milo-steps', parseSteps(steps), {
-    alt: ['paragraph', 'reference', 'blockquote', 'list'],
-  });
-  md.renderer.rules.milo_steps = (tokens, index) =>
-    `<div class="steps-block" data-steps="${tokens[index].meta!.index}"></div>\n`;
-  registerPairedBlock(md, 'impact', impacts, { className: 'impact-block' });
-  registerPairedBlock(md, 'footer', footers, { className: 'slide-footer-content', tag: 'footer' });
-  registerPairedBlock(md, 'canvas', canvases, { className: 'milo-canvas', attributes: true });
-  registerPairedBlock(md, 'diagram', diagrams, { className: 'milo-diagram', attributes: true });
-  md.block.ruler.before(
-    'fence',
-    'milo-directive',
-    (s: any, line: number, _end: number, silent: boolean) => {
-      const text = s.src.slice(s.bMarks[line] + s.tShift[line], s.eMarks[line]);
-      const match = /^::([a-z]+)\{(.*)\}\s*$/.exec(text);
-      let name = match?.[1] || '',
-        raw = match?.[2] || '',
-        nextLine = line + 1;
-      if (!name) return false;
-      if (silent) return true;
-      let item: ParsedDirective;
-      try {
-        item = {
-          name,
-          attrs: args(raw),
-        };
-      } catch (e: any) {
-        item = { name, attrs: {}, error: e.message };
-      }
-      const token = s.push('milo_directive', '', 0);
-      token.meta = { index: directives.push(item) - 1 };
-      s.line = nextLine;
-      return true;
-    },
-  );
-  md.renderer.rules.milo_directive = (tokens, index) =>
-    `<div class="live-block" data-live="${tokens[index].meta!.index}"></div>\n`;
+  const {
+    directives,
+    canvases,
+    diagrams,
+    boxes,
+    panels,
+    grids,
+    stacks,
+    steps,
+    columns,
+    impacts,
+    footers,
+  } = registerMiloBlocks(md);
   md.block.ruler.before('fence', 'math_block', mathBlock, {
     alt: ['paragraph', 'reference', 'blockquote', 'list'],
   });

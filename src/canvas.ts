@@ -1,3 +1,5 @@
+import { atAttributes } from './markdown/attributes.mjs';
+export { atAttributes } from './markdown/attributes.mjs';
 import { svgElement } from './svg.ts';
 import type { RenderContext } from './directives';
 import { layoutFlowFromCanvas } from './flow/layout.ts';
@@ -77,25 +79,6 @@ export function choice<T extends string>(
   if (value === undefined || value === '') return fallback;
   if ((choices as readonly string[]).includes(value)) return value as T;
   throw new Error(`${name} は ${choices.join(' / ')} から選んでください。`);
-}
-
-/** Parse the compact attribute syntax shared by canvas, node and edge markers. */
-export function atAttributes(source: string): Record<string, string> {
-  const attributes: Record<string, string> = {};
-  let rest = source.trim();
-  const id = /^#([A-Za-z][\w-]*)/.exec(rest);
-  if (id) {
-    attributes.id = id[1];
-    rest = rest.slice(id[0].length).trim();
-  }
-  const pattern = /^([\w-]+)(?:\s*=\s*(?:"([^"\r\n]*)"|'([^'\r\n]*)'|([^\s}]+)))?/;
-  while (rest) {
-    const match = pattern.exec(rest);
-    if (!match) throw new Error(`設定の書き方を確認してください: ${rest}`);
-    attributes[match[1]] = match[2] ?? match[3] ?? match[4] ?? 'true';
-    rest = rest.slice(match[0].length).trim();
-  }
-  return attributes;
 }
 
 function nodeFrom(attrs: Record<string, string>, markdown: string, index: number): CanvasNode {
