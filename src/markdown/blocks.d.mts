@@ -29,4 +29,4 @@ export interface MiloBlocks {
   footers: PairedBlock[];
 }
 export function lineText(state: StateBlock, line: number): string;
-export function registerMiloBlocks(md: MarkdownIt): MiloBlocks;
+export function registerMiloBlocks(md: InstanceType<typeof MarkdownIt>): MiloBlocks;
