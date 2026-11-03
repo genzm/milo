@@ -493,3 +493,16 @@ test('dense radial layouts preserve separation instead of clamping cards into ea
   assert.ok(layout.fitScale! <= 1);
   if (layout.fitScale! < 18 / 27) assert.equal(layout.overflowReason, 'read');
 });
+
+test('flow exposes readable node widths and compact gaps without changing defaults', () => {
+  const source = '@item a title="課題"\n@item b title="解決策"\n@link a -> b';
+  const original = parseDiagram(source, 'layout=flow');
+  assert.equal(original.options.gap, 48);
+  assert.equal(original.options.nodeWidth, undefined);
+  const compact = parseDiagram(source, 'layout=flow gap=24 node-width=220');
+  assert.equal(compact.options.gap, 24);
+  assert.equal(compact.options.nodeWidth, 220);
+  assert.throws(() => parseDiagram(source, 'layout=flow gap=-1'), /gap/);
+  assert.throws(() => parseDiagram(source, 'layout=flow node-width=100'), /node-width/);
+  assert.throws(() => parseDiagram(source, 'layout=ring gap=24'), /layout=flow/);
+});

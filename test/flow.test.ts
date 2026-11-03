@@ -769,3 +769,28 @@ test('all branch arrow modes stay on node boundaries instead of bus junctions', 
       }
     }
 });
+
+test('simple flows stay centered with bounded edge length when the frame grows', () => {
+  for (const direction of ['right', 'left', 'down', 'up']) {
+    const horizontal = direction === 'right' || direction === 'left';
+    const body =
+      '@node a width=220 height=100\n### 課題\n@node b width=220 height=100\n### 解決策\n@edge a --> b';
+    const small = layoutCanvas(
+      parseCanvas(body, `layout=flow direction=${direction} width=1000 height=600`),
+    );
+    const large = layoutCanvas(
+      parseCanvas(
+        body,
+        `layout=flow direction=${direction} width=${horizontal ? 1400 : 1000} height=${horizontal ? 600 : 1000}`,
+      ),
+    );
+    for (let i = 0; i < 2; i++) {
+      assert.equal(large[i][horizontal ? 'x' : 'y'] - small[i][horizontal ? 'x' : 'y'], 200);
+      assert.equal(large[i][horizontal ? 'y' : 'x'], small[i][horizontal ? 'y' : 'x']);
+    }
+    const axis = horizontal ? 'x' : 'y',
+      size = horizontal ? 'width' : 'height';
+    const sorted = [...large].sort((a, b) => a[axis] - b[axis]);
+    assert.ok(sorted[1][axis] - sorted[0][axis] - sorted[0][size] <= 88);
+  }
+});

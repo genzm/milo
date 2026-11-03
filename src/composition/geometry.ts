@@ -21,7 +21,10 @@ function commonAxis(a: number, lengthA: number, b: number, lengthB: number) {
 export function betweenBoxes(from: Box, to: Box, padding = 12): [Point, Point] {
   const a = center(from),
     b = center(to);
-  const horizontal = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y);
+  const horizontalGap = Math.abs(b.x - a.x) - (from.width + to.width) / 2 - padding * 2;
+  const verticalGap = Math.abs(b.y - a.y) - (from.height + to.height) / 2 - padding * 2;
+  const horizontal =
+    horizontalGap >= 8 && (verticalGap < 8 || Math.abs(b.x - a.x) >= Math.abs(b.y - a.y));
   if (horizontal) {
     const sign = b.x >= a.x ? 1 : -1;
     if (Math.abs(b.x - a.x) - (from.width + to.width) / 2 - padding * 2 < 8)

@@ -12,7 +12,7 @@ import {
 } from './types';
 import { atAttributes, choice, finite } from '../markdown/attributes.mjs';
 import { parseSemanticValue, parseSemanticSpan } from './coords.ts';
-import { FLOW_ROUTES } from '../flow/types.ts';
+import { FLOW, FLOW_ROUTES } from '../flow/types.ts';
 
 function parseLink(text: string): DiagramLink | null {
   const match = /^@link\s+([A-Za-z][\w-]*)\s*(<->|->|--)\s*([A-Za-z][\w-]*)(?:\s+([\s\S]*))?$/.exec(
@@ -131,6 +131,8 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
     center: attrs.center || '',
     width: finite(attrs.width, DIAGRAM_FRAME[layout].width)!,
     ...parseDiagramHeight(attrs, layout, noteMode),
+    gap: finite(attrs.gap, FLOW.PREFERRED_GAP)!,
+    nodeWidth: finite(attrs['node-width']),
     geometry: choice(attrs.geometry, ['regular'] as const, 'regular', 'geometry'),
     noteMode,
     noteStyle: choice(
@@ -159,6 +161,11 @@ export function parseDiagram(source: string, rawOptions = ''): DiagramScene {
   };
   if (options.width <= 0 || options.height <= 0)
     throw new Error('diagram の width / height を確認してください。');
+
+  if (options.gap < 0 || (options.nodeWidth !== undefined && options.nodeWidth < FLOW.MIN_WIDTH))
+    throw new Error(`diagram の gap は0以上、node-width は${FLOW.MIN_WIDTH}以上にしてください。`);
+  if (layout !== 'flow' && (attrs.gap !== undefined || attrs['node-width'] !== undefined))
+    throw new Error('gap / node-width は layout=flow で使ってください。');
 
   const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const items: DiagramItem[] = [];

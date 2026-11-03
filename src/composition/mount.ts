@@ -27,10 +27,14 @@ export function prepareComposition(
   root.style.padding = `${padding.top}px ${padding.right}px ${padding.bottom}px ${padding.left}px`;
   const content = document.createElement('div');
   content.className = 'composition-parts';
+  content.style.alignItems = scene.align === 'center' ? 'center' : `flex-${scene.align}`;
+  content.style.minHeight = `${scene.height}px`;
   for (const part of scene.parts) {
     const element = document.createElement('section');
     element.className = 'composition-part';
     element.dataset.compositionPart = part.id;
+    if (part.align)
+      element.style.alignSelf = part.align === 'center' ? 'center' : `flex-${part.align}`;
     if (part.width) element.style.setProperty('--composition-part-width', `${part.width}px`);
     element.innerHTML = md.render(part.source);
     content.append(element);

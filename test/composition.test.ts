@@ -75,3 +75,12 @@ test('overlapping targets report insufficient space instead of reversing the arr
     /余白/,
   );
 });
+
+test('a tall explanation box uses the available horizontal corridor', () => {
+  const [from, to] = betweenBoxes(
+    { x: 0, y: 0, width: 100, height: 100 },
+    { x: 300, y: 0, width: 100, height: 1000 },
+  );
+  assert.deepEqual(from, { x: 112, y: 50 });
+  assert.deepEqual(to, { x: 288, y: 50 });
+});

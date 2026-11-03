@@ -87,6 +87,8 @@ export interface DiagramOptions {
   width: number;
   height: number;
   autoHeight: boolean;
+  gap: number;
+  nodeWidth?: number;
   geometry: DiagramGeometry;
   noteMode: DiagramNoteMode;
   noteStyle: DiagramNoteStyle;

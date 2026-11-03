@@ -65,6 +65,8 @@ export function parseComposition(source, rawOptions = '') {
   const attrs = atAttributes(rawOptions);
   const layout = choice(attrs.layout, ['row', 'column'], 'row', 'layout');
   const gap = positive(attrs.gap, 140, 'gap', 0);
+  const align = choice(attrs.align, ['start', 'center', 'end'], 'center', 'align');
+  const height = positive(attrs.height, 0, 'height', 0);
   const parts = [],
     annotations = [],
     ids = new Set(['all']);
@@ -101,6 +103,9 @@ export function parseComposition(source, rawOptions = '') {
       const options = atAttributes(part[2] || '');
       current = {
         id: part[1],
+        align: options.align
+          ? choice(options.align, ['start', 'center', 'end'], 'center', 'part align')
+          : undefined,
         line: line + 1,
         width:
           options.width === undefined
@@ -126,5 +131,5 @@ export function parseComposition(source, rawOptions = '') {
   }
   if (current) throw new Error('part を閉じる @endpart がありません。');
   if (!parts.length) throw new Error('compose には1つ以上の @part が必要です。');
-  return { layout, gap, parts, annotations };
+  return { layout, gap, align, height, parts, annotations };
 }

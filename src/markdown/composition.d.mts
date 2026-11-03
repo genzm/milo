@@ -33,10 +33,13 @@ export interface CompositionPart {
   source: string;
   line: number;
   width?: number;
+  align?: 'start' | 'center' | 'end';
 }
 export interface CompositionScene {
   layout: 'row' | 'column';
   gap: number;
+  align: 'start' | 'center' | 'end';
+  height: number;
   parts: CompositionPart[];
   annotations: (ArrowAnnotation | CrossAnnotation)[];
 }

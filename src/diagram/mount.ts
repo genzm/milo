@@ -6,7 +6,6 @@ import {
 } from './types';
 import { type CanvasArrows, type CanvasScene, mountCanvasScene } from '../canvas';
 import { resolvedLinks } from './links';
-import { FLOW } from '../flow/types.ts';
 import { type RenderContext, esc } from '../directives';
 import { parseDiagram } from './parse';
 import { svgElement } from '../svg.ts';
@@ -44,7 +43,7 @@ function toCanvasScene(scene: DiagramScene): CanvasScene {
       width: scene.options.width,
       height: scene.options.height,
       autoHeight: scene.options.autoHeight,
-      gap: FLOW.PREFERRED_GAP,
+      gap: scene.options.gap,
       route: scene.options.route,
     },
     nodes: scene.items.map((item) => ({
@@ -59,6 +58,7 @@ function toCanvasScene(scene: DiagramScene): CanvasScene {
             : item.level === 'low'
               ? 'default'
               : 'default',
+      width: scene.options.nodeWidth,
       dx: 0,
       dy: 0,
       pinned: false,
