@@ -1,0 +1,84 @@
+.milo-composition {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  margin: var(--slide-space-block) 0;
+  isolation: isolate;
+
+  .composition-parts {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--composition-gap, 140px);
+  }
+  &[data-composition-layout='column'] > .composition-parts {
+    flex-direction: column;
+  }
+  .composition-part {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    width: var(--composition-part-width, var(--composition-natural-width, 320px));
+
+    &:has(.milo-canvas, .milo-diagram) {
+      --composition-natural-width: 560px;
+    }
+    &:only-child:has(.milo-canvas, .milo-diagram) {
+      --composition-natural-width: 1100px;
+    }
+    > :first-child {
+      margin-top: 0;
+    }
+    > :last-child {
+      margin-bottom: 0;
+    }
+    .milo-diagram.diagram-layout-flow {
+      width: 100%;
+    }
+  }
+  .composition-annotations {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .annotation-tone-accent {
+    color: var(--accent);
+  }
+  .annotation-tone-default {
+    color: var(--slide-ink);
+  }
+  .annotation-tone-muted {
+    color: var(--slide-muted);
+  }
+  .composition-arrow {
+    fill: currentColor;
+  }
+  .composition-arrow-label {
+    fill: currentColor;
+    font-family: YakuHanJP, 'Noto Sans JP', sans-serif;
+    font-size: var(--slide-text-body);
+    font-weight: 700;
+    paint-order: stroke;
+    stroke: var(--white);
+    stroke-width: 5px;
+    stroke-linejoin: round;
+
+    &.is-inside {
+      fill: var(--white);
+      stroke: none;
+    }
+  }
+  .composition-cross {
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: butt;
+  }
+  .composition-error {
+    position: relative;
+    z-index: 3;
+  }
+}

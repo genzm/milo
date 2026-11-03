@@ -72,3 +72,32 @@ test('columns, steps and nested boxes use their own bodies for image discovery',
     { ref: './nested.png', slide: 1 },
   ]);
 });
+
+test('composition parts preserve slide boundaries and discover only real image references', () => {
+  const result = parseTalkMarkdown(`# One
+
+@compose
+@part first
+::image{asset="./first.png"}
+
+---
+
+\`::image{asset="./literal.png"}\`
+@endpart
+@part second
+@box
+![second](./second.png)
+@endbox
+@endpart
+@arrow id=time from=first to=second
+@endcompose
+
+---
+
+# Two`);
+  assert.equal(result.slides.length, 2);
+  assert.deepEqual(result.imageRefs, [
+    { ref: './first.png', slide: 1 },
+    { ref: './second.png', slide: 1 },
+  ]);
+});

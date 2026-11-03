@@ -1,3 +1,4 @@
+import { parseComposition } from './composition.mjs';
 import { atAttributes } from './attributes.mjs';
 function lineText(state, line) {
   return state.src.slice(state.bMarks[line] + state.tShift[line], state.eMarks[line]);
@@ -48,8 +49,19 @@ function registerPairedBlock(md, name, blocks, config) {
         }) - 1,
     };
     const next = finish < end ? finish + 1 : end;
-    token.meta.sources =
-      finish < end ? [{ source: blocks[token.meta.index].source, line: line + 1 }] : [];
+    token.meta.sources = [];
+    if (finish < end) {
+      const block = blocks[token.meta.index];
+      try {
+        token.meta.sources = config.sources
+          ? config
+              .sources(block.source, block.options)
+              .map((body) => ({ source: body.source, line: line + 1 + body.line }))
+          : [{ source: block.source, line: line + 1 }];
+      } catch (error) {
+        block.error = error.message;
+      }
+    }
     token.map = [line, next];
     state.line = next;
     return true;
@@ -136,6 +148,13 @@ function args(raw) {
   return a;
 }
 function registerMiloBlocks(md) {
+  const compositions = [];
+  registerPairedBlock(md, 'compose', compositions, {
+    className: 'milo-composition',
+    attributes: true,
+    nested: true,
+    sources: (source, options) => parseComposition(source, options).parts,
+  });
   const directives = [];
   const canvases = [];
   const diagrams = [];
@@ -264,6 +283,7 @@ function registerMiloBlocks(md) {
   ) => `<div class="live-block" data-live="${tokens[index].meta.index}"></div>
 `;
   return {
+    compositions,
     directives,
     canvases,
     diagrams,

@@ -1,3 +1,4 @@
+import { prepareComposition } from '../composition/mount';
 import type MarkdownIt from 'markdown-it';
 import type { MiloBlocks, StepGroup } from '../markdown/blocks.mjs';
 import { atAttributes } from '../markdown/attributes.mjs';
@@ -60,6 +61,7 @@ export function mountBlocks(
   }
 
   const handlers: (() => boolean)[] = [];
+  const annotations: (() => Rendered)[] = [];
   function register<T extends { error?: string }>(
     name: string,
     entries: T[],
@@ -83,6 +85,9 @@ export function mountBlocks(
   }
 
   // Preserve mounting order: a container may introduce further blocks during md.render.
+  register('compose', blocks.compositions, (element, block) => {
+    annotations.push(prepareComposition(element, block.source, block.options, md));
+  });
   register('columns', blocks.columns, (element, group) => {
     element.style.setProperty('--column-count', String(group.sources.length));
     element.innerHTML = group.sources
@@ -140,4 +145,6 @@ export function mountBlocks(
       showError(element, error);
     }
   }
+  // Diagram updates run before overlays, including nested compositions.
+  for (const mount of annotations.reverse()) scope.add(mount());
 }

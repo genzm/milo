@@ -16,6 +16,7 @@ export interface ParsedDirective {
   error?: string;
 }
 export interface MiloBlocks {
+  compositions: PairedBlock[];
   directives: ParsedDirective[];
   canvases: PairedBlock[];
   diagrams: PairedBlock[];

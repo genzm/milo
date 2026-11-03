@@ -3,6 +3,7 @@
 @import './styles/base.css';
 @import './styles/editor.css';
 @import './styles/components.css';
+@import './styles/composition.css';
 @import './styles/inspector.css';
 @import './styles/responsive.css';
 @import './styles/slides.css';
