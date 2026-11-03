@@ -47,6 +47,8 @@ PDF 用 HTML は編集 UI を含みません。`src/pdf-entry.ts` が全スラ�
 
 `src/diagram.ts` は公開 API を再エクスポートします。解析は `src/diagram/parse.ts` です。`src/diagram/layout.ts` は ring / radial / field を振り分けます。ring は `layout-ring.ts`、`side` も `distance` も無い radial は `layout-classic-radial.ts`、どちらかがある radial は `layout-radial.ts`、field は `layout-field.ts` です。`connect=cycle` の辺と輪郭への接続は `src/diagram/links.ts` です。DOM と実測は `src/diagram/mount.ts` と `src/diagram/measure.ts` です。flow のダイアグラムは、ここでキャンバスと同じ流れ図に渡します。構文解析と配置計算は DOM 描画モジュールに依存しません。
 
+`@compose` の構文は `src/markdown/composition.mjs` で解析します。part の Markdown を展開してから、`src/composition/mount.ts` が実測した対象に矢印と×を重ねます。図の再配置が終わった後に解説要素を更新し、拡縮を含む座標変換は `src/composition/geometry.ts` と描画側で処理します。
+
 ## 保存
 
 `src/save.ts` の `Autosaver` が File System Access API で、接続した HTML を読み書きします。書く前にファイルが基準と違うときは衝突にします。`src/drafts.ts` は、接続前の編集と衝突時の原稿をブラウザのキャッシュへ置きます。キャッシュのキーは HTML の `milo-id`（frontmatter の `documentId`）と、フラグメントを除いた文書 URL の組み合わせです。

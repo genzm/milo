@@ -82,3 +82,5 @@ npm run check
 全体テストは現在のソースから一時ディレクトリに検証用 HTML を生成するため、`dist/milo.html` や事前のビルドには依存しません。
 
 サンプル原稿は `content/slides.md` と `marp/example.md` です。
+
+解説矢印と図の組み合わせは `test/composition.test.ts`、`test/composition-render.test.ts`、`test/composition-browser.test.mjs` で検証します。ブラウザテストは `examples/annotations.md` を使い、スライド内への収まり、拡縮・対象寸法変更時の接続、発表とPDFを確認します。
