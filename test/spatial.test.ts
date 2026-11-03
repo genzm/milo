@@ -318,6 +318,47 @@ test('field renderer mounts dots, axes, zones and a cluster legend', () => {
   }
 });
 
+test('field cards keep the title on the card and skip the floating label', () => {
+  const layout = layoutDiagram(
+    parseDiagram(
+      `@item a title="酸化防止" x=0.65 y=0.70 shape=card cluster=focus
+@item b title="ラベル変更" x=0.40 y=-0.65 shape=card
+@item c title="点" x=-0.5 y=0.4`,
+      'layout=field',
+    ),
+  );
+  const card = layout.items.find((item) => item.id === 'a')!;
+  const mixed = layout.items.find((item) => item.id === 'c')!;
+  assert.equal(card.kind, 'card');
+  assert.equal(card.label, undefined);
+  assert.ok(!layout.noteLinks.some((link) => link.itemId === 'a' || link.itemId === 'b'));
+  assert.ok(card.width > 40);
+  assert.equal(mixed.kind, 'dot');
+  assert.ok(mixed.label);
+  const { root, close } = render(`@diagram layout=field
+@cluster focus title="施策候補" tone=accent
+@item a title="酸化防止" x=0.65 y=0.70 shape=card cluster=focus
+@item b title="ラベル変更" x=0.40 y=-0.65 shape=card
+@item c title="点" x=-0.5 y=0.4
+@enddiagram`);
+  try {
+    assert.equal(root.querySelectorAll('.diagram-card').length, 2);
+    assert.equal(root.querySelectorAll('.diagram-field-label').length, 1);
+    assert.equal(
+      root.querySelector('[data-diagram-item="a"] .diagram-card-title')?.textContent,
+      '酸化防止',
+    );
+    assert.equal(root.querySelectorAll('[data-diagram-label="a"]').length, 0);
+    assert.ok(
+      root.querySelector('[data-diagram-item="a"]')?.classList.contains('is-cluster-accent'),
+    );
+    assert.equal(root.querySelector('[data-diagram-item="c"] .diagram-card-title'), null);
+    assert.equal(root.querySelector('[data-diagram-label="c"]')?.textContent, '点');
+  } finally {
+    close();
+  }
+});
+
 test('each diagram layout can set its own display frame', () => {
   const field = parseDiagram('@item a title="A" x=0 y=0', 'layout=field');
   const radial = parseDiagram('@item a title="A"', 'layout=radial');

@@ -84,8 +84,8 @@ export interface FieldRegion {
   marks?: { x: number; y: number; r: number }[];
 }
 
-function itemSize(item: FieldItem, labels: { width: number; height: number }[], index: number) {
-  if (item.shape === 'card') return labels[index] || { width: 160, height: 48 };
+function itemSize(item: FieldItem, cards: { width: number; height: number }[], index: number) {
+  if (item.shape === 'card') return cards[index] || { width: 168, height: 75 };
   if (item.shape === 'vertex') return { width: 72, height: 72 };
   return { width: DOT, height: DOT };
 }
@@ -97,9 +97,14 @@ function preferredDir(semantic: SemanticPoint) {
 
 export function layoutField(
   scene: FieldScene,
-  labelSizes: { width: number; height: number }[] = [],
+  measured: {
+    labels?: { width: number; height: number }[];
+    cards?: { width: number; height: number }[];
+  } = {},
 ) {
   const { width, height, guide, clusterRegion } = scene.options;
+  const labelSizes = measured.labels || [];
+  const cardSizes = measured.cards || [];
   const hasLegend = scene.items.some((item) => item.cluster);
   const frame: SpatialFrame = spatialFrame(width, height, {
     bottom: hasLegend ? 88 : 56,
@@ -110,7 +115,7 @@ export function layoutField(
     return {
       id: item.id,
       kind: kind as 'card' | 'vertex' | 'dot',
-      ...boxFromCenter(semanticToDisplay(semantic, frame), itemSize(item, labelSizes, i)),
+      ...boxFromCenter(semanticToDisplay(semantic, frame), itemSize(item, cardSizes, i)),
       semantic,
       cluster: item.cluster,
     };
@@ -149,6 +154,7 @@ export function layoutField(
     overflow = overflow || result.overflow || boxLeaves(result.box, frame, 2);
   }
   const placed = nodes.map((node, i) => {
+    if (node.kind === 'card') return { ...node, label: undefined, labelGap: 0 };
     const size = labelSizes[i] || estimateFieldLabel(scene.items[i].title);
     const preferred = preferredDir(node.semantic);
     const result = placeAnchoredLabel(

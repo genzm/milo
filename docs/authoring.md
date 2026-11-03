@@ -269,4 +269,4 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 `@zone id x="-1:0" y="0:1" label="領域"` は矩形の領域です。範囲は `min:max` です。`@cluster id title="今" tone=muted` と、項目の `cluster=now` で所属を表します。`tone` は `accent` / `muted` / `ink` / `soft` です。`@cluster` が無い所属も凡例に出ます。色は宣言が無ければ accent、muted、ink、soft の順です。`cluster-region=halo` で所属の輪を描きます。別の所属を飲み込む輪は描かず、領域超過として出します。
 
-`shape` は `vertex` / `card` / `dot` です。既定は ring が `vertex`、field が `dot`、それ以外が `card` です。
+`shape` は `vertex` / `card` / `dot` です。既定は ring が `vertex`、field が `dot`、それ以外が `card` です。field の `card` は座標にカードを置き、タイトルはカードの中だけに出ます。

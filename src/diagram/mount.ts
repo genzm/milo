@@ -183,7 +183,7 @@ export function mountDiagram(
       node.dataset.diagramItem = item.id;
       if (item.badge) node.innerHTML = `<span class="diagram-badge">${esc(item.badge)}</span>`;
     } else {
-      node.className = `diagram-card${levelClass(item.level)}${isCenter ? ' is-center' : ''}`;
+      node.className = `diagram-card${levelClass(item.level)}${isCenter ? ' is-center' : ''}${clusterClass}`;
       node.dataset.diagramItem = item.id;
       const title = document.createElement('div');
       title.className = 'diagram-card-title';
@@ -202,6 +202,7 @@ export function mountDiagram(
   });
   const annotations = scene.items.map((item) => {
     if (scene.options.layout === 'field') {
+      if (item.shape === 'card') return null;
       const wrap = document.createElement('div');
       wrap.className = 'diagram-label diagram-field-label';
       wrap.dataset.diagramLabel = item.id;
@@ -293,6 +294,7 @@ export function mountDiagram(
         );
       }
       if (scene.options.layout === 'field') {
+        if (item.shape === 'card') return { width: 0, height: 0 };
         if (!node) return estimateFieldLabel(item.title);
         const width = Math.min(180, node.scrollWidth * ratio);
         const height = node.scrollHeight * ratio;

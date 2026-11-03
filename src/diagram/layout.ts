@@ -56,7 +56,10 @@ export function layoutDiagram(
         zones: scene.zones,
         clusters: scene.clusters,
       },
-      measured.labels || scene.items.map((item) => estimateFieldLabel(item.title)),
+      {
+        labels: measured.labels || scene.items.map((item) => estimateFieldLabel(item.title)),
+        cards: measured.cards || scene.items.map((item) => estimateCardSize(item, false)),
+      },
     );
     return {
       width: options.width,
