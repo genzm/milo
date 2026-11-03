@@ -33,6 +33,7 @@ function annotation(kind, raw) {
     tone,
     label: attrs.label || '',
     size: positive(attrs.size, 64, 'size', 16),
+    arrows: choice(attrs.arrows, ['end', 'both'], 'end', 'arrows'),
   };
   if (attrs.target) {
     if (attrs.from || attrs.to)

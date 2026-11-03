@@ -1,4 +1,8 @@
-import type { AnnotationDirection, AnnotationSide } from '../markdown/composition.mjs';
+import type {
+  AnnotationArrows,
+  AnnotationDirection,
+  AnnotationSide,
+} from '../markdown/composition.mjs';
 
 export interface Box {
   x: number;
@@ -74,7 +78,12 @@ export function besideBox(
   return direction === 'left' || direction === 'up' ? [points[1], points[0]] : points;
 }
 
-export function arrowGeometry(from: Point, to: Point, size: number) {
+export function arrowGeometry(
+  from: Point,
+  to: Point,
+  size: number,
+  arrows: AnnotationArrows = 'end',
+) {
   const dx = to.x - from.x,
     dy = to.y - from.y,
     length = Math.hypot(dx, dy);
@@ -88,15 +97,25 @@ export function arrowGeometry(from: Point, to: Point, size: number) {
     x: from.x + ux * x - uy * y,
     y: from.y + uy * x + ux * y,
   });
-  const points = [
-    [0, -shaft],
+  const start = arrows === 'both' ? head : 0;
+  const outline =
+    arrows === 'both'
+      ? [
+          [0, 0],
+          [head, -half],
+          [head, -shaft],
+        ]
+      : [[0, -shaft]];
+  outline.push(
     [length - head, -shaft],
     [length - head, -half],
     [length, 0],
     [length - head, half],
     [length - head, shaft],
-    [0, shaft],
-  ].map(([x, y]) => point(x, y));
+    [start, shaft],
+  );
+  if (arrows === 'both') outline.push([head, half]);
+  const points = outline.map(([x, y]) => point(x, y));
   const xs = points.map((p) => p.x),
     ys = points.map((p) => p.y);
   return {
@@ -107,8 +126,8 @@ export function arrowGeometry(from: Point, to: Point, size: number) {
       width: Math.max(...xs) - Math.min(...xs),
       height: Math.max(...ys) - Math.min(...ys),
     },
-    label: point((length - head) / 2, 0),
-    length: length - head,
+    label: point((start + length - head) / 2, 0),
+    length: length - head - start,
     vertical: Math.abs(dy) > Math.abs(dx),
   };
 }

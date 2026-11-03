@@ -144,3 +144,74 @@ test(
     assert.deepEqual(runtimeErrors, []);
   },
 );
+
+test(
+  'the trade-off example keeps both tips and its external label aligned in PDF and the editor',
+  { timeout: 60_000 },
+  async (t) => {
+    const browser = await launchTestBrowser(t);
+    if (!browser) return;
+    const dir = await mkdtemp(join(tmpdir(), 'milo-tradeoff-'));
+    t.after(() => rm(dir, { recursive: true, force: true }));
+    const result = await compile({
+      input: fileURLToPath(new URL('../examples/tradeoff.md', import.meta.url)),
+      out: join(dir, 'slides.html'),
+    });
+    const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+    const check = async () => {
+      const measured = await page.evaluate(() => {
+        const group = document.querySelector('[data-annotation="trade"]');
+        const path = group.querySelector('path');
+        const label = group.querySelector('text');
+        const p = path.getBoundingClientRect(),
+          l = label.getBoundingClientRect();
+        const a = document
+          .querySelector('[data-composition-part="exploit"]')
+          .getBoundingClientRect();
+        const b = document
+          .querySelector('[data-composition-part="explore"]')
+          .getBoundingClientRect();
+        const scale = document.querySelector('.slide').getBoundingClientRect().width / 1600;
+        const points = [...path.getAttribute('d').matchAll(/[ML] ([\d.e+-]+) ([\d.e+-]+)/g)].map(
+          (m) => ({ x: Number(m[1]), y: Number(m[2]) }),
+        );
+        const box = path.getBBox();
+        const onTip = (x, y) =>
+          points.some((pt) => Math.abs(pt.x - x) < 0.01 && Math.abs(pt.y - y) < 0.01);
+        return {
+          both: group.dataset.arrows,
+          tipLeft: onTip(box.x, box.y + box.height / 2),
+          tipRight: onTip(box.x + box.width, box.y + box.height / 2),
+          center: Math.abs(l.x + l.width / 2 - p.x - p.width / 2) / scale,
+          leftGap: (p.left - a.right) / scale,
+          rightGap: (b.left - p.right) / scale,
+          labelAbove: l.bottom < p.top,
+          labelOutside: !label.classList.contains('is-inside'),
+          label: label.textContent,
+          errors: document.querySelectorAll('.block-error,.inline-error').length,
+        };
+      });
+      assert.equal(measured.both, 'both');
+      assert.equal(measured.tipLeft, true);
+      assert.equal(measured.tipRight, true);
+      assert.ok(measured.center < 1);
+      assert.ok(Math.abs(measured.leftGap - 12) < 1);
+      assert.ok(Math.abs(measured.rightGap - 12) < 1);
+      assert.equal(measured.labelAbove, true);
+      assert.equal(measured.labelOutside, true);
+      assert.equal(measured.label, 'トレードオフ');
+      assert.equal(measured.errors, 0);
+    };
+    await page.setContent(await createPdfHtml(result.deck, result.parts));
+    await waitForPdfReady(page);
+    await check();
+    await page.goto(pathToFileURL(result.outPath).href);
+    await page.evaluate(() => document.fonts.ready);
+    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.waitForTimeout(180);
+    await check();
+    await page.locator('#present').click();
+    await page.waitForTimeout(180);
+    await check();
+  },
+);

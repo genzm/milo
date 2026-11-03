@@ -84,3 +84,41 @@ test('a tall explanation box uses the available horizontal corridor', () => {
   assert.deepEqual(from, { x: 112, y: 50 });
   assert.deepEqual(to, { x: 288, y: 50 });
 });
+
+test('bidirectional annotations parse for connections and axes, preserving the one-way default', () => {
+  const body = '@part a\nA\n@endpart\n@part b\nB\n@endpart\n';
+  for (const route of ['from=a to=b', 'target=a side=right']) {
+    const scene = parseComposition(body + `@arrow id=trade ${route} arrows=both`);
+    assert.equal(scene.annotations[0].kind, 'arrow');
+    if (scene.annotations[0].kind === 'arrow') assert.equal(scene.annotations[0].arrows, 'both');
+  }
+  const original = parseComposition(body + '@arrow id=go from=a to=b').annotations[0];
+  if (original.kind === 'arrow') assert.equal(original.arrows, 'end');
+  assert.throws(() => parseComposition(body + '@arrow id=go from=a to=b arrows=invalid'), /arrows/);
+});
+
+test('bidirectional arrowheads reach both endpoints with a centered label in every orientation', () => {
+  for (const to of [
+    { x: 136, y: 0 },
+    { x: -136, y: 0 },
+    { x: 0, y: 136 },
+    { x: 0, y: -136 },
+    { x: 100, y: 100 },
+  ]) {
+    const from = { x: 0, y: 0 };
+    const both = arrowGeometry(from, to, 72, 'both');
+    const single = arrowGeometry(from, to, 72);
+    const points = [...both.path.matchAll(/[ML] ([\d.e+-]+) ([\d.e+-]+)/g)].map((m) => ({
+      x: Number(m[1]),
+      y: Number(m[2]),
+    }));
+    assert.deepEqual(points[0], from);
+    assert.ok(points.some((p) => Math.hypot(p.x - to.x, p.y - to.y) < 1e-6));
+    assert.ok(Math.abs(both.label.x - to.x / 2) < 1e-6);
+    assert.ok(Math.abs(both.label.y - to.y / 2) < 1e-6);
+    assert.ok(both.length > 0 && both.length < single.length);
+    assert.equal(both.path.includes('NaN'), false);
+  }
+  const short = arrowGeometry({ x: 0, y: 0 }, { x: 10, y: 0 }, 72, 'both');
+  assert.ok(short.length > 0);
+});

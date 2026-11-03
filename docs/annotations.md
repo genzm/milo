@@ -43,6 +43,16 @@ node cli/milo.mjs examples/annotations.md -o dist/annotations.html
 
 `@part` の `width` は希望幅です。全体に収まらないときは縮まります。省略すると通常の内容は320、図は560、単独の図は1100ピクセルを目安にします。`align=start` / `center` / `end` は part ごとにも指定できます。
 
+## 両向きの矢印
+
+トレードオフや相互作用には `arrows=both` を付けます。省略時は `arrows=end`（片向き）です。縦方向や図の外側に置く矢印でも使えます。
+
+```markdown
+@arrow id=trade from=exploit to=explore size=72 label="トレードオフ" arrows=both
+```
+
+ラベルは両端の矢じりを除いた中央に配置し、入りきらない場合は矢印の外側に表示します。[活用と探索の例](../examples/tradeoff.md) も参照してください。
+
 ## 2つのflowをつなぐ
 
 それぞれの `@part` に独立した `@diagram layout=flow` を置き、`from=now to=future` のように結びます。`@compose align=start` にすると見出しを上で揃えられます。

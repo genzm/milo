@@ -128,13 +128,14 @@ function mountAnnotations(
           mark.target !== undefined
             ? besideBox(bounds(mark.target), mark.side, mark.direction, mark.size, mark.offset)
             : betweenBoxes(bounds(mark.from), bounds(mark.to));
-        const geometry = arrowGeometry(...endpoints, mark.size);
+        const geometry = arrowGeometry(...endpoints, mark.size, mark.arrows);
         arrows.set(mark.id, geometry.box);
         const group = svgElement('g', {
           class: `composition-arrow annotation-tone-${mark.tone}`,
           'data-annotation': mark.id,
+          'data-arrows': mark.arrows,
           role: 'img',
-          'aria-label': mark.label || '解説矢印',
+          'aria-label': mark.label || (mark.arrows === 'both' ? '両向きの解説矢印' : '解説矢印'),
         });
         group.append(svgElement('path', { d: geometry.path }));
         if (mark.label) group.append(arrowLabel(mark, geometry));

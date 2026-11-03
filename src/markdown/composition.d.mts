@@ -1,3 +1,4 @@
+export type AnnotationArrows = 'end' | 'both';
 export type AnnotationTone = 'accent' | 'default' | 'muted';
 export type AnnotationSide = 'top' | 'right' | 'bottom' | 'left';
 export type AnnotationDirection = 'right' | 'left' | 'down' | 'up';
@@ -7,6 +8,7 @@ interface ArrowBase {
   tone: AnnotationTone;
   label: string;
   size: number;
+  arrows: AnnotationArrows;
 }
 export type ArrowAnnotation = ArrowBase &
   (
