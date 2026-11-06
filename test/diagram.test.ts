@@ -5,6 +5,7 @@ import {
   estimateCardSize,
   estimateNoteSize,
   layoutDiagram,
+  NESTED_DIAGRAM_FRAME,
   parseDiagram,
   resolvedLinks,
   VERTEX_R,
@@ -518,6 +519,41 @@ test('dense radial layouts preserve separation instead of clamping cards into ea
     }
   assert.ok(layout.fitScale! <= 1);
   if (layout.fitScale! < 18 / 27) assert.equal(layout.overflowReason, 'read');
+});
+
+test('rings and radials in a panel fill a nested frame unless size is authored', () => {
+  const nested = parseDiagram(
+    '@item a title="節点A"\n@item b title="節点B"\n@item c title="節点C"',
+    `layout=ring connect=cycle width=${NESTED_DIAGRAM_FRAME.width} height=${NESTED_DIAGRAM_FRAME.height}`,
+  );
+  assert.equal(layoutDiagram(nested).overflow, false);
+  const { root, close } = render(`@grid columns=2
+@panel
+@diagram layout=ring connect=cycle
+@item a title="節点A"
+@item b title="節点B"
+@item c title="節点C"
+@enddiagram
+@endpanel
+@panel
+@diagram layout=radial center=hub width=400 height=320
+@item hub title="中心"
+@item a title="枝A"
+@enddiagram
+@endpanel
+@endgrid`);
+  try {
+    const diagrams = [...root.querySelectorAll('.milo-diagram')] as unknown as HTMLElement[];
+    assert.equal(diagrams[0].classList.contains('diagram-fill-frame'), true);
+    assert.equal(
+      diagrams[0].style.getPropertyValue('--diagram-display-width'),
+      `${NESTED_DIAGRAM_FRAME.width}px`,
+    );
+    assert.equal(diagrams[1].classList.contains('diagram-fill-frame'), false);
+    assert.equal(diagrams[1].style.getPropertyValue('--diagram-display-width'), '400px');
+  } finally {
+    close();
+  }
 });
 
 test('flow exposes readable node widths and compact gaps without changing defaults', () => {

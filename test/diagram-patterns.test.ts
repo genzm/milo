@@ -479,6 +479,16 @@ test('mixed grid keeps a ring beside a radial', () => {
   assert.ok(
     Math.hypot(centerOf(item(radial, 'a')).x - hub.x, centerOf(item(radial, 'a')).y - hub.y) > 40,
   );
+  const { root, close } = render(entry.slide);
+  try {
+    const diagrams = [...root.querySelectorAll('.milo-diagram')] as unknown as HTMLElement[];
+    assert.equal(diagrams.length, 2);
+    assert.ok(diagrams.every((diagram) => diagram.classList.contains('diagram-fill-frame')));
+    assert.equal(diagrams[0].style.getPropertyValue('--diagram-display-width'), '640px');
+    assert.equal(diagrams[1].style.getPropertyValue('--diagram-display-width'), '640px');
+  } finally {
+    close();
+  }
 });
 
 test('stacked grid nests boxes without a diagram', () => {

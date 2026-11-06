@@ -3,6 +3,7 @@ import {
   type DiagramLinkKind,
   type DiagramScene,
   type DiagramBox,
+  NESTED_DIAGRAM_FRAME,
 } from './types';
 import { type CanvasArrows, type CanvasScene, mountCanvasScene } from '../canvas';
 import { resolvedLinks } from './links';
@@ -116,7 +117,15 @@ export function mountDiagram(
   }
 
   const uid = `milo-diagram-${++diagramSequence}`;
-  element.className = `milo-diagram diagram-layout-${scene.options.layout}`;
+  const fillFrame =
+    (scene.options.layout === 'ring' || scene.options.layout === 'radial') &&
+    !/(?:^|\s)(?:width|height)\s*=/.test(rawOptions) &&
+    Boolean(element.closest('.panel-block, .column-block'));
+  if (fillFrame) {
+    scene.options.width = NESTED_DIAGRAM_FRAME.width;
+    scene.options.height = NESTED_DIAGRAM_FRAME.height;
+  }
+  element.className = `milo-diagram diagram-layout-${scene.options.layout}${fillFrame ? ' diagram-fill-frame' : ''}`;
   element.style.setProperty('--diagram-display-width', `${scene.options.width}px`);
   element.style.setProperty('--diagram-display-height', `${scene.options.height}px`);
   element.style.aspectRatio = `${scene.options.width} / ${scene.options.height}`;

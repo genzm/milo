@@ -665,3 +665,13 @@
 :is(.column-block, .panel-block, .grid-block) .milo-diagram.diagram-layout-flow {
   width: 100%;
 }
+.milo-diagram.diagram-fill-frame {
+  --diagram-fill-max-height: calc(var(--slide-height) * 0.54);
+  width: min(100%, calc(var(--diagram-fill-max-height) * 640 / 512));
+  max-width: 100%;
+  height: auto;
+  max-height: var(--diagram-fill-max-height);
+  margin-inline: auto;
+  margin-top: 8px;
+  margin-bottom: 0;
+}

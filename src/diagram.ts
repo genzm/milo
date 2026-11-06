@@ -3,6 +3,7 @@ export { usesSpatialRadial } from './diagram/layout-radial.ts';
 export {
   type DiagramLayoutKind,
   DIAGRAM_FRAME,
+  NESTED_DIAGRAM_FRAME,
   type DiagramLevel,
   type DiagramLinkKind,
   type DiagramStart,

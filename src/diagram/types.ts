@@ -10,6 +10,10 @@ export const DIAGRAM_FRAME: Record<DiagramLayoutKind, { width: number; height: n
   field: { width: 1280, height: 580 },
 };
 
+// Squarer than the full-slide landscape frames, so a ring or radial in a
+// grid / column uses the panel instead of shrinking to the short side.
+export const NESTED_DIAGRAM_FRAME = { width: 640, height: 512 };
+
 export type DiagramLevel = 'none' | 'high' | 'medium' | 'low';
 
 export type DiagramLinkKind = 'undirected' | 'forward' | 'both';
