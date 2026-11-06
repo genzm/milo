@@ -34,6 +34,14 @@ node cli/milo.mjs examples/annotations.md -o dist/annotations.html
 
 `@arrow` は通常の flow 接続線とは独立した解説要素です。名前で対象を指定し、実際の表示位置から接続点を計算します。対象の上下の範囲が重なるときは、水平な矢印になります。
 
+| `@arrow` の指定 | 役割 |
+| --- | --- |
+| `from` と `to` | 対象同士を結ぶ |
+| `from` と `to` と `side` | 2つの対象が決める層の外側に、平行な矢印を置く |
+| `target` と `side` | 1つの対象の外側に、平行な矢印を置く |
+
+`target` と `from` / `to` は同時に書けません。`side` だけ、または `from` だけも書けません。
+
 | compose の設定 | 意味 |
 | --- | --- |
 | `layout=row` / `column` | 横並び / 縦並び。既定は row |
@@ -71,14 +79,21 @@ node cli/milo.mjs examples/annotations.md -o dist/annotations.html
 
 ## 図に「深さ」「広さ」を重ねる
 
-`from` と `to` と `side` を指定すると、2つの対象が決める層の外側に平行な矢印を置きます。
+層の幅に合わせるときは、`from` と `to` と `side` を使います。1つのノードの幅だけに合わせたいときは `target` と `side` です。
 
 ```markdown
 @arrow id=depth from=causes.issue to=causes.material side=top label="深さ"
 @arrow id=breadth from=causes.a1 to=causes.a3 side=right label="広さ" tone=default
 ```
 
-上側（`side=top`）は、始点と終点のあいだの幅に合わせます。高さは、その幅に重なるノードを避けた、一番近い平行位置です。右側（`side=right`）は図の右端に置き、長さは始点と終点の高さをカバーします。1つの対象の幅だけに合わせたいときは、これまでどおり `target` と `side` も使えます。
+入口から枝Aなら、深さは入口の左端から枝Aの右端までの横矢印になります。枝Aから葉A1なら、葉A1の上に来ます。広さは常に図の右端で、始点と終点の高さをカバーします。
+
+| `side` | 長さ | 位置 |
+| --- | --- | --- |
+| `top` / `bottom` | 始点と終点が決める左右の幅 | その幅に重なるノードを避けた、一番近い平行位置 |
+| `right` / `left` | 始点と終点が決める上下の高さ | 図の右端 / 左端 |
+
+`side` は top / right / bottom / left。top / bottom の既定方向は右、right / left は下です。`direction=left` / `up` で反転できます。`size` は矢印の太さ（既定64）、`offset` は対象からの距離（既定20）です。`direction` には `side` が必要で、`side` と平行な向きだけ書けます。
 
 対象の名前は、その `@compose` の中で解決します。
 
@@ -87,8 +102,6 @@ node cli/milo.mjs examples/annotations.md -o dist/annotations.html
 | `causes` | `@part causes` 全体 |
 | `causes.material` | その part 内の `@item material` または `@node material` |
 | `all` | 全 part を囲む範囲 |
-
-`side` は top / right / bottom / left。top / bottom の既定方向は右、right / left は下です。`direction=left` / `up` で反転できます。`size` は矢印の太さ（既定64）、`offset` は対象からの距離（既定20）です。
 
 特定のノードから説明ボックスへ結ぶ場合は、`from=causes.store to=solution` とします。対象ノードと同じIDが part 内に複数ある場合は、part を分けて一意にしてください。
 
