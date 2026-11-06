@@ -7,6 +7,11 @@ import { parseDiagram, resolvedLinks } from '../src/diagram.ts';
 import { layoutFlowFromCanvas } from '../src/flow/layout.ts';
 import { fromCanvasScene } from '../src/flow/normalize.ts';
 import type { FlowDirection, FlowLayoutResult, FlowSceneInput } from '../src/flow/types.ts';
+import {
+  parseComposition,
+  type ArrowAnnotation,
+  type CompositionScene,
+} from '../src/markdown/composition.mjs';
 import { renderSlide } from '../src/render.ts';
 import { SourceStore } from '../src/source.ts';
 
@@ -18,6 +23,7 @@ type PatternCase = {
   slide: string;
   diagrams: Array<{ options: string; body: string }>;
   canvases: Array<{ options: string; body: string }>;
+  composes: Array<{ options: string; body: string }>;
 };
 
 function along(
@@ -37,9 +43,9 @@ function cross(
 }
 
 function extractBlocks(slide: string, open: string, close: string) {
-  const pattern = new RegExp(`@${open}\\s+([^\\n]*)\\n([\\s\\S]*?)@end${close}`, 'g');
+  const pattern = new RegExp(`@${open}(?:\\s+([^\\n]*))?\\n([\\s\\S]*?)@end${close}`, 'g');
   return [...slide.matchAll(pattern)].map((match) => ({
-    options: match[1].trim(),
+    options: (match[1] || '').trim(),
     body: match[2],
   }));
 }
@@ -63,6 +69,7 @@ function loadPatterns(): PatternCase[] {
           /\blayout=flow\b/.test(block.options),
         ),
         canvases: extractBlocks(slide, 'canvas', 'canvas'),
+        composes: extractBlocks(slide, 'compose', 'compose'),
       },
     ];
   });
@@ -123,6 +130,20 @@ function firstLayout(id: string) {
   return layoutOf(block, item.diagrams[0] ? 'diagram' : 'canvas');
 }
 
+function firstCompose(id: string): CompositionScene {
+  const item = pattern(id);
+  const block = item.composes[0];
+  assert.ok(block, `pattern ${id} has no compose`);
+  return parseComposition(block.body, block.options);
+}
+
+function arrow(scene: CompositionScene, id: string): ArrowAnnotation {
+  const found = scene.annotations.find((mark) => mark.kind === 'arrow' && mark.id === id);
+  assert.ok(found, `missing arrow ${id}`);
+  assert.equal(found.kind, 'arrow');
+  return found;
+}
+
 function hardFailures(layout: FlowLayoutResult, allow: Set<string>) {
   return layout.diagnostics.filter(
     (item) =>
@@ -164,7 +185,7 @@ function render(source: string) {
 
 test('branch fixture lists distinct flow patterns', () => {
   const ids = cases().map((item) => item.pattern);
-  assert.ok(ids.length >= 28, `expected many patterns, got ${ids.length}`);
+  assert.ok(ids.length >= 40, `expected many patterns, got ${ids.length}`);
   assert.equal(new Set(ids).size, ids.length);
   for (const needed of [
     'fanout-3',
@@ -175,6 +196,12 @@ test('branch fixture lists distinct flow patterns', () => {
     'compose-action',
     'compose-modes',
     'canvas-diamond',
+    'grid-3',
+    'grid-wrap',
+    'columns-2',
+    'compose-boxes',
+    'compose-side',
+    'compose-column',
   ])
     assert.ok(ids.includes(needed), needed);
 });
@@ -185,7 +212,13 @@ test('every branch pattern lays out without overlap, overflow or edge hits', () 
       ...item.diagrams.map((block) => ({ block, kind: 'diagram' as const })),
       ...item.canvases.map((block) => ({ block, kind: 'canvas' as const })),
     ];
-    assert.ok(blocks.length, `${item.pattern}: no flow`);
+    if (!blocks.length) {
+      assert.ok(
+        item.composes.length || /@(grid|columns)\b/.test(item.slide),
+        `${item.pattern}: no flow`,
+      );
+      continue;
+    }
     for (const { block, kind } of blocks) {
       const { layout } = layoutOf(block, kind);
       const failed = hardFailures(layout, item.allow);
@@ -209,7 +242,9 @@ test('branch pattern slides render without block errors', () => {
     try {
       assert.equal(root.querySelector('.block-error'), null, item.pattern);
       assert.ok(
-        root.querySelector('.milo-canvas, .milo-diagram, .compose-block'),
+        root.querySelector(
+          '.milo-canvas, .milo-diagram, .milo-composition, .grid-block, .columns-block',
+        ),
         `${item.pattern}: missing figure`,
       );
     } finally {
@@ -455,12 +490,12 @@ test('down and left fans still share a rank axis', () => {
 });
 
 test('compose slides keep two independent flows', () => {
-  for (const id of ['compose-time', 'compose-modes']) {
-    const item = pattern(id);
-    assert.equal(item.diagrams.length, 2, id);
-    for (const block of item.diagrams) {
+  for (const id of ['compose-time', 'compose-modes', 'compose-column']) {
+    const entry = pattern(id);
+    assert.equal(entry.diagrams.length, 2, id);
+    for (const block of entry.diagrams) {
       const { layout } = layoutOf(block, 'diagram');
-      assert.equal(hardFailures(layout, item.allow).length, 0, id);
+      assert.equal(hardFailures(layout, entry.allow).length, 0, id);
     }
   }
   const action = pattern('compose-action');
@@ -469,15 +504,190 @@ test('compose slides keep two independent flows', () => {
 });
 
 test('route=auto diamond uses a shared trunk while curve does not', () => {
-  const item = pattern('route-compare');
-  assert.equal(item.diagrams.length, 2);
-  const auto = layoutOf(item.diagrams[0], 'diagram').layout;
-  const curve = layoutOf(item.diagrams[1], 'diagram').layout;
+  const entry = pattern('route-compare');
+  assert.equal(entry.diagrams.length, 2);
+  const auto = layoutOf(entry.diagrams[0], 'diagram').layout;
+  const curve = layoutOf(entry.diagrams[1], 'diagram').layout;
   assert.ok(auto.edgePaths.some((path) => path.role === 'bus' || path.role === 'stem'));
   assert.equal(
     curve.edgePaths.some((path) => path.role === 'bus' || path.role === 'stem'),
     false,
   );
+});
+
+test('three-column grid keeps serial, fan-out and diamond flows', () => {
+  const entry = pattern('grid-3');
+  assert.equal(entry.diagrams.length, 3);
+  const serial = layoutOf(entry.diagrams[0], 'diagram').layout;
+  const fan = layoutOf(entry.diagrams[1], 'diagram').layout;
+  const diamond = layoutOf(entry.diagrams[2], 'diagram').layout;
+  assert.ok(serial.nodeFrames.get('a')!.y < serial.nodeFrames.get('c')!.y);
+  assert.ok(Math.abs(fan.nodeFrames.get('a')!.y - fan.nodeFrames.get('b')!.y) < 1);
+  assert.ok(Math.abs(diamond.nodeFrames.get('a')!.y - diamond.nodeFrames.get('b')!.y) < 1);
+  assert.ok(Math.abs(diamond.nodeFrames.get('a')!.x - diamond.nodeFrames.get('b')!.x) > 8);
+  const { root, close } = render(entry.slide);
+  try {
+    const grid = root.querySelector('.grid-block') as unknown as HTMLElement;
+    assert.equal(grid?.style.getPropertyValue('--grid-columns'), '3');
+    assert.equal(root.querySelectorAll('.panel-block').length, 3);
+    assert.equal(root.querySelectorAll('.milo-diagram').length, 3);
+  } finally {
+    close();
+  }
+});
+
+test('wrapping grid keeps two columns and three children', () => {
+  const entry = pattern('grid-wrap');
+  assert.equal(entry.diagrams.length, 3);
+  const { root, close } = render(entry.slide);
+  try {
+    const grid = root.querySelector('.grid-block') as unknown as HTMLElement;
+    assert.equal(grid?.style.getPropertyValue('--grid-columns'), '2');
+    assert.equal(grid?.childElementCount, 3);
+    assert.equal(root.querySelectorAll('.milo-diagram').length, 3);
+  } finally {
+    close();
+  }
+});
+
+test('mixed grid keeps a right fan-out beside a down diamond', () => {
+  const entry = pattern('grid-mixed');
+  assert.equal(entry.diagrams.length, 2);
+  const right = layoutOf(entry.diagrams[0], 'diagram');
+  const down = layoutOf(entry.diagrams[1], 'diagram');
+  assert.equal(right.scene.options.direction, 'right');
+  assert.equal(down.scene.options.direction, 'down');
+  assert.ok(right.layout.nodeFrames.get('issue')!.x < right.layout.nodeFrames.get('raw')!.x);
+  assert.ok(down.layout.nodeFrames.get('start')!.y < down.layout.nodeFrames.get('join')!.y);
+});
+
+test('stacked grid nests a flow above a caption in each panel', () => {
+  const entry = pattern('grid-stack');
+  assert.equal(entry.diagrams.length, 2);
+  const { root, close } = render(entry.slide);
+  try {
+    const grid = root.querySelector('.grid-block') as unknown as HTMLElement;
+    assert.equal(grid?.style.getPropertyValue('--grid-columns'), '2');
+    assert.equal(root.querySelectorAll('.stack-block').length, 2);
+    assert.equal(root.querySelectorAll('.milo-diagram').length, 2);
+    assert.equal(root.querySelectorAll('.stack-block .box-block').length, 2);
+  } finally {
+    close();
+  }
+});
+
+test('two equal columns keep a fan-out and a diamond', () => {
+  const entry = pattern('columns-2');
+  assert.equal(entry.diagrams.length, 2);
+  const { root, close } = render(entry.slide);
+  try {
+    const columns = root.querySelector('.columns-block') as unknown as HTMLElement;
+    assert.equal(columns?.style.getPropertyValue('--column-count'), '2');
+    assert.equal(root.querySelectorAll('.column-block').length, 2);
+    assert.equal(root.querySelectorAll('.milo-diagram').length, 2);
+  } finally {
+    close();
+  }
+  const diamond = layoutOf(entry.diagrams[1], 'diagram').layout;
+  assert.ok(diamond.edgePaths.some((path) => path.role === 'bus' || path.role === 'stem'));
+});
+
+test('three equal columns keep three independent serial flows', () => {
+  const entry = pattern('columns-3');
+  assert.equal(entry.diagrams.length, 3);
+  const { root, close } = render(entry.slide);
+  try {
+    const columns = root.querySelector('.columns-block') as unknown as HTMLElement;
+    assert.equal(columns?.style.getPropertyValue('--column-count'), '3');
+    assert.equal(root.querySelectorAll('.column-block').length, 3);
+    assert.equal(root.querySelectorAll('.milo-diagram').length, 3);
+  } finally {
+    close();
+  }
+  for (const block of entry.diagrams) {
+    const { layout } = layoutOf(block, 'diagram');
+    assert.ok(layout.nodeFrames.get('a')!.y < layout.nodeFrames.get('c')!.y);
+  }
+});
+
+test('mixed columns put a fan-out beside stacked boxes', () => {
+  const entry = pattern('columns-mixed');
+  const { layout } = firstLayout('columns-mixed');
+  assert.ok(layout.nodeFrames.get('issue')!.x < layout.nodeFrames.get('raw')!.x);
+  const { root, close } = render(entry.slide);
+  try {
+    assert.equal(
+      (root.querySelector('.columns-block') as unknown as HTMLElement)?.style.getPropertyValue(
+        '--column-count',
+      ),
+      '2',
+    );
+    assert.equal(root.querySelectorAll('.milo-diagram').length, 1);
+    assert.equal(root.querySelectorAll('.stack-block .box-block').length, 3);
+  } finally {
+    close();
+  }
+});
+
+test('compose boxes parse a one-way arrow between two parts', () => {
+  const scene = firstCompose('compose-boxes');
+  assert.deepEqual(
+    scene.parts.map((part) => part.id),
+    ['left', 'right'],
+  );
+  const mark = arrow(scene, 'go');
+  assert.equal('from' in mark && mark.from, 'left');
+  assert.equal('to' in mark && mark.to, 'right');
+  assert.equal(mark.arrows, 'end');
+  const { root, close } = render(pattern('compose-boxes').slide);
+  try {
+    assert.equal(root.querySelectorAll('.composition-part').length, 2);
+    assert.equal(root.querySelectorAll('.box-block').length, 2);
+  } finally {
+    close();
+  }
+});
+
+test('compose side puts axis arrows on a nested flow', () => {
+  const scene = firstCompose('compose-side');
+  assert.equal(scene.parts.length, 1);
+  const depth = arrow(scene, 'depth');
+  const breadth = arrow(scene, 'breadth');
+  assert.equal('target' in depth && depth.target, 'causes.material');
+  assert.equal('side' in depth && depth.side, 'top');
+  assert.equal('target' in breadth && breadth.target, 'causes');
+  assert.equal('side' in breadth && breadth.side, 'right');
+  assert.equal(breadth.tone, 'default');
+  const { layout } = firstLayout('compose-side');
+  const mid = (id: string) => {
+    const box = layout.nodeFrames.get(id)!;
+    return box.y + box.height / 2;
+  };
+  assert.ok(Math.abs(mid('issue') - mid('process')) < 1);
+  assert.ok(layout.nodeFrames.get('material')!.x < layout.nodeFrames.get('a2')!.x);
+});
+
+test('compose column stacks flows from top to bottom', () => {
+  const scene = firstCompose('compose-column');
+  assert.equal(scene.layout, 'column');
+  assert.deepEqual(
+    scene.parts.map((part) => part.id),
+    ['top', 'bottom'],
+  );
+  const mark = arrow(scene, 'down');
+  assert.equal('from' in mark && mark.from, 'top');
+  assert.equal('to' in mark && mark.to, 'bottom');
+  const { root, close } = render(pattern('compose-column').slide);
+  try {
+    assert.equal(
+      (root.querySelector('.milo-composition') as unknown as HTMLElement)?.dataset
+        .compositionLayout,
+      'column',
+    );
+    assert.equal(root.querySelectorAll('.milo-diagram').length, 2);
+  } finally {
+    close();
+  }
 });
 
 test('asymmetric skip still connects every stem after grouping by rank', async () => {

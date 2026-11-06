@@ -1,6 +1,6 @@
 ---
 title: 分岐パターンテスト
-description: flow / diagram の分岐・合流・スキップ線を目視と自動テストで確認する
+description: flow の分岐・合流・スキップに加え、grid / columns / 解説矢印の配置を目視と自動テストで確認する
 documentId: flow-branch-patterns
 ---
 
@@ -8,7 +8,7 @@ documentId: flow-branch-patterns
 
 # 分岐パターンテスト
 
-描画エンジン用。分岐・合流・スキップの形だけを並べる。
+描画エンジン用。分岐・合流・スキップに加え、格子・列・解説矢印の形だけを並べる。
 
 ---
 
@@ -936,4 +936,446 @@ pattern: canvas-diamond｜canvas 記法
 
 @footer
 pattern: route-compare｜auto と curve
+@endfooter
+
+---
+
+<!-- milo: layout=section -->
+
+# 格子
+
+---
+
+<!-- milo: layout=lab -->
+<!-- pattern: grid-3 -->
+
+# 三列の格子
+
+`columns=3` は同じ高さの三つの枠。縦向きなら狭い列にも収まる。
+
+@grid columns=3 gap=16
+@panel
+### 直列
+
+@diagram layout=flow direction=down route=auto width=560 gap=24 node-width=200
+@item a title="節点A"
+@item b title="節点B"
+@item c title="節点C"
+@link a -> b
+@link b -> c
+@enddiagram
+@endpanel
+@panel
+### 分岐
+
+@diagram layout=flow direction=down route=auto width=560 gap=24 node-width=200
+@item start title="入口"
+@item a title="枝A"
+@item b title="枝B"
+@link start -> a
+@link start -> b
+@enddiagram
+@endpanel
+@panel
+### 合流
+
+@diagram layout=flow direction=down route=auto width=560 gap=24 node-width=200
+@item start title="始点"
+@item a title="経路A"
+@item b title="経路B"
+@item join title="合流"
+@link start -> a
+@link start -> b
+@link a -> join
+@link b -> join
+@enddiagram
+@endpanel
+@endgrid
+
+@footer
+pattern: grid-3｜三列
+@endfooter
+
+---
+
+<!-- milo: layout=lab -->
+<!-- pattern: grid-wrap -->
+
+# 折り返す格子
+
+列は二つ、枠は三つ。三枚目は下の行へ。
+
+@grid columns=2 gap=16
+@panel
+### 上左
+
+@diagram layout=flow direction=down route=auto width=560 gap=24 node-width=200
+@item a title="節点A"
+@item b title="節点B"
+@item c title="節点C"
+@link a -> b
+@link b -> c
+@enddiagram
+@endpanel
+@panel
+### 上右
+
+@diagram layout=flow direction=down route=auto width=560 gap=24 node-width=200
+@item start title="入口"
+@item a title="枝A"
+@item b title="枝B"
+@link start -> a
+@link start -> b
+@enddiagram
+@endpanel
+@panel
+### 下
+
+@diagram layout=flow direction=down route=auto width=560 gap=24 node-width=200
+@item start title="始点"
+@item a title="経路A"
+@item b title="経路B"
+@item join title="合流"
+@link start -> a
+@link start -> b
+@link a -> join
+@link b -> join
+@enddiagram
+@endpanel
+@endgrid
+
+@footer
+pattern: grid-wrap｜折り返し
+@endfooter
+
+---
+
+<!-- milo: layout=lab -->
+<!-- pattern: grid-mixed -->
+
+# 向きの違う流れを並べる
+
+右向きの分岐と、下向きの合流。
+
+@grid columns=2 gap=20
+@panel
+### 右向き
+
+@diagram layout=flow direction=right route=auto width=560 gap=24 node-width=200
+@item issue title="入口"
+@item raw title="枝A"
+@item oxid title="枝B"
+@link issue -> raw
+@link issue -> oxid
+@enddiagram
+@endpanel
+@panel
+### 下向き
+
+@diagram layout=flow direction=down route=auto width=560 gap=24 node-width=200
+@item start title="始点"
+@item a title="経路A"
+@item b title="経路B"
+@item join title="合流"
+@link start -> a
+@link start -> b
+@link a -> join
+@link b -> join
+@enddiagram
+@endpanel
+@endgrid
+
+@footer
+pattern: grid-mixed｜右と下
+@endfooter
+
+---
+
+<!-- milo: layout=lab -->
+<!-- pattern: grid-stack -->
+
+# 格子の中で重ねる
+
+枠の中で流れと箱を縦に積む。
+
+@grid columns=2 gap=20
+@panel
+### 左
+@stack
+@diagram layout=flow direction=down route=auto width=560 gap=24 node-width=200
+@item a title="節点A"
+@item b title="節点B"
+@link a -> b
+@enddiagram
+@box tone=default
+上の流れの説明
+@endbox
+@endstack
+@endpanel
+@panel
+### 右
+@stack
+@diagram layout=flow direction=down route=auto width=560 gap=24 node-width=200
+@item start title="入口"
+@item a title="枝A"
+@item b title="枝B"
+@link start -> a
+@link start -> b
+@enddiagram
+@box tone=muted
+分岐の説明
+@endbox
+@endstack
+@endpanel
+@endgrid
+
+@footer
+pattern: grid-stack｜重ねる
+@endfooter
+
+---
+
+<!-- milo: layout=section -->
+
+# 列
+
+---
+
+<!-- milo: layout=lab -->
+<!-- pattern: columns-2 -->
+
+# 二つの等幅列
+
+分岐と合流を左右に置く。
+
+@columns
+@column
+### 分岐
+
+@diagram layout=flow direction=down route=auto width=560 gap=24 node-width=200
+@item start title="入口"
+@item a title="枝A"
+@item b title="枝B"
+@link start -> a
+@link start -> b
+@enddiagram
+@endcolumn
+@column
+### 合流
+
+@diagram layout=flow direction=down route=auto width=560 gap=24 node-width=200
+@item start title="始点"
+@item a title="経路A"
+@item b title="経路B"
+@item join title="合流"
+@link start -> a
+@link start -> b
+@link a -> join
+@link b -> join
+@enddiagram
+@endcolumn
+@endcolumns
+
+@footer
+pattern: columns-2｜二つの列
+@endfooter
+
+---
+
+<!-- milo: layout=lab -->
+<!-- pattern: columns-3 -->
+
+# 三つの等幅列
+
+縦の直列を三つ並べる。
+
+@columns
+@column
+### 列A
+
+@diagram layout=flow direction=down route=auto width=400 gap=20 node-width=180
+@item a title="節点A"
+@item b title="節点B"
+@item c title="節点C"
+@link a -> b
+@link b -> c
+@enddiagram
+@endcolumn
+@column
+### 列B
+
+@diagram layout=flow direction=down route=auto width=400 gap=20 node-width=180
+@item a title="節点A"
+@item b title="節点B" level=high
+@item c title="節点C"
+@link a -> b
+@link b -> c
+@enddiagram
+@endcolumn
+@column
+### 列C
+
+@diagram layout=flow direction=down route=auto width=400 gap=20 node-width=180
+@item a title="節点A"
+@item b title="節点B"
+@item c title="節点C"
+@link a -> b
+@link b -> c
+@enddiagram
+@endcolumn
+@endcolumns
+
+@footer
+pattern: columns-3｜三つの列
+@endfooter
+
+---
+
+<!-- milo: layout=lab -->
+<!-- pattern: columns-mixed -->
+
+# 図と説明の列
+
+左に流れ、右に箱を積む。
+
+@columns
+@column
+### 流れ
+
+@diagram layout=flow direction=right route=auto width=560 gap=24 node-width=200
+@item issue title="入口"
+@item raw title="枝A"
+@item oxid title="枝B"
+@link issue -> raw
+@link issue -> oxid
+@enddiagram
+@endcolumn
+@column
+### 説明
+@stack
+@box tone=accent
+枝Aの説明
+@endbox
+@box tone=muted
+枝Bの説明
+@endbox
+@box tone=default
+入口の説明
+@endbox
+@endstack
+@endcolumn
+@endcolumns
+
+@footer
+pattern: columns-mixed｜図と説明
+@endfooter
+
+---
+
+<!-- milo: layout=section -->
+
+# 解説矢印
+
+---
+
+<!-- milo: layout=lab -->
+<!-- pattern: compose-boxes -->
+
+# 二つの箱を結ぶ
+
+大きな矢印は flow の辺とは別。
+
+@compose gap=160 height=360
+@part left width=300
+@box tone=accent
+### 入口
+
+短い本文を置く。
+@endbox
+@endpart
+@part right width=300
+@box tone=dark
+### 出口
+
+短い本文を置く。
+@endbox
+@endpart
+@arrow id=go from=left to=right size=88
+@endcompose
+
+@footer
+pattern: compose-boxes｜箱と箱
+@endfooter
+
+---
+
+<!-- milo: layout=lab -->
+<!-- pattern: compose-side -->
+
+# 図の外側に重ねる
+
+`target` と `side` で、対象の外に平行な矢印を置く。
+
+@compose height=420
+@part causes width=1120
+@diagram layout=flow width=1120 direction=right gap=24 node-width=220
+@item issue title="入口"
+@item material title="枝A"
+@item process title="枝B"
+@item store title="枝C"
+@item a1 title="葉A1"
+@item a2 title="葉A2"
+@item a3 title="葉A3"
+@link issue -> material
+@link issue -> process
+@link issue -> store
+@link material -> a1
+@link material -> a2
+@link material -> a3
+@enddiagram
+@endpart
+@arrow id=depth target=causes.material side=top label="深さ"
+@arrow id=breadth target=causes side=right label="広さ" tone=default
+@endcompose
+
+@footer
+pattern: compose-side｜外側の矢印
+@endfooter
+
+---
+
+<!-- milo: layout=lab -->
+<!-- pattern: compose-column -->
+
+# 縦に結ぶ
+
+`layout=column` は上から下。
+
+@compose layout=column gap=100 height=720
+@part top width=560
+@diagram layout=flow direction=down route=auto width=540 gap=24 node-width=200
+@item start title="入口"
+@item a title="枝A"
+@item b title="枝B"
+@link start -> a
+@link start -> b
+@enddiagram
+@endpart
+@part bottom width=560
+@diagram layout=flow direction=down route=auto width=540 gap=24 node-width=200
+@item start title="始点"
+@item a title="経路A"
+@item b title="経路B"
+@item join title="合流"
+@link start -> a
+@link start -> b
+@link a -> join
+@link b -> join
+@enddiagram
+@endpart
+@arrow id=down from=top to=bottom size=72
+@endcompose
+
+@footer
+pattern: compose-column｜縦の矢印
 @endfooter

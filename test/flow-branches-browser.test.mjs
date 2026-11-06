@@ -29,9 +29,20 @@ test('branch patterns stay readable in Chromium', { timeout: 90_000 }, async (t)
       b.y < a.y + a.height - 1;
     return [...document.querySelectorAll('.slide')].map((slide) => {
       const figures = [...slide.querySelectorAll('.milo-canvas,.milo-diagram')];
+      const layouts = [...slide.querySelectorAll('.grid-block,.columns-block,.milo-composition')];
       const footer = slide.querySelector('.slide-footer-content')?.textContent || '';
       const pattern = /pattern:\s*([a-z0-9-]+)/.exec(footer)?.[1] || '';
+      const allowed = new Set(
+        (/allow=([A-Z_,]+)/.exec(footer)?.[1] || '').split(',').filter(Boolean),
+      );
       const errors = [];
+      if (!figures.length && !layouts.length) errors.push('missing figure');
+      if (
+        slide.querySelector('.milo-composition') &&
+        !slide.querySelector('.composition-arrow') &&
+        !allowed.has('NO_EDGES')
+      )
+        errors.push('missing arrows');
       for (const figure of figures) {
         const nodes = [
           ...figure.querySelectorAll('.canvas-node,[data-diagram-item],[data-canvas-node]'),
@@ -59,7 +70,8 @@ test('branch patterns stay readable in Chromium', { timeout: 90_000 }, async (t)
         if (/\b(NODE_OVERLAP|EDGE_COLLISION|FRAME_OVERFLOW|TEXT_OVERFLOW)\b/.test(overflow))
           errors.push(overflow);
         const paths = [...figure.querySelectorAll('.canvas-edge,.diagram-edge')];
-        if (boxes.length && !paths.length) errors.push('missing edges');
+        const arrows = [...slide.querySelectorAll('.composition-arrow')];
+        if (boxes.length && !paths.length && !arrows.length) errors.push('missing edges');
         for (const path of paths) {
           const d = path.getAttribute('d') || '';
           if (!d.startsWith('M ')) errors.push('bad path');
@@ -68,14 +80,15 @@ test('branch patterns stay readable in Chromium', { timeout: 90_000 }, async (t)
       return {
         pattern,
         figures: figures.length,
+        layouts: layouts.length,
         errors,
       };
     });
   });
   const patterned = measured.filter((slide) => slide.pattern);
-  assert.ok(patterned.length >= 28, `expected many pattern slides, got ${patterned.length}`);
+  assert.ok(patterned.length >= 40, `expected many pattern slides, got ${patterned.length}`);
   for (const slide of patterned) {
-    assert.ok(slide.figures >= 1, `${slide.pattern}: missing figure`);
+    assert.ok(slide.figures >= 1 || slide.layouts >= 1, `${slide.pattern}: missing figure`);
     assert.deepEqual(slide.errors, [], slide.pattern);
   }
   const nested = patterned.find((slide) => slide.pattern === 'nested-tree');
