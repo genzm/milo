@@ -21,6 +21,14 @@ export type ArrowAnnotation = ArrowBase &
         from?: never;
         to?: never;
       }
+    | {
+        from: string;
+        to: string;
+        side: AnnotationSide;
+        direction: AnnotationDirection;
+        offset: number;
+        target?: never;
+      }
   );
 export interface CrossAnnotation {
   kind: 'cross';

@@ -6,7 +6,14 @@ import {
 } from '../markdown/composition.mjs';
 import { svgElement } from '../svg';
 import type { Rendered } from '../render/lifecycle';
-import { arrowGeometry, betweenBoxes, besideBox, crossGeometry, type Box } from './geometry';
+import {
+  arrowGeometry,
+  betweenBoxes,
+  besideBox,
+  besideSpan,
+  crossGeometry,
+  type Box,
+} from './geometry';
 
 // Build the Markdown containers first. Attach annotations only after their nested
 // diagrams and boxes have mounted, so arrows use actual rendered bounds.
@@ -21,7 +28,7 @@ export function prepareComposition(
   root.style.setProperty('--composition-gap', `${scene.gap}px`);
   const padding = { top: 0, right: 0, bottom: 0, left: 0 };
   for (const mark of scene.annotations) {
-    if (mark.kind === 'arrow' && mark.target)
+    if (mark.kind === 'arrow' && mark.side)
       padding[mark.side] = Math.max(padding[mark.side], mark.size + mark.offset + 16);
   }
   root.style.padding = `${padding.top}px ${padding.right}px ${padding.bottom}px ${padding.left}px`;
@@ -129,12 +136,28 @@ function mountAnnotations(
         }
         return measure(element);
       };
+      const nodeBoxes = (...refs: string[]) => {
+        const seen = new Set<HTMLElement>();
+        const boxes: Box[] = [];
+        for (const ref of refs) {
+          const part = parts.get(ref.split('.')[0]);
+          if (!part) continue;
+          for (const element of part.querySelectorAll<HTMLElement>(
+            '[data-canvas-node], [data-diagram-item]',
+          )) {
+            if (seen.has(element) || element.closest('.milo-composition') !== root) continue;
+            seen.add(element);
+            boxes.push(measure(element));
+          }
+        }
+        return boxes;
+      };
       // Pointing a node at a sibling part should move that part onto the node,
       // otherwise the arrow hits the box off-center.
       const column = scene.layout === 'column';
       for (const part of parts.values()) part.style.transform = '';
       for (const mark of scene.annotations) {
-        if (mark.kind !== 'arrow' || mark.target) continue;
+        if (mark.kind !== 'arrow' || mark.side) continue;
         const fromNode = mark.from.includes('.');
         const toNode = mark.to.includes('.');
         if (fromNode === toNode) continue;
@@ -166,7 +189,17 @@ function mountAnnotations(
         const endpoints =
           mark.target !== undefined
             ? besideBox(bounds(mark.target), mark.side, mark.direction, mark.size, mark.offset)
-            : betweenBoxes(bounds(mark.from), bounds(mark.to));
+            : mark.side
+              ? besideSpan(
+                  bounds(mark.from),
+                  bounds(mark.to),
+                  mark.side,
+                  mark.direction,
+                  mark.size,
+                  mark.offset,
+                  nodeBoxes(mark.from, mark.to),
+                )
+              : betweenBoxes(bounds(mark.from), bounds(mark.to));
         const geometry = arrowGeometry(...endpoints, mark.size, mark.arrows);
         arrows.set(mark.id, geometry.box);
         const group = svgElement('g', {

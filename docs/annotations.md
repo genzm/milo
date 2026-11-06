@@ -18,14 +18,14 @@ node cli/milo.mjs examples/annotations.md -o dist/annotations.html
 @box tone=accent
 ### 課題
 
-醤油がおいしくない
+うまくいかない
 @endbox
 @endpart
 @part solution width=300
 @box tone=dark
 ### 解決策
 
-おいしい醤油を作る
+うまくいくようにする
 @endbox
 @endpart
 @arrow id=proposal from=problem to=solution size=88
@@ -71,24 +71,26 @@ node cli/milo.mjs examples/annotations.md -o dist/annotations.html
 
 ## 図に「深さ」「広さ」を重ねる
 
-`target` と `side` を指定すると、対象の外側に平行な矢印を置きます。
+`from` と `to` と `side` を指定すると、2つの対象が決める層の外側に平行な矢印を置きます。
 
 ```markdown
-@arrow id=depth target=causes.raw side=top label="深さ"
-@arrow id=breadth target=causes side=right label="広さ" tone=default
+@arrow id=depth from=causes.issue to=causes.material side=top label="深さ"
+@arrow id=breadth from=causes.a1 to=causes.a3 side=right label="広さ" tone=default
 ```
+
+上側（`side=top`）は、始点と終点のあいだの幅に合わせます。高さは、その幅に重なるノードを避けた、一番近い平行位置です。右側（`side=right`）は図の右端に置き、長さは始点と終点の高さをカバーします。1つの対象の幅だけに合わせたいときは、これまでどおり `target` と `side` も使えます。
 
 対象の名前は、その `@compose` の中で解決します。
 
 | 指定 | 対象 |
 | --- | --- |
 | `causes` | `@part causes` 全体 |
-| `causes.raw` | その part 内の `@item raw` または `@node raw` |
+| `causes.material` | その part 内の `@item material` または `@node material` |
 | `all` | 全 part を囲む範囲 |
 
 `side` は top / right / bottom / left。top / bottom の既定方向は右、right / left は下です。`direction=left` / `up` で反転できます。`size` は矢印の太さ（既定64）、`offset` は対象からの距離（既定20）です。
 
-特定のノードから説明ボックスへ結ぶ場合は、`from=causes.oxid to=solution` とします。対象ノードと同じIDが part 内に複数ある場合は、part を分けて一意にしてください。
+特定のノードから説明ボックスへ結ぶ場合は、`from=causes.store to=solution` とします。対象ノードと同じIDが part 内に複数ある場合は、part を分けて一意にしてください。
 
 ## 任意の対象を×で否定する
 

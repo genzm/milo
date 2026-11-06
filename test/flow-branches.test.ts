@@ -43,7 +43,7 @@ function cross(
 }
 
 function extractBlocks(slide: string, open: string, close: string) {
-  const pattern = new RegExp(`@${open}(?:\\s+([^\\n]*))?\\n([\\s\\S]*?)@end${close}`, 'g');
+  const pattern = new RegExp(`@${open}(?:[^\\S\\n]+([^\\n]*))?\\n([\\s\\S]*?)@end${close}`, 'g');
   return [...slide.matchAll(pattern)].map((match) => ({
     options: (match[1] || '').trim(),
     body: match[2],
@@ -653,9 +653,11 @@ test('compose side puts axis arrows on a nested flow', () => {
   assert.equal(scene.parts.length, 1);
   const depth = arrow(scene, 'depth');
   const breadth = arrow(scene, 'breadth');
-  assert.equal('target' in depth && depth.target, 'causes.material');
+  assert.equal('from' in depth && depth.from, 'causes.issue');
+  assert.equal('to' in depth && depth.to, 'causes.material');
   assert.equal('side' in depth && depth.side, 'top');
-  assert.equal('target' in breadth && breadth.target, 'causes');
+  assert.equal('from' in breadth && breadth.from, 'causes.a1');
+  assert.equal('to' in breadth && breadth.to, 'causes.a3');
   assert.equal('side' in breadth && breadth.side, 'right');
   assert.equal(breadth.tone, 'default');
   const { layout } = firstLayout('compose-side');

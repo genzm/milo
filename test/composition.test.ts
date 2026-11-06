@@ -1,7 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseComposition } from '../src/markdown/composition.mjs';
-import { arrowGeometry, betweenBoxes, besideBox, crossGeometry } from '../src/composition/geometry';
+import {
+  arrowGeometry,
+  betweenBoxes,
+  besideBox,
+  besideSpan,
+  crossGeometry,
+} from '../src/composition/geometry';
 
 test('composition retains nested Markdown, fenced markers and source offsets', () => {
   const scene = parseComposition(
@@ -23,6 +29,8 @@ test('composition rejects ambiguous identifiers, incomplete connections and inva
     '@arrow id=line from=a',
     '@arrow id=line target=a from=a to=b',
     '@arrow id=line target=a side=top direction=up',
+    '@arrow id=line from=a to=b side=top direction=up',
+    '@arrow id=line side=right',
     '@cross target=a size=NaN',
     '@cross target=a scale=-1',
   ]) {
@@ -82,6 +90,42 @@ test('axis arrows and crosses follow target geometry in every direction', () => 
   assert.ok(crossGeometry(box).stroke >= 12);
 });
 
+test('from/to with side spans a layer instead of a single node', () => {
+  const scene = parseComposition(
+    '@part a\nA\n@endpart\n@part b\nB\n@endpart\n@arrow id=depth from=a to=b side=top',
+  );
+  const mark = scene.annotations[0];
+  assert.equal(mark.kind, 'arrow');
+  if (mark.kind !== 'arrow') return;
+  assert.equal('from' in mark && mark.from, 'a');
+  assert.equal('to' in mark && mark.to, 'b');
+  assert.equal('side' in mark && mark.side, 'top');
+  assert.equal('direction' in mark && mark.direction, 'right');
+  assert.equal('target' in mark, false);
+});
+
+test('span axis arrows cover the layer between two nodes and sit just outside obstacles', () => {
+  const issue = { x: 0, y: 80, width: 100, height: 40 };
+  const branchA = { x: 140, y: 40, width: 100, height: 40 };
+  const branchB = { x: 140, y: 100, width: 100, height: 40 };
+  const leafA1 = { x: 280, y: 0, width: 100, height: 40 };
+  const leafA2 = { x: 280, y: 50, width: 100, height: 40 };
+  const leafA3 = { x: 280, y: 100, width: 100, height: 40 };
+  const obstacles = [issue, branchA, branchB, leafA1, leafA2, leafA3];
+  assert.deepEqual(besideSpan(issue, branchA, 'top', 'right', 64, 20, obstacles), [
+    { x: 0, y: -12 },
+    { x: 240, y: -12 },
+  ]);
+  assert.deepEqual(besideSpan(branchA, leafA1, 'top', 'right', 64, 20, obstacles), [
+    { x: 140, y: -52 },
+    { x: 380, y: -52 },
+  ]);
+  assert.deepEqual(besideSpan(leafA1, leafA3, 'right', 'down', 64, 20, obstacles), [
+    { x: 432, y: 0 },
+    { x: 432, y: 140 },
+  ]);
+});
+
 test('overlapping targets report insufficient space instead of reversing the arrow', () => {
   assert.throws(
     () =>
@@ -104,7 +148,7 @@ test('a tall explanation box uses the available horizontal corridor', () => {
 
 test('bidirectional annotations parse for connections and axes, preserving the one-way default', () => {
   const body = '@part a\nA\n@endpart\n@part b\nB\n@endpart\n';
-  for (const route of ['from=a to=b', 'target=a side=right']) {
+  for (const route of ['from=a to=b', 'target=a side=right', 'from=a to=b side=right']) {
     const scene = parseComposition(body + `@arrow id=trade ${route} arrows=both`);
     assert.equal(scene.annotations[0].kind, 'arrow');
     if (scene.annotations[0].kind === 'arrow') assert.equal(scene.annotations[0].arrows, 'both');

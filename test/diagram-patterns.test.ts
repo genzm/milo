@@ -26,7 +26,7 @@ type PatternCase = {
 };
 
 function extractBlocks(slide: string, open: string, close: string) {
-  const pattern = new RegExp(`@${open}(?:\\s+([^\\n]*))?\\n([\\s\\S]*?)@end${close}`, 'g');
+  const pattern = new RegExp(`@${open}(?:[^\\S\\n]+([^\\n]*))?\\n([\\s\\S]*?)@end${close}`, 'g');
   return [...slide.matchAll(pattern)].map((match) => ({
     options: (match[1] || '').trim(),
     body: match[2],
@@ -589,10 +589,13 @@ test('compose diagrams keep an independent ring and radial', () => {
 
 test('compose node points from a ring vertex to a box', () => {
   const mark = arrow(firstCompose('compose-node'), 'action');
-  assert.equal('from' in mark && mark.from, 'map.b');
+  assert.equal('from' in mark && mark.from, 'map.c');
   assert.equal('to' in mark && mark.to, 'note');
-  const { scene } = firstDiagram('compose-node');
-  assert.equal(scene.items.find((entry) => entry.id === 'b')?.level, 'high');
+  const { scene, layout } = firstDiagram('compose-node');
+  assert.equal(scene.items.find((entry) => entry.id === 'c')?.level, 'high');
+  const source = item(layout, 'c');
+  const others = layout.items.filter((entry) => entry.id !== 'c');
+  assert.ok(others.every((entry) => source.x > entry.x));
 });
 
 test('compose side puts axis arrows on a radial', () => {
@@ -600,9 +603,11 @@ test('compose side puts axis arrows on a radial', () => {
   assert.equal(scene.parts.length, 1);
   const span = arrow(scene, 'span');
   const wide = arrow(scene, 'wide');
-  assert.equal('target' in span && span.target, 'map.a');
+  assert.equal('from' in span && span.from, 'map.b');
+  assert.equal('to' in span && span.to, 'map.c');
   assert.equal('side' in span && span.side, 'top');
-  assert.equal('target' in wide && wide.target, 'map');
+  assert.equal('from' in wide && wide.from, 'map.a');
+  assert.equal('to' in wide && wide.to, 'map.c');
   assert.equal('side' in wide && wide.side, 'right');
   assert.equal(wide.tone, 'default');
 });

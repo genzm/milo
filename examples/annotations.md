@@ -5,63 +5,63 @@ documentId: milo-annotations-examples
 
 # 深さと広さを、図に重ねる
 
-原因を掘り下げる方向と、候補を広げる方向を示す。
+掘り下げる方向と、広げる方向を示す。
 
 @compose
 @part causes width=1120
 @diagram layout=flow width=1120 direction=right gap=24 node-width=220
-@item issue title="醤油がおいしくない"
-@item raw title="原料の質"
-@item ferment title="発酵が不十分"
-@item oxid title="酸化による劣化"
-@item soy title="大豆の質"
-@item wheat title="小麦の質"
-@item salt title="食塩の質"
-@link issue -> raw
-@link issue -> ferment
-@link issue -> oxid
-@link raw -> soy
-@link raw -> wheat
-@link raw -> salt
+@item issue title="入口"
+@item material title="枝A"
+@item process title="枝B"
+@item store title="枝C"
+@item a1 title="葉A1"
+@item a2 title="葉A2"
+@item a3 title="葉A3"
+@link issue -> material
+@link issue -> process
+@link issue -> store
+@link material -> a1
+@link material -> a2
+@link material -> a3
 @enddiagram
 @endpart
-@arrow id=depth target=causes.raw side=top label="深さ"
-@arrow id=breadth target=causes side=right label="広さ" tone=default
+@arrow id=depth from=causes.issue to=causes.material side=top label="深さ"
+@arrow id=breadth from=causes.a1 to=causes.a3 side=right label="広さ" tone=default
 @endcompose
 
 ---
 
 # 時間軸で、2つの図をつなぐ
 
-今の課題が、将来も同じ課題とは限らない。
+今の課題が、後も同じ課題とは限らない。
 
 @compose gap=160 align=start
 @part now width=560
 ## 今の課題
 
 @diagram layout=flow width=560 direction=right gap=24 node-width=220
-@item issue title="醤油がおいしくない"
-@item raw title="原料の質"
-@item ferment title="発酵が不十分"
-@item oxid title="酸化による劣化"
-@link issue -> raw
-@link issue -> ferment
-@link issue -> oxid
+@item issue title="入口"
+@item material title="枝A"
+@item process title="枝B"
+@item store title="枝C"
+@link issue -> material
+@link issue -> process
+@link issue -> store
 @enddiagram
 @endpart
 @part future width=560
-## 5年後の課題
+## 後の課題
 
 @diagram layout=flow width=560 direction=right gap=24 node-width=220
-@item issue title="醤油がおいしくない"
-@item raw title="原料の質"
-@item ferment title="発酵が不十分"
-@item oxid title="酸化による劣化"
-@item diet title="食事の傾向が変わる" level=high
-@link issue -> raw
-@link issue -> ferment
-@link issue -> oxid
-@link issue -> diet
+@item issue title="入口"
+@item material title="枝A"
+@item process title="枝B"
+@item store title="枝C"
+@item extra title="枝D" level=high
+@link issue -> material
+@link issue -> process
+@link issue -> store
+@link issue -> extra
 @enddiagram
 @endpart
 @arrow id=time from=now to=future label="時間" size=76
@@ -69,30 +69,30 @@ documentId: milo-annotations-examples
 
 ---
 
-# 原因から、具体的な解決策へ
+# 選んだ枝から、具体的な打ち手へ
 
-注目した原因と、その原因に効く打ち手を結ぶ。
+注目した枝と、その枝に効く対応を結ぶ。
 
 @compose gap=160
 @part causes width=560
 @diagram layout=flow width=560 direction=right gap=24 node-width=220
-@item issue title="醤油がおいしくない"
-@item raw title="原料の質"
-@item ferment title="発酵が不十分"
-@item oxid title="酸化による劣化" level=high
-@link issue -> raw
-@link issue -> ferment
-@link issue -> oxid
+@item issue title="入口"
+@item material title="枝A"
+@item process title="枝B"
+@item store title="枝C" level=high
+@link issue -> material
+@link issue -> process
+@link issue -> store
 @enddiagram
 @endpart
 @part solution width=320 align=end
 @box tone=accent
-### 容器を工夫する
+### 対応
 
-酸化を防ぎ、おいしさを保つ。
+選んだ枝に効く打ち手。
 @endbox
 @endpart
-@arrow id=solve from=causes.oxid to=solution size=76
+@arrow id=solve from=causes.store to=solution size=76
 @endcompose
 
 ---
@@ -106,14 +106,14 @@ documentId: milo-annotations-examples
 @box tone=accent
 ### 課題
 
-醤油がおいしくない
+うまくいかない
 @endbox
 @endpart
 @part solution width=300
 @box tone=dark
 ### 解決策
 
-おいしい醤油を作る
+うまくいくようにする
 @endbox
 @endpart
 @arrow id=proposal from=problem to=solution size=88
@@ -130,14 +130,14 @@ documentId: milo-annotations-examples
 @box tone=muted
 ### 課題
 
-醤油がおいしくない
+うまくいかない
 @endbox
 @endpart
 @part solution width=300
 @box tone=muted
 ### 解決策
 
-おいしい醤油を作る
+うまくいくようにする
 @endbox
 @endpart
 @arrow id=proposal from=problem to=solution size=88 tone=muted
@@ -155,13 +155,13 @@ documentId: milo-annotations-examples
 @box tone=muted
 ### 思い込み
 
-すべての競合に勝てる。
+これで足りる。
 @endbox
 @endpart
 @part evidence width=400
-### 比較の軸を見直す
+### 前提を見直す
 
-顧客が選ぶ理由と、自社の強みを具体的に確かめる。
+根拠を具体的に確かめる。
 @endpart
 @cross target=idea size=240 label="思い込みを否定"
 @endcompose

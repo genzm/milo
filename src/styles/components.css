@@ -310,6 +310,9 @@
 .milo-diagram {
   --diagram-display-width: 900px;
   --diagram-display-height: 500px;
+  --diagram-font-body: var(--slide-text-body);
+  --diagram-font-label: var(--slide-text-label);
+  --diagram-font-subheading: var(--slide-text-subheading);
   position: relative;
   width: min(100%, var(--diagram-display-width));
   max-height: var(--diagram-display-height);
@@ -317,6 +320,15 @@
   margin: 1.2cqw auto 0.4cqw;
   overflow: visible;
   isolation: isolate;
+
+  &:not(.diagram-layout-flow) {
+    container-type: inline-size;
+    --diagram-font-body: calc(var(--slide-text-body) * 100cqw / var(--diagram-display-width));
+    --diagram-font-label: calc(var(--slide-text-label) * 100cqw / var(--diagram-display-width));
+    --diagram-font-subheading: calc(
+      var(--slide-text-subheading) * 100cqw / var(--diagram-display-width)
+    );
+  }
 
   &.diagram-layout-flow {
     --diagram-display-width: 1280px;
@@ -369,7 +381,7 @@
     background: var(--accent);
     border: 4px solid var(--accent);
     color: var(--white);
-    font-size: var(--slide-text-body);
+    font-size: var(--diagram-font-body);
     font-weight: 800;
     line-height: 1;
   }
@@ -405,7 +417,7 @@
     border-color: color-mix(in srgb, var(--slide-muted) 55%, var(--white));
   }
   .diagram-layout-field .diagram-label-title {
-    font-size: var(--slide-text-label);
+    font-size: var(--diagram-font-label);
     font-weight: 700;
     white-space: normal;
   }
@@ -428,7 +440,7 @@
   .diagram-axis-label {
     fill: var(--slide-muted);
     font-family: YakuHanJP, 'Noto Sans JP', sans-serif;
-    font-size: var(--slide-text-label);
+    font-size: var(--diagram-font-label);
     font-weight: 700;
   }
   .diagram-axis {
@@ -484,7 +496,7 @@
     max-width: 8.2em;
   }
   .diagram-label-title {
-    font-size: var(--slide-text-body);
+    font-size: var(--diagram-font-body);
     font-weight: 800;
     line-height: 1.35;
     letter-spacing: -0.03em;
@@ -493,7 +505,7 @@
   .diagram-label-note {
     margin-top: 4px;
     color: var(--slide-muted);
-    font-size: var(--slide-text-label);
+    font-size: var(--diagram-font-label);
     font-weight: 400;
     line-height: 1.45;
   }
@@ -517,14 +529,14 @@
     pointer-events: none;
   }
   .diagram-note-title {
-    font-size: var(--slide-text-body);
+    font-size: var(--diagram-font-body);
     font-weight: 800;
     line-height: 1.35;
     letter-spacing: -0.03em;
     overflow-wrap: anywhere;
   }
   .diagram-note-body {
-    font-size: var(--slide-text-label);
+    font-size: var(--diagram-font-label);
     font-weight: 400;
     line-height: 1.45;
     color: var(--slide-ink);
@@ -574,18 +586,18 @@
   .diagram-card-title {
     flex: none;
     min-width: max-content;
-    font-size: var(--slide-text-body);
+    font-size: var(--diagram-font-body);
     font-weight: 800;
     line-height: 1.25;
     letter-spacing: -0.03em;
     white-space: nowrap;
   }
   .diagram-card.is-center .diagram-card-title {
-    font-size: var(--slide-text-subheading);
+    font-size: var(--diagram-font-subheading);
   }
   .diagram-card-body {
     color: var(--slide-muted);
-    font-size: var(--slide-text-label);
+    font-size: var(--diagram-font-label);
     line-height: 1.4;
   }
   .diagram-card-body :is(h1, h2, h3, h4, h5, h6, p, ul, ol) {
@@ -646,7 +658,7 @@
     stroke-width: 5px;
     stroke-linejoin: round;
     font-family: YakuHanJP, 'Noto Sans JP', sans-serif;
-    font-size: var(--slide-text-label);
+    font-size: var(--diagram-font-label);
     font-weight: 700;
   }
 }

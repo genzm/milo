@@ -170,7 +170,10 @@ export function layoutRing(
       }
     }
     for (const item of items) if (item.label) clampBox(item.label, width, height);
-    return { items, radius, noteLinks: [], overflow: false };
+    const overflow = items.some(
+      (item) => item.label && items.some((vertex) => overlaps(item.label!, vertex, 0)),
+    );
+    return { items, radius, noteLinks: [], overflow };
   }
 
   const measuredFromDom = Boolean(measured.labels || measured.notes);

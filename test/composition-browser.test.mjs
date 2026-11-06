@@ -78,7 +78,7 @@ async function inspect(page) {
           errors.push('time arrow not on diagrams');
       }
       if (composition.querySelector('[data-annotation="solve"]')) {
-        const node = composition.querySelector('[data-canvas-node="oxid"]').getBoundingClientRect();
+        const node = composition.querySelector('[data-canvas-node="store"]').getBoundingClientRect();
         const line = arrow('solve'),
           box = part('solution');
         if (

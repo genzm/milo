@@ -1314,7 +1314,7 @@ pattern: compose-boxes｜箱と箱
 
 # 図の外側に重ねる
 
-`target` と `side` で、対象の外に平行な矢印を置く。
+`from` と `to` と `side` で、層の外に平行な矢印を置く。
 
 @compose height=420
 @part causes width=1120
@@ -1334,8 +1334,8 @@ pattern: compose-boxes｜箱と箱
 @link material -> a3
 @enddiagram
 @endpart
-@arrow id=depth target=causes.material side=top label="深さ"
-@arrow id=breadth target=causes side=right label="広さ" tone=default
+@arrow id=depth from=causes.issue to=causes.material side=top label="深さ"
+@arrow id=breadth from=causes.a1 to=causes.a3 side=right label="広さ" tone=default
 @endcompose
 
 @footer

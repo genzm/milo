@@ -12,6 +12,19 @@ function positive(value, fallback, name, min = 1) {
   if (number < min) throw new Error(`${name} は ${min} 以上にしてください。`);
   return number;
 }
+function axisAttrs(attrs) {
+  const side = choice(attrs.side, ['top', 'right', 'bottom', 'left'], 'top', 'side');
+  const direction = choice(
+    attrs.direction,
+    ['right', 'left', 'down', 'up'],
+    side === 'top' || side === 'bottom' ? 'right' : 'down',
+    'direction',
+  );
+  if ((side === 'top' || side === 'bottom') !== (direction === 'right' || direction === 'left'))
+    throw new Error('@arrow の direction は side と平行な方向にしてください。');
+  return { side, direction, offset: positive(attrs.offset, 20, 'offset', 0) };
+}
+
 function annotation(kind, raw) {
   const attrs = atAttributes(raw);
   const tone = choice(attrs.tone, ['accent', 'default', 'muted'], 'accent', 'tone');
@@ -38,25 +51,19 @@ function annotation(kind, raw) {
   if (attrs.target) {
     if (attrs.from || attrs.to)
       throw new Error('@arrow は target または from / to のどちらかで指定してください。');
-    const side = choice(attrs.side, ['top', 'right', 'bottom', 'left'], 'top', 'side');
-    const direction = choice(
-      attrs.direction,
-      ['right', 'left', 'down', 'up'],
-      side === 'top' || side === 'bottom' ? 'right' : 'down',
-      'direction',
-    );
-    if ((side === 'top' || side === 'bottom') !== (direction === 'right' || direction === 'left'))
-      throw new Error('@arrow の direction は side と平行な方向にしてください。');
+    return { ...base, target: target(attrs.target, 'target'), ...axisAttrs(attrs) };
+  }
+  if (attrs.side) {
+    if (!attrs.from || !attrs.to)
+      throw new Error('@arrow の side には target または from / to が必要です。');
     return {
       ...base,
-      target: target(attrs.target, 'target'),
-      side,
-      direction,
-      offset: positive(attrs.offset, 20, 'offset', 0),
+      from: target(attrs.from, 'from'),
+      to: target(attrs.to, 'to'),
+      ...axisAttrs(attrs),
     };
   }
-  if (attrs.side || attrs.direction)
-    throw new Error('@arrow の side / direction には target が必要です。');
+  if (attrs.direction) throw new Error('@arrow の direction には side が必要です。');
   return { ...base, from: target(attrs.from, 'from'), to: target(attrs.to, 'to') };
 }
 

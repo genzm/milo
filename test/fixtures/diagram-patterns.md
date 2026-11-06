@@ -838,7 +838,7 @@ pattern: free-frame｜frame と pinned
 @panel
 ### 図1
 
-@diagram layout=ring connect=cycle width=420 height=260
+@diagram layout=ring connect=cycle
 @item a title="節点A"
 @item b title="節点B"
 @item c title="節点C"
@@ -847,7 +847,7 @@ pattern: free-frame｜frame と pinned
 @panel
 ### 図2
 
-@diagram layout=ring connect=cycle width=420 height=260
+@diagram layout=ring connect=cycle
 @item a title="節点A"
 @item b title="節点B"
 @item c title="節点C"
@@ -857,7 +857,7 @@ pattern: free-frame｜frame と pinned
 @panel
 ### 図3
 
-@diagram layout=ring connect=cycle width=420 height=260
+@diagram layout=ring connect=cycle
 @item a title="節点A"
 @item b title="節点B"
 @item c title="節点C"
@@ -882,7 +882,7 @@ pattern: grid-3｜三列
 @panel
 ### 上左
 
-@diagram layout=ring connect=cycle width=560 height=280
+@diagram layout=ring connect=cycle
 @item a title="節点A"
 @item b title="節点B"
 @item c title="節点C"
@@ -891,7 +891,7 @@ pattern: grid-3｜三列
 @panel
 ### 上右
 
-@diagram layout=ring connect=cycle width=560 height=280
+@diagram layout=ring connect=cycle
 @item a title="節点A"
 @item b title="節点B"
 @item c title="節点C"
@@ -930,7 +930,7 @@ pattern: grid-wrap｜折り返し
 @panel
 ### 環
 
-@diagram layout=ring connect=cycle width=560 height=320
+@diagram layout=ring connect=cycle
 @item a title="節点A"
 @item b title="節点B"
 @item c title="節点C"
@@ -1015,7 +1015,7 @@ pattern: grid-stack allow=NO_EDGES｜重ねる
 @column
 ### 環
 
-@diagram layout=ring connect=cycle width=560 height=320
+@diagram layout=ring connect=cycle
 @item a title="節点A"
 @item b title="節点B"
 @item c title="節点C"
@@ -1200,7 +1200,7 @@ pattern: compose-both｜両向き
 @part now width=555
 ## 図1
 
-@diagram layout=ring connect=cycle width=540 height=300
+@diagram layout=ring connect=cycle
 @item a title="節点A"
 @item b title="節点B"
 @item c title="節点C"
@@ -1233,14 +1233,14 @@ pattern: compose-diagrams｜二つの図
 
 # 頂点から箱へ
 
-`from=map.b to=note` で、図の中の節点と箱を結ぶ。
+`from=map.c to=note` で、箱に面した節点から結ぶ。
 
-@compose gap=145 height=350
-@part map width=585
-@diagram layout=ring connect=cycle width=560 height=320
+@compose gap=145 height=420
+@part map width=640
+@diagram layout=ring connect=cycle
 @item a title="節点A"
-@item b title="節点B" level=high
-@item c title="節点C"
+@item b title="節点B"
+@item c title="節点C" level=high
 @enddiagram
 @endpart
 @part note width=330
@@ -1249,7 +1249,7 @@ pattern: compose-diagrams｜二つの図
 - 項目2
 @endbox
 @endpart
-@arrow id=action from=map.b to=note size=72
+@arrow id=action from=map.c to=note size=56
 @endcompose
 
 @footer
@@ -1263,11 +1263,11 @@ pattern: compose-node｜頂点から箱
 
 # 図の外側に重ねる
 
-`target` と `side` で、対象の外に平行な矢印を置く。
+`from` と `to` と `side` で、層の外に平行な矢印を置く。
 
-@compose height=580
+@compose
 @part map width=1120
-@diagram layout=radial center=hub width=1100 height=520
+@diagram layout=radial center=hub
 @item hub title="中心"
 @item a title="枝A"
 @item b title="枝B"
@@ -1277,8 +1277,8 @@ pattern: compose-node｜頂点から箱
 @link hub -- c
 @enddiagram
 @endpart
-@arrow id=span target=map.a side=top label="上"
-@arrow id=wide target=map side=right label="外" tone=default
+@arrow id=span from=map.b to=map.c side=top label="上"
+@arrow id=wide from=map.a to=map.c side=right label="外" tone=default
 @endcompose
 
 @footer

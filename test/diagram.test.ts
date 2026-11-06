@@ -9,6 +9,7 @@ import {
   resolvedLinks,
   VERTEX_R,
 } from '../src/diagram.ts';
+import { overlaps } from '../src/diagram/geometry-ring.ts';
 import { renderSlide } from '../src/render.ts';
 import { SourceStore } from '../src/source.ts';
 
@@ -325,6 +326,34 @@ test('ring keeps a regular polygon for 3 to 6 vertices, even with long notes', (
   }
 });
 
+test('inline ring labels sit outside every vertex', () => {
+  const layout = layoutDiagram(
+    parseDiagram(
+      `@item a title="節点A"
+@item b title="節点B"
+@item c title="節点C"`,
+      'layout=ring connect=cycle',
+    ),
+  );
+  assert.equal(layout.overflow, false);
+  for (const vertex of layout.items) {
+    assert.ok(vertex.label);
+    assert.equal(overlaps(vertex, vertex.label, 0), false);
+  }
+});
+
+test('a ring that is too short reports overflow instead of covering a vertex with its label', () => {
+  const layout = layoutDiagram(
+    parseDiagram(
+      `@item a title="節点A"
+@item b title="節点B"
+@item c title="節点C"`,
+      'layout=ring connect=cycle width=560 height=260',
+    ),
+  );
+  assert.equal(layout.overflow, true);
+});
+
 test('outside notes sit on the outward rays with diagonal arrows from the lower vertices', () => {
   const layout = layoutDiagram(
     parseDiagram(annotatedTriangle, 'layout=ring connect=none note=outside note-link=arrow'),
@@ -416,10 +445,7 @@ ${annotatedTriangle}
     );
     assert.equal(root.querySelector('.diagram-edge'), null);
     assert.match(root.querySelector('[data-diagram-note="clear"]')?.textContent || '', /節点A/);
-    assert.match(
-      root.querySelector('[data-diagram-note="clear"]')?.textContent || '',
-      /長い本文/,
-    );
+    assert.match(root.querySelector('[data-diagram-note="clear"]')?.textContent || '', /長い本文/);
     assert.equal(
       root.querySelector('.diagram-note')?.className.includes('diagram-note-plain'),
       true,

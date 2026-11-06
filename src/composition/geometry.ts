@@ -91,6 +91,53 @@ export function besideBox(
   return direction === 'left' || direction === 'up' ? [points[1], points[0]] : points;
 }
 
+function overlapsRange(start: number, span: number, from: number, to: number) {
+  return start < to && start + span > from;
+}
+
+// Parallel overlay along the layer between two nodes. Horizontal arrows span
+// the union of the endpoints and sit at the nearest clearance past obstacles
+// in that band. Vertical arrows cover the endpoints' heights and sit on the
+// far left or right of the whole figure.
+export function besideSpan(
+  from: Box,
+  to: Box,
+  side: AnnotationSide,
+  direction: AnnotationDirection,
+  size: number,
+  offset: number,
+  obstacles: readonly Box[] = [],
+): [Point, Point] {
+  const bodies = obstacles.length > 0 ? [...obstacles, from, to] : [from, to];
+  const distance = size / 2 + offset;
+  if (side === 'top' || side === 'bottom') {
+    const x0 = Math.min(from.x, to.x);
+    const x1 = Math.max(from.x + from.width, to.x + to.width);
+    const hits = bodies.filter((box) => overlapsRange(box.x, box.width, x0, x1));
+    const cloud = hits.length > 0 ? hits : [from, to];
+    const y =
+      side === 'top'
+        ? Math.min(...cloud.map((box) => box.y)) - distance
+        : Math.max(...cloud.map((box) => box.y + box.height)) + distance;
+    const points: [Point, Point] = [
+      { x: x0, y },
+      { x: x1, y },
+    ];
+    return direction === 'left' ? [points[1], points[0]] : points;
+  }
+  const y0 = Math.min(from.y, to.y);
+  const y1 = Math.max(from.y + from.height, to.y + to.height);
+  const x =
+    side === 'left'
+      ? Math.min(...bodies.map((box) => box.x)) - distance
+      : Math.max(...bodies.map((box) => box.x + box.width)) + distance;
+  const points: [Point, Point] = [
+    { x, y: y0 },
+    { x, y: y1 },
+  ];
+  return direction === 'up' ? [points[1], points[0]] : points;
+}
+
 export function arrowGeometry(
   from: Point,
   to: Point,
