@@ -59,7 +59,7 @@ test('diagram flow keeps an explicit height and treats omitted height as auto', 
 
 test('fixed flow height stays 480 and reports when nodes leave the frame', () => {
   const scene = parseCanvas(
-    `@node a\n### 入力\n-->\n@node b\n### 分析\n-->\n@node c\n### 判断\n-->\n@node d\n### 実行`,
+    `@node a\n### 節点A\n-->\n@node b\n### 節点B\n-->\n@node c\n### 節点C\n-->\n@node d\n### 節点D`,
     'layout=flow direction=down height=480',
   );
   assert.equal(scene.options.autoHeight, false);
@@ -72,7 +72,7 @@ test('fixed flow height stays 480 and reports when nodes leave the frame', () =>
   );
 
   const tight = parseCanvas(
-    `@node a\n### 入力\n-->\n@node b\n### 分析\n-->\n@node c\n### 判断\n-->\n@node d\n### 実行`,
+    `@node a\n### 節点A\n-->\n@node b\n### 節点B\n-->\n@node c\n### 節点C\n-->\n@node d\n### 節点D`,
     'layout=flow direction=down height=120',
   );
   const overflow = layoutFlowFromCanvas(tight, [80, 80, 80, 80]);
@@ -124,7 +124,7 @@ B
 
 test('four serial flow nodes fit without clipping Japanese titles', () => {
   const scene = parseCanvas(
-    `@node a\n### 入力\n-->\n@node b\n### 分析\n-->\n@node c\n### 判断\n-->\n@node d\n### 実行`,
+    `@node a\n### 節点A\n-->\n@node b\n### 節点B\n-->\n@node c\n### 節点C\n-->\n@node d\n### 節点D`,
     'layout=flow direction=right width=1000',
   );
   const layout = layoutFlowFromCanvas(scene);
@@ -147,7 +147,7 @@ test('four serial flow nodes fit without clipping Japanese titles', () => {
 
 test('long Japanese titles get a wider node than short ones', () => {
   const scene = parseCanvas(
-    `@node a\n### 入力\n-->\n@node b\n### 顧客からの問い合わせ内容を分類し優先度をつけて担当へ渡す\n-->\n@node c\n### 実行`,
+    `@node a\n### 短い題\n-->\n@node b\n### これは幅の差を出すための長い日本語タイトルです\n-->\n@node c\n### 中くらいの題`,
     'layout=flow direction=right',
   );
   const layout = layoutFlowFromCanvas(scene);
@@ -446,7 +446,7 @@ test('three-rank branch-merge and a long return stay layered', () => {
 test('flow ranks stay packed and centered in the frame', () => {
   const layout = layoutFlowFromCanvas(
     parseCanvas(
-      `@node a\n### 入力\n-->\n@node b\n### 分析\n-->\n@node c\n### 判断\n-->\n@node d\n### 実行`,
+      `@node a\n### 節点A\n-->\n@node b\n### 節点B\n-->\n@node c\n### 節点C\n-->\n@node d\n### 節点D`,
       'layout=flow direction=right width=1280',
     ),
   );
@@ -658,6 +658,13 @@ test('unequal nested branches and merges align on their middle neighbor in every
         ['a', 'a3'],
         ['b', 'b1'],
         ['c', 'c1'],
+        ...(!merge
+          ? [
+              ['a2', 'a2x'],
+              ['a2', 'a2y'],
+              ['a2', 'a2z'],
+            ]
+          : []),
       ];
       const scene = parseCanvas(
         `@node hub width=160 height=130\nHub
@@ -665,10 +672,17 @@ test('unequal nested branches and merges align on their middle neighbor in every
 @node b width=120 height=80\nB
 @node c width=180 height=140\nC
 @node a1 width=100 height=60\nA1
-@node a2 width=120 height=70\nA2
+@node a2 width=120 height=90\nA2
 @node a3 width=140 height=80\nA3
 @node b1 width=130 height=80\nB1
-@node c1 width=130 height=80\nC1\n` +
+@node c1 width=130 height=80\nC1` +
+          (!merge
+            ? `
+@node a2x width=90 height=50\nA2X
+@node a2y width=110 height=64\nA2Y
+@node a2z width=130 height=88\nA2Z`
+            : '') +
+          '\n' +
           edges.map(([a, b]) => (merge ? `@edge ${b} --> ${a}` : `@edge ${a} --> ${b}`)).join('\n'),
         `route=auto direction=${direction} width=1800`,
       );
@@ -686,6 +700,11 @@ test('unequal nested branches and merges align on their middle neighbor in every
         Math.abs(center('a') - center('a2')) < 0.001,
         `${direction} ${merge}: nested branch`,
       );
+      if (!merge)
+        assert.ok(
+          Math.abs(center('a2') - center('a2y')) < 0.001,
+          `${direction} ${merge}: deeper nested branch`,
+        );
       assert.equal(
         layout.diagnostics.some(
           (d) =>

@@ -67,26 +67,26 @@ test('diagram parses items, cycle links and semantic levels', () => {
 
 test('link arrows distinguish relation, direction and both', () => {
   const scene = parseDiagram(
-    `@item a title="問題"
-@item b title="原因"
-@item c title="打ち手"
+    `@item a title="始点"
+@item b title="中点"
+@item c title="終点"
 @link a -- b
-@link b -> c label="選択"
-@link a <-> c label="影響"`,
+@link b -> c label="ラベルA"
+@link a <-> c label="ラベルB"`,
     'layout=flow direction=right',
   );
   assert.equal(scene.links[0].kind, 'undirected');
   assert.equal(scene.links[1].kind, 'forward');
-  assert.equal(scene.links[1].label, '選択');
+  assert.equal(scene.links[1].label, 'ラベルA');
   assert.equal(scene.links[2].kind, 'both');
 });
 
 test('ring places three items as a triangle and four as a diamond', () => {
   const three = layoutDiagram(
     parseDiagram(
-      `@item a title="品質"
-@item b title="速度"
-@item c title="コスト"`,
+      `@item a title="節点A"
+@item b title="節点B"
+@item c title="節点C"`,
       'layout=ring connect=cycle start=top order=ccw',
     ),
   );
@@ -100,10 +100,10 @@ test('ring places three items as a triangle and four as a diamond', () => {
 
   const four = layoutDiagram(
     parseDiagram(
-      `@item a title="品質"
-@item b title="速度"
-@item c title="コスト"
-@item d title="安全性"`,
+      `@item a title="節点A"
+@item b title="節点B"
+@item c title="節点C"
+@item d title="節点D"`,
       'layout=ring',
     ),
   );
@@ -145,10 +145,10 @@ test('ring labels sit outside vertices and stay inside the frame', () => {
 
 test('radial hub stays wide enough for a long Japanese title', () => {
   const scene = parseDiagram(
-    `@item issue title="醤油がおいしくない"
-@item material title="原料の質"
-@item fermentation title="発酵不足"
-@item oxidation title="酸化・保存"
+    `@item issue title="これは幅を測るための長い日本語タイトル"
+@item material title="枝A"
+@item fermentation title="枝B"
+@item oxidation title="枝C"
 @link issue -- material
 @link issue -- fermentation
 @link issue -- oxidation`,
@@ -163,11 +163,11 @@ test('radial hub stays wide enough for a long Japanese title', () => {
 
 test('radial cards stay centered after resize observers remeasure', () => {
   const { root, close } = render(`@diagram layout=radial center=problem
-@item problem title="顧客の課題"
-@item cost title="コスト"
-@item time title="時間"
-@item quality title="品質"
-@item support title="サポート"
+@item problem title="中心"
+@item cost title="枝A"
+@item time title="枝B"
+@item quality title="枝C"
+@item support title="枝D"
 @link problem -- cost
 @link problem -- time
 @link problem -- quality
@@ -189,11 +189,11 @@ test('radial cards stay centered after resize observers remeasure', () => {
 test('radial keeps the center item inward of its satellites', () => {
   const layout = layoutDiagram(
     parseDiagram(
-      `@item problem title="顧客の課題"
-@item cost title="コスト"
-@item time title="時間"
-@item quality title="品質"
-@item support title="サポート"
+      `@item problem title="中心"
+@item cost title="枝A"
+@item time title="枝B"
+@item quality title="枝C"
+@item support title="枝D"
 @link problem -- cost
 @link problem -- time
 @link problem -- quality
@@ -236,17 +236,17 @@ test('slide renderer mounts ring vertices, levels and undirected edges', () => {
 
 test('flow diagrams reuse canvas nodes and directed arrows', () => {
   const { root, close } = render(`@diagram layout=flow direction=right
-@item problem title="問題" shape=card
-@item cause title="原因" shape=card
-@item solution title="打ち手" shape=card
-@link problem -> cause label="分析"
-@link cause -> solution label="選択"
+@item problem title="始点" shape=card
+@item cause title="中点" shape=card
+@item solution title="終点" shape=card
+@link problem -> cause label="ラベルA"
+@link cause -> solution label="ラベルB"
 @enddiagram`);
   try {
     assert.equal(root.querySelectorAll('.canvas-node').length, 3);
     assert.equal(root.querySelectorAll('.canvas-edge').length, 2);
     assert.match(root.querySelector('.canvas-edge')?.getAttribute('marker-end') || '', /^url\(#/);
-    assert.match(root.querySelector('.canvas-edge-label')?.textContent || '', /分析|選択/);
+    assert.match(root.querySelector('.canvas-edge-label')?.textContent || '', /ラベルA|ラベルB/);
   } finally {
     close();
   }
@@ -279,18 +279,18 @@ function parseLine(path: string) {
   return { x1: Number(match[1]), y1: Number(match[2]), x2: Number(match[3]), y2: Number(match[4]) };
 }
 
-const annotatedTriangle = `@item clear title="明確" badge=1 level=high
-具体的に話せる。相手が迷わず動けるところまで落としてから話す。
-@item concise title="簡潔" badge=2 level=high
-重要点を短く話せる。長い話を、判断に必要な芯だけにする。
-@item unique title="ユニーク" badge=3 level=high
-独自の洞察がある。他の人が置いていない切り口を一つ足す。`;
+const annotatedTriangle = `@item clear title="節点A" badge=1 level=high
+少し長い本文を外側に置く。
+@item concise title="節点B" badge=2 level=high
+少し長い本文を外側に置く。
+@item unique title="節点C" badge=3 level=high
+少し長い本文を外側に置く。`;
 
 test('ring note attributes default to inline and opt into outside notes', () => {
   const inline = parseDiagram(
-    `@item a title="品質"
-@item b title="速度"
-@item c title="コスト"`,
+    `@item a title="節点A"
+@item b title="節点B"
+@item c title="節点C"`,
     'layout=ring',
   );
   assert.equal(inline.options.geometry, 'regular');
@@ -309,7 +309,7 @@ test('ring note attributes default to inline and opt into outside notes', () => 
 });
 
 test('ring keeps a regular polygon for 3 to 6 vertices, even with long notes', () => {
-  const titles = ['品質', '速度', 'コスト', '安全性', '拡張性', '運用'];
+  const titles = ['節点A', '節点B', '節点C', '節点D', '節点E', '節点F'];
   for (const count of [3, 4, 5, 6]) {
     const source = titles
       .slice(0, count)
@@ -394,7 +394,7 @@ test('note-link switches between none, leader and arrow', () => {
 
 test('long Japanese notes wrap instead of staying on one line', () => {
   const size = estimateNoteSize(
-    '具体的に話せる。相手が迷わず動けるところまで落としてから話す。判断の根拠も短く添える。',
+    'これは折り返しを確認するための長い日本語の本文です。一行に収まらず高さが増えること。',
     220,
   );
   assert.ok(size.height > 40);
@@ -415,10 +415,10 @@ ${annotatedTriangle}
       /^url\(#/,
     );
     assert.equal(root.querySelector('.diagram-edge'), null);
-    assert.match(root.querySelector('[data-diagram-note="clear"]')?.textContent || '', /明確/);
+    assert.match(root.querySelector('[data-diagram-note="clear"]')?.textContent || '', /節点A/);
     assert.match(
       root.querySelector('[data-diagram-note="clear"]')?.textContent || '',
-      /具体的に話せる/,
+      /長い本文/,
     );
     assert.equal(
       root.querySelector('.diagram-note')?.className.includes('diagram-note-plain'),
@@ -449,7 +449,7 @@ test('diagram reports structural errors', () => {
 test('radial links follow center rays and meet rounded card outlines', async () => {
   const { rimPoint } = await import('../src/diagram/geometry.ts');
   const scene = parseDiagram(
-    '@item hub title="顧客の課題"\n@item a title="視座を変える"\n@item b title="本と事例を読む"\n@item c title="人と対話する"\n@link hub -- a\n@link hub -- b\n@link hub -- c',
+    '@item hub title="中心"\n@item a title="枝A"\n@item b title="枝B"\n@item c title="枝C"\n@link hub -- a\n@link hub -- b\n@link hub -- c',
     'layout=radial center=hub',
   );
   const layout = layoutDiagram(scene);

@@ -61,12 +61,7 @@ export function alignBranches(
   for (const edge of graph.edges) {
     const a = index.get(edge.from)!,
       b = index.get(edge.to)!;
-    if (
-      edge.feedback ||
-      ranked.rank[b] !== ranked.rank[a] + 1 ||
-      (edge.route && edge.route !== 'auto')
-    )
-      continue;
+    if (edge.feedback || (edge.route && edge.route !== 'auto')) continue;
     outgoing.set(a, [...new Set([...(outgoing.get(a) || []), b])]);
     incoming.set(b, [...new Set([...(incoming.get(b) || []), a])]);
   }

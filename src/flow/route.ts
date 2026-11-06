@@ -8,7 +8,14 @@ import {
   type FlowRoute,
 } from './types.ts';
 
-import { portPoint, inflate, graphBounds, type Point, type Side } from './geometry.ts';
+import {
+  portPoint,
+  inflate,
+  graphBounds,
+  polylineHits,
+  type Point,
+  type Side,
+} from './geometry.ts';
 import { polylinePath, pathOf, elbow, pickRoute } from './path.ts';
 
 export { routeFreeEdges } from './route-free.ts';
@@ -77,8 +84,10 @@ function collapsePoints(points: Point[]) {
 }
 
 function trunkOffset(span: number) {
-  if (span < FLOW.TRUNK_MIN + 8) return undefined;
-  return Math.min(FLOW.TRUNK_MAX, Math.max(FLOW.TRUNK_MIN, span * 0.38));
+  if (span < 8) return undefined;
+  const preferred = Math.min(FLOW.TRUNK_MAX, Math.max(FLOW.TRUNK_MIN, span * 0.38));
+  if (preferred + 4 <= span) return preferred;
+  return span / 2;
 }
 
 function usesAuto(edge: FlowEdge, graph: FlowGraph) {
@@ -90,50 +99,85 @@ function boundaryArrow(edge: FlowEdge, side: 'start' | 'end'): FlowArrows {
   return arrows === side || arrows === 'both' ? side : 'none';
 }
 
+function gapLabel(graph: FlowGraph, fromP: number, toP: number, cross: number) {
+  return pointAt((fromP + toP) / 2, cross - 14, graph);
+}
+
 function emitPath(
   paths: FlowEdgePath[],
   edge: FlowEdge,
   points: Point[],
   role: NonNullable<FlowEdgePath['role']>,
   arrows?: FlowArrows,
+  label?: Point,
 ) {
   const collapsed = collapsePoints(points);
   if (collapsed.length < 2) return;
+  const geometry = polylinePath(collapsed);
   paths.push({
     index: edge.index,
     from: edge.from,
     to: edge.to,
-    ...polylinePath(collapsed),
+    ...geometry,
+    label: label ?? geometry.label,
     arrows,
     role,
   });
+}
+
+function sameColumn(a: number, b: number) {
+  return Math.abs(a - b) < 1;
+}
+
+function nearestEnter(graph: FlowGraph, frames: Map<string, FlowFrame>, edges: FlowEdge[]) {
+  const sign = flowSign(graph);
+  const values = edges.map((edge) => enterPrimary(frames.get(edge.to)!, graph));
+  return sign > 0 ? Math.min(...values) : Math.max(...values);
+}
+
+function nearestExit(graph: FlowGraph, frames: Map<string, FlowFrame>, edges: FlowEdge[]) {
+  const sign = flowSign(graph);
+  const values = edges.map((edge) => exitPrimary(frames.get(edge.from)!, graph));
+  return sign > 0 ? Math.max(...values) : Math.min(...values);
+}
+
+function splitByColumn(edges: FlowEdge[], column: number, primaryOf: (edge: FlowEdge) => number) {
+  const local: FlowEdge[] = [];
+  const skip: FlowEdge[] = [];
+  for (const edge of edges) (sameColumn(primaryOf(edge), column) ? local : skip).push(edge);
+  return { local, skip };
 }
 
 function emitFanOut(
   graph: FlowGraph,
   frames: Map<string, FlowFrame>,
   edges: FlowEdge[],
+  skipBypass: Map<number, number>,
   paths: FlowEdgePath[],
 ) {
   const source = frames.get(edges[0].from);
   if (!source) return false;
-  const targets = edges.map((edge) => frames.get(edge.to)).filter(Boolean) as FlowFrame[];
-  if (targets.length < 2) return false;
+  const unique = new Set(edges.map((edge) => edge.to));
+  if (unique.size < 2) return false;
   const sign = flowSign(graph);
   const outP = exitPrimary(source, graph);
-  const inP =
-    sign > 0
-      ? Math.min(...targets.map((frame) => enterPrimary(frame, graph)))
-      : Math.max(...targets.map((frame) => enterPrimary(frame, graph)));
+  const inP = nearestEnter(graph, frames, edges);
   const offset = trunkOffset((inP - outP) * sign);
   if (offset === undefined) return false;
+  const { local, skip } = splitByColumn(edges, inP, (edge) =>
+    enterPrimary(frames.get(edge.to)!, graph),
+  );
   const trunk = outP + sign * offset;
   const sourceCross = crossOf(source, graph);
-  const crosses = targets.map((frame) => crossOf(frame, graph));
-  const busCrosses = [sourceCross, ...crosses];
+  const localCrosses = local.map((edge) => crossOf(frames.get(edge.to)!, graph));
+  const skipCrosses = skip
+    .map((edge) => skipBypass.get(edge.index))
+    .filter((value): value is number => value !== undefined);
+  const busCrosses = [sourceCross, ...localCrosses, ...skipCrosses];
+  const owner = local[0] || edges[0];
   emitPath(
     paths,
-    edges[0],
+    owner,
     [pointAt(outP, sourceCross, graph), pointAt(trunk, sourceCross, graph)],
     'stem',
     edges.some((edge) => boundaryArrow(edge, 'start') === 'start') ? 'start' : 'none',
@@ -141,7 +185,7 @@ function emitFanOut(
   if (Math.max(...busCrosses) - Math.min(...busCrosses) > 1) {
     emitPath(
       paths,
-      edges[0],
+      owner,
       [
         pointAt(trunk, Math.min(...busCrosses), graph),
         pointAt(trunk, Math.max(...busCrosses), graph),
@@ -150,24 +194,101 @@ function emitFanOut(
       'none',
     );
   }
-  edges.forEach((edge, i) => {
-    const target = targets[i];
-    const cross = crosses[i];
+  for (const edge of local) {
+    const target = frames.get(edge.to)!;
+    const cross = crossOf(target, graph);
     emitPath(
       paths,
       edge,
       [pointAt(trunk, cross, graph), pointAt(enterPrimary(target, graph), cross, graph)],
       'stub',
       boundaryArrow(edge, 'end'),
+      edge.label ? gapLabel(graph, outP, inP, cross) : undefined,
     );
-  });
+  }
   return true;
+}
+
+function crossSpan(frame: FlowFrame, graph: FlowGraph) {
+  if (alongFlow(graph)) return { min: frame.y, max: frame.y + frame.height };
+  return { min: frame.x, max: frame.x + frame.width };
+}
+
+function nearerIncoming(graph: FlowGraph, frames: Map<string, FlowFrame>, edges: FlowEdge[]) {
+  const sign = flowSign(graph);
+  return edges.reduce((best, edge) => {
+    const frame = frames.get(edge.from);
+    const other = frames.get(best.from);
+    if (!frame) return best;
+    if (!other) return edge;
+    const a = exitPrimary(frame, graph);
+    const b = exitPrimary(other, graph);
+    return sign > 0 === a > b ? edge : best;
+  });
+}
+
+function pickBypass(
+  graph: FlowGraph,
+  source: FlowFrame,
+  target: FlowFrame,
+  frames: Map<string, FlowFrame>,
+  fromP: number,
+  toP: number,
+) {
+  const natural = crossOf(source, graph);
+  const obstacles = [...frames.values()]
+    .filter((box) => box !== source && box !== target)
+    .map((box) => inflate(box, 8));
+  const tryLane = (cross: number) =>
+    !polylineHits(
+      [pointAt(fromP, natural, graph), pointAt(fromP, cross, graph), pointAt(toP, cross, graph)],
+      obstacles,
+    );
+  if (tryLane(natural)) return natural;
+  const pad = FLOW.MIN_GAP;
+  const hits = obstacles.filter((box) =>
+    polylineHits([pointAt(fromP, natural, graph), pointAt(toP, natural, graph)], [box]),
+  );
+  const candidates = [...hits, source].flatMap((box) => {
+    const span = crossSpan(box, graph);
+    return [span.max + pad, span.min - pad];
+  });
+  const lanes = [...new Set(candidates.map((value) => Math.round(value * 10) / 10))].sort(
+    (a, b) => {
+      const delta = Math.abs(a - natural) - Math.abs(b - natural);
+      return delta || b - a;
+    },
+  );
+  for (const bypass of lanes) if (tryLane(bypass)) return bypass;
+  return natural;
+}
+
+function stubToTrunk(
+  graph: FlowGraph,
+  source: FlowFrame,
+  target: FlowFrame,
+  frames: Map<string, FlowFrame>,
+  trunk: number,
+) {
+  const startP = exitPrimary(source, graph);
+  const bypass = pickBypass(graph, source, target, frames, startP, trunk);
+  const natural = crossOf(source, graph);
+  return {
+    points: [
+      pointAt(startP, natural, graph),
+      pointAt(startP, bypass, graph),
+      pointAt(trunk, bypass, graph),
+    ],
+    cross: bypass,
+  };
 }
 
 function emitFanIn(
   graph: FlowGraph,
   frames: Map<string, FlowFrame>,
   edges: FlowEdge[],
+  sourceTrunks: Map<string, number>,
+  skipBypass: Map<number, number>,
   paths: FlowEdgePath[],
 ) {
   const target = frames.get(edges[0].to);
@@ -175,32 +296,49 @@ function emitFanIn(
   const sources = edges.map((edge) => frames.get(edge.from)).filter(Boolean) as FlowFrame[];
   if (sources.length < 2) return false;
   const sign = flowSign(graph);
-  const outP =
-    sign > 0
-      ? Math.max(...sources.map((frame) => exitPrimary(frame, graph)))
-      : Math.min(...sources.map((frame) => exitPrimary(frame, graph)));
+  const outP = nearestExit(graph, frames, edges);
   const inP = enterPrimary(target, graph);
   const offset = trunkOffset((inP - outP) * sign);
   if (offset === undefined) return false;
   const trunk = inP - sign * offset;
   const targetCross = crossOf(target, graph);
-  const crosses = sources.map((frame) => crossOf(frame, graph));
-  const busCrosses = [targetCross, ...crosses];
-  edges.forEach((edge, i) => {
-    const source = sources[i];
-    const cross = crosses[i];
+  const { local, skip } = splitByColumn(edges, outP, (edge) =>
+    exitPrimary(frames.get(edge.from)!, graph),
+  );
+  const stubs = [
+    ...local.map((edge) => {
+      const source = frames.get(edge.from)!;
+      const routed = stubToTrunk(graph, source, target, frames, trunk);
+      return { edge, ...routed, startArrow: boundaryArrow(edge, 'start') };
+    }),
+    ...skip.map((edge) => {
+      const source = frames.get(edge.from)!;
+      const bypass = skipBypass.get(edge.index) ?? crossOf(source, graph);
+      const fromP = sourceTrunks.get(edge.from) ?? exitPrimary(source, graph);
+      return {
+        edge,
+        points: [pointAt(fromP, bypass, graph), pointAt(trunk, bypass, graph)],
+        cross: bypass,
+        startArrow: sourceTrunks.has(edge.from) ? ('none' as const) : boundaryArrow(edge, 'start'),
+      };
+    }),
+  ];
+  const busCrosses = [targetCross, ...stubs.map((stub) => stub.cross)];
+  const owner = nearerIncoming(graph, frames, local.length ? local : edges);
+  for (const stub of stubs) {
     emitPath(
       paths,
-      edge,
-      [pointAt(exitPrimary(source, graph), cross, graph), pointAt(trunk, cross, graph)],
+      stub.edge,
+      stub.points,
       'stub',
-      boundaryArrow(edge, 'start'),
+      stub.startArrow,
+      stub.edge.label ? gapLabel(graph, outP, inP, stub.cross) : undefined,
     );
-  });
+  }
   if (Math.max(...busCrosses) - Math.min(...busCrosses) > 1) {
     emitPath(
       paths,
-      edges[0],
+      owner,
       [
         pointAt(trunk, Math.min(...busCrosses), graph),
         pointAt(trunk, Math.max(...busCrosses), graph),
@@ -211,7 +349,7 @@ function emitFanIn(
   }
   emitPath(
     paths,
-    edges[0],
+    owner,
     [pointAt(trunk, targetCross, graph), pointAt(inP, targetCross, graph)],
     'stem',
     edges.some((edge) => boundaryArrow(edge, 'end') === 'end') ? 'end' : 'none',
@@ -299,26 +437,118 @@ function routeAuto(graph: FlowGraph, frames: Map<string, FlowFrame>): FlowEdgePa
   const paths: FlowEdgePath[] = [];
   const assigned = new Set<number>();
   const eligible = graph.edges.filter((edge) => usesAuto(edge, graph) && !edge.feedback);
+  const sign = flowSign(graph);
   const byFrom = new Map<string, FlowEdge[]>();
   for (const edge of eligible) {
     const group = byFrom.get(edge.from) || [];
     group.push(edge);
     byFrom.set(edge.from, group);
   }
-  for (const edges of byFrom.values()) {
-    if (new Set(edges.map((edge) => edge.to)).size < 2) continue;
-    if (emitFanOut(graph, frames, edges, paths)) edges.forEach((edge) => assigned.add(edge.index));
+  const sourceTrunks = new Map<string, number>();
+  const fanOuts: FlowEdge[][] = [];
+  const fanOutLocal = new Set<number>();
+  for (const outgoing of byFrom.values()) {
+    if (new Set(outgoing.map((edge) => edge.to)).size < 2) continue;
+    const source = frames.get(outgoing[0].from);
+    if (!source) continue;
+    const inP = nearestEnter(graph, frames, outgoing);
+    const outP = exitPrimary(source, graph);
+    const offset = trunkOffset((inP - outP) * sign);
+    if (offset === undefined) continue;
+    sourceTrunks.set(outgoing[0].from, outP + sign * offset);
+    fanOuts.push(outgoing);
+    for (const edge of splitByColumn(outgoing, inP, (item) =>
+      enterPrimary(frames.get(item.to)!, graph),
+    ).local)
+      fanOutLocal.add(edge.index);
   }
   const byTo = new Map<string, FlowEdge[]>();
   for (const edge of eligible) {
-    if (assigned.has(edge.index)) continue;
+    if (fanOutLocal.has(edge.index)) continue;
     const group = byTo.get(edge.to) || [];
     group.push(edge);
     byTo.set(edge.to, group);
   }
-  for (const edges of byTo.values()) {
-    if (new Set(edges.map((edge) => edge.from)).size < 2) continue;
-    if (emitFanIn(graph, frames, edges, paths)) edges.forEach((edge) => assigned.add(edge.index));
+  const destTrunks = new Map<string, number>();
+  const fanIns: FlowEdge[][] = [];
+  for (const incoming of byTo.values()) {
+    if (new Set(incoming.map((edge) => edge.from)).size < 2) continue;
+    const target = frames.get(incoming[0].to);
+    if (!target) continue;
+    const outP = nearestExit(graph, frames, incoming);
+    const inP = enterPrimary(target, graph);
+    const offset = trunkOffset((inP - outP) * sign);
+    if (offset === undefined) continue;
+    destTrunks.set(incoming[0].to, inP - sign * offset);
+    fanIns.push(incoming);
+  }
+  const skipBypass = new Map<number, number>();
+  for (const outgoing of fanOuts) {
+    const source = frames.get(outgoing[0].from)!;
+    const fromP = sourceTrunks.get(outgoing[0].from)!;
+    const inP = nearestEnter(graph, frames, outgoing);
+    const { skip } = splitByColumn(outgoing, inP, (edge) =>
+      enterPrimary(frames.get(edge.to)!, graph),
+    );
+    for (const edge of skip) {
+      const target = frames.get(edge.to)!;
+      const toP = destTrunks.get(edge.to) ?? enterPrimary(target, graph);
+      skipBypass.set(edge.index, pickBypass(graph, source, target, frames, fromP, toP));
+    }
+  }
+  for (const incoming of fanIns) {
+    const outP = nearestExit(graph, frames, incoming);
+    const { skip } = splitByColumn(incoming, outP, (edge) =>
+      exitPrimary(frames.get(edge.from)!, graph),
+    );
+    for (const edge of skip) {
+      if (skipBypass.has(edge.index)) continue;
+      const source = frames.get(edge.from)!;
+      const target = frames.get(edge.to)!;
+      const fromP = sourceTrunks.get(edge.from) ?? exitPrimary(source, graph);
+      const toP = destTrunks.get(edge.to)!;
+      skipBypass.set(edge.index, pickBypass(graph, source, target, frames, fromP, toP));
+    }
+  }
+  for (const outgoing of fanOuts) {
+    const inP = nearestEnter(graph, frames, outgoing);
+    const { local } = splitByColumn(outgoing, inP, (edge) =>
+      enterPrimary(frames.get(edge.to)!, graph),
+    );
+    if (emitFanOut(graph, frames, outgoing, skipBypass, paths))
+      local.forEach((edge) => assigned.add(edge.index));
+  }
+  for (const incoming of fanIns) {
+    if (emitFanIn(graph, frames, incoming, sourceTrunks, skipBypass, paths))
+      incoming.forEach((edge) => assigned.add(edge.index));
+  }
+  for (const outgoing of fanOuts) {
+    const source = frames.get(outgoing[0].from)!;
+    const fromP = sourceTrunks.get(outgoing[0].from)!;
+    const inP = nearestEnter(graph, frames, outgoing);
+    const { skip } = splitByColumn(outgoing, inP, (edge) =>
+      enterPrimary(frames.get(edge.to)!, graph),
+    );
+    for (const edge of skip) {
+      if (assigned.has(edge.index)) continue;
+      const target = frames.get(edge.to)!;
+      const bypass = skipBypass.get(edge.index) ?? crossOf(source, graph);
+      const destP = destTrunks.get(edge.to) ?? enterPrimary(target, graph);
+      emitPath(
+        paths,
+        edge,
+        [
+          pointAt(fromP, bypass, graph),
+          pointAt(destP, bypass, graph),
+          pointAt(destP, crossOf(target, graph), graph),
+          pointAt(enterPrimary(target, graph), crossOf(target, graph), graph),
+        ],
+        'stub',
+        boundaryArrow(edge, 'end'),
+        edge.label ? gapLabel(graph, fromP, enterPrimary(target, graph), bypass) : undefined,
+      );
+      assigned.add(edge.index);
+    }
   }
   return [...paths, ...routeLegacy(graph, frames, assigned)];
 }

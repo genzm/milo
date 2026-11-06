@@ -7,10 +7,10 @@ title: Flow v2
 # 直列フロー
 
 @diagram layout=flow direction=right
-@item in title="入力"
-@item analyze title="分析"
-@item judge title="判断"
-@item run title="実行"
+@item in title="始点"
+@item analyze title="節点A"
+@item judge title="節点B"
+@item run title="終点"
 @link in -> analyze
 @link analyze -> judge
 @link judge -> run
@@ -23,10 +23,10 @@ title: Flow v2
 # 分岐合流
 
 @diagram layout=flow direction=right
-@item start title="入力"
+@item start title="始点"
 @item a title="経路A"
 @item b title="経路B"
-@item join title="統合"
+@item join title="合流"
 @link start -> a
 @link start -> b
 @link a -> join
@@ -40,13 +40,13 @@ title: Flow v2
 # 多段の分岐合流
 
 @diagram layout=flow direction=right route=curve
-@item in title="入力"
+@item in title="始点"
 @item a1 title="経路A"
 @item a2 title="経路B"
-@item mid title="一次統合"
-@item b1 title="詳細A"
-@item b2 title="詳細B"
-@item out title="最終統合"
+@item mid title="合流1"
+@item b1 title="経路C"
+@item b2 title="経路D"
+@item out title="合流2"
 @link in -> a1
 @link in -> a2
 @link a1 -> mid
@@ -55,7 +55,7 @@ title: Flow v2
 @link mid -> b2
 @link b1 -> out
 @link b2 -> out
-@link out -> in label="計画を見直して入力条件を更新する"
+@link out -> in label="戻り"
 @enddiagram
 
 ---
@@ -66,10 +66,10 @@ title: Flow v2
 
 @canvas layout=flow direction=right height=80
 @node a
-### 入力
+### 始点
 長い本文が領域に収まらない。
 -->
 @node b
-### 実行
+### 終点
 こちらも長い。
 @endcanvas

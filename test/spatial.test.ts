@@ -41,9 +41,9 @@ function centerOf(box: { x: number; y: number; width: number; height: number }) 
 
 test('classic radial stays on the default path when side and distance are omitted', () => {
   const scene = parseDiagram(
-    `@item problem title="顧客の課題"
-@item cost title="コスト"
-@item time title="時間"`,
+    `@item problem title="中心"
+@item cost title="点A"
+@item time title="点B"`,
     'layout=radial center=problem',
   );
   assert.equal(usesSpatialRadial(scene), false);
@@ -53,7 +53,7 @@ test('classic radial stays on the default path when side and distance are omitte
 test('radial side and distance keep direction and near < mid < far', () => {
   const layout = layoutDiagram(
     parseDiagram(
-      `@item problem title="顧客の課題"
+      `@item problem title="中心"
 @item nearL title="近い" side=left distance=near
 @item midR title="中くらい" side=right distance=mid
 @item farT title="遠い" side=top distance=far
@@ -83,10 +83,10 @@ test('radial side and distance keep direction and near < mid < far', () => {
 test('slide 14 keeps a shared near < mid < far scale across axes', () => {
   const layout = layoutDiagram(
     parseDiagram(
-      `@item problem title="顧客の課題" level=high
-@item cost title="コスト" side=top distance=far
-@item time title="時間" side=left distance=near
-@item quality title="品質" side=bottom distance=far
+      `@item problem title="中心" level=high
+@item cost title="点A" side=top distance=far
+@item time title="点B" side=left distance=near
+@item quality title="点C" side=bottom distance=far
 @item support title="サポート" side=right distance=mid
 @link problem -- cost
 @link problem -- time
@@ -114,10 +114,10 @@ test('same-side radial uses card size and warns when cards cannot fan out', () =
   const layout = layoutDiagram(
     parseDiagram(
       `@item problem title="中心"
-@item a title="非常に長い原因カードA" side=top distance=near
-@item b title="非常に長い原因カードB" side=top distance=near
-@item c title="非常に長い原因カードC" side=top distance=near
-@item d title="非常に長い原因カードD" side=top distance=near`,
+@item a title="非常に長いカードA" side=top distance=near
+@item b title="非常に長いカードB" side=top distance=near
+@item c title="非常に長いカードC" side=top distance=near
+@item d title="非常に長いカードD" side=top distance=near`,
       'layout=radial center=problem',
     ),
   );
@@ -132,10 +132,10 @@ test('same-side radial uses card size and warns when cards cannot fan out', () =
   assert.equal(layout.overflowReason, 'overlap');
   const { root, close } = render(`@diagram layout=radial center=problem
 @item problem title="中心"
-@item a title="非常に長い原因カードA" side=top distance=near
-@item b title="非常に長い原因カードB" side=top distance=near
-@item c title="非常に長い原因カードC" side=top distance=near
-@item d title="非常に長い原因カードD" side=top distance=near
+@item a title="非常に長いカードA" side=top distance=near
+@item b title="非常に長いカードB" side=top distance=near
+@item c title="非常に長いカードC" side=top distance=near
+@item d title="非常に長いカードD" side=top distance=near
 @enddiagram`);
   try {
     assert.equal(
@@ -169,10 +169,10 @@ test('same-side radial items stay on that side and spread apart', () => {
 test('field places items by semantic XY and discrete aliases', () => {
   const layout = layoutDiagram(
     parseDiagram(
-      `@item a title="施策A" x=-0.7 y=0.6
-@item b title="施策B" x=right y=bottom
+      `@item a title="点A" x=-0.7 y=0.6
+@item b title="点B" x=right y=bottom
 @item c title="原点" x=0 y=0`,
-      'layout=field guide=axes x-low="内部" x-high="外部" y-low="短期" y-high="長期"',
+      'layout=field guide=axes x-low="左" x-high="右" y-low="下" y-high="上"',
     ),
   );
   const a = centerOf(layout.items.find((item) => item.id === 'a')!);
@@ -181,7 +181,7 @@ test('field places items by semantic XY and discrete aliases', () => {
   assert.ok(a.x < c.x && a.y < c.y);
   assert.ok(b.x > c.x && b.y > c.y);
   assert.ok(layout.guides.some((guide) => guide.kind === 'axis'));
-  assert.match(layout.guides.map((guide) => guide.text).join(' '), /内部/);
+  assert.match(layout.guides.map((guide) => guide.text).join(' '), /左/);
   const expected = semanticToDisplay(
     { x: -0.7, y: 0.6 },
     spatialFrame(layout.width, layout.height),
@@ -210,7 +210,7 @@ test('field keeps data points fixed while labels can move', () => {
 });
 
 test('field omits nearby leaders and keeps the marker size', () => {
-  const lonely = layoutDiagram(parseDiagram(`@item a title="施策A" x=-0.7 y=0.6`, 'layout=field'));
+  const lonely = layoutDiagram(parseDiagram(`@item a title="点A" x=-0.7 y=0.6`, 'layout=field'));
   assert.equal(lonely.noteLinks.length, 0);
   assert.equal(
     leaderPath({ x: 100, y: 100, width: 12, height: 12 }, { x: 118, y: 92, width: 40, height: 20 }),
@@ -220,7 +220,7 @@ test('field omits nearby leaders and keeps the marker size', () => {
     leaderPath({ x: 100, y: 100, width: 12, height: 12 }, { x: 160, y: 70, width: 40, height: 20 }),
   );
   const { root, close } = render(`@diagram layout=field
-@item a title="施策A" x=-0.7 y=0.6
+@item a title="点A" x=-0.7 y=0.6
 @enddiagram`);
   try {
     const dot = root.querySelector('.diagram-dot');
@@ -232,11 +232,11 @@ test('field omits nearby leaders and keeps the marker size', () => {
 });
 
 test('zones and clusters decorate field space without moving items', () => {
-  const source = `@zone internal label="内部・長期" x="-1:0" y="0:1"
-@cluster business title="事業" tone=accent
-@item a title="コスト" x=-0.5 y=0.6 cluster=business
-@item c title="時間" x=-0.4 y=-0.3 cluster=business
-@item b title="品質" x=0.6 y=0.5 cluster=product`;
+  const source = `@zone internal label="区画A" x="-1:0" y="0:1"
+@cluster business title="群A" tone=accent
+@item a title="点A" x=-0.5 y=0.6 cluster=business
+@item c title="点B" x=-0.4 y=-0.3 cluster=business
+@item b title="点C" x=0.6 y=0.5 cluster=product`;
   const plain = layoutDiagram(parseDiagram(source, 'layout=field guide=axes'));
   const halo = layoutDiagram(parseDiagram(source, 'layout=field guide=axes cluster-region=halo'));
   const a = centerOf(plain.items.find((item) => item.id === 'a')!);
@@ -266,11 +266,11 @@ test('zones and clusters decorate field space without moving items', () => {
 test('field zone and axis labels stay clear of each other', () => {
   const layout = layoutDiagram(
     parseDiagram(
-      `@zone internal label="内部・長期" x="-1:0" y="0:1"
-@zone external label="外部・長期" x="0:1" y="0:1"
-@item a title="コスト" x=-0.6 y=0.55 cluster=business
-@item c title="品質" x=0.55 y=0.65 cluster=product`,
-      'layout=field guide=axes x-low="内部" x-high="外部" y-low="短期" y-high="長期"',
+      `@zone internal label="区画A" x="-1:0" y="0:1"
+@zone external label="区画B" x="0:1" y="0:1"
+@item a title="点A" x=-0.6 y=0.55 cluster=business
+@item c title="点C" x=0.55 y=0.65 cluster=product`,
+      'layout=field guide=axes x-low="左" x-high="右" y-low="下" y-high="上"',
     ),
   );
   const boxes = [
@@ -293,10 +293,10 @@ test('field zone and axis labels stay clear of each other', () => {
 
 test('field renderer mounts dots, axes, zones and a cluster legend', () => {
   const { root, close } =
-    render(`@diagram layout=field guide=axes x-low="内部" x-high="外部" y-low="短期" y-high="長期" cluster-region=halo
-@zone internal label="内部・長期" x="-1:0" y="0:1"
-@item a title="コスト" x=-0.5 y=0.6 cluster=business
-@item b title="品質" x=0.6 y=-0.4 cluster=product
+    render(`@diagram layout=field guide=axes x-low="左" x-high="右" y-low="下" y-high="上" cluster-region=halo
+@zone internal label="区画A" x="-1:0" y="0:1"
+@item a title="点A" x=-0.5 y=0.6 cluster=business
+@item b title="点C" x=0.6 y=-0.4 cluster=product
 @enddiagram`);
   try {
     assert.equal(root.querySelectorAll('.diagram-dot').length, 2);
@@ -310,7 +310,7 @@ test('field renderer mounts dots, axes, zones and a cluster legend', () => {
     assert.ok(root.querySelector('path.diagram-region.is-cluster'));
     assert.match(
       root.querySelector('.diagram-legend')?.textContent || '',
-      /business|プロダクト|product/,
+      /business|product|群B/,
     );
     assert.equal(root.querySelector('.diagram-edge'), null);
   } finally {
@@ -321,7 +321,7 @@ test('field renderer mounts dots, axes, zones and a cluster legend', () => {
 test('field cards keep the title on the card and skip the floating label', () => {
   const layout = layoutDiagram(
     parseDiagram(
-      `@item a title="酸化防止" x=0.65 y=0.70 shape=card cluster=focus
+      `@item a title="カードA" x=0.65 y=0.70 shape=card cluster=focus
 @item b title="ラベル変更" x=0.40 y=-0.65 shape=card
 @item c title="点" x=-0.5 y=0.4`,
       'layout=field',
@@ -336,8 +336,8 @@ test('field cards keep the title on the card and skip the floating label', () =>
   assert.equal(mixed.kind, 'dot');
   assert.ok(mixed.label);
   const { root, close } = render(`@diagram layout=field
-@cluster focus title="施策候補" tone=accent
-@item a title="酸化防止" x=0.65 y=0.70 shape=card cluster=focus
+@cluster focus title="群A" tone=accent
+@item a title="カードA" x=0.65 y=0.70 shape=card cluster=focus
 @item b title="ラベル変更" x=0.40 y=-0.65 shape=card
 @item c title="点" x=-0.5 y=0.4
 @enddiagram`);
@@ -346,7 +346,7 @@ test('field cards keep the title on the card and skip the floating label', () =>
     assert.equal(root.querySelectorAll('.diagram-field-label').length, 1);
     assert.equal(
       root.querySelector('[data-diagram-item="a"] .diagram-card-title')?.textContent,
-      '酸化防止',
+      'カードA',
     );
     assert.equal(root.querySelectorAll('[data-diagram-label="a"]').length, 0);
     assert.ok(
@@ -371,7 +371,7 @@ test('each diagram layout can set its own display frame', () => {
   assert.equal(DIAGRAM_FRAME.flow.width, 1280);
   assert.equal(wide.options.width, 1400);
   const { root, close } = render(`@diagram layout=field width=1400 height=700
-@item a title="施策A" x=-0.7 y=0.6
+@item a title="点A" x=-0.7 y=0.6
 @enddiagram`);
   try {
     const diagram = root.querySelector('.milo-diagram') as unknown as HTMLElement;
@@ -399,11 +399,11 @@ test('cluster halo drops a hull that swallows another group point', () => {
   );
   const layout = layoutDiagram(
     parseDiagram(
-      `@cluster business title="事業"
-@cluster product title="プロダクト"
-@item a title="コスト" x=-0.8 y=0.7 cluster=business
-@item b title="時間" x=0.8 y=0.7 cluster=business
-@item c title="品質" x=0 y=0.7 cluster=product`,
+      `@cluster business title="群A"
+@cluster product title="群B"
+@item a title="点A" x=-0.8 y=0.7 cluster=business
+@item b title="点B" x=0.8 y=0.7 cluster=business
+@item c title="点C" x=0 y=0.7 cluster=product`,
       'layout=field cluster-region=halo',
     ),
   );
@@ -424,7 +424,7 @@ test('shrunk radial warns when titles become unreadable', () => {
   assert.equal(unreadablySmall(0.7), false);
   const layout = layoutDiagram(
     parseDiagram(
-      `@item problem title="顧客の課題"
+      `@item problem title="中心"
 @item a title="とても長いカードのタイトルです" side=top distance=far
 @item b title="とても長いカードのタイトルです" side=right distance=far
 @item c title="とても長いカードのタイトルです" side=bottom distance=far
@@ -436,7 +436,7 @@ test('shrunk radial warns when titles become unreadable', () => {
   assert.equal(layout.overflow, true);
   assert.equal(layout.overflowReason, 'read');
   const { root, close } = render(`@diagram layout=radial center=problem width=360 height=200
-@item problem title="顧客の課題"
+@item problem title="中心"
 @item a title="とても長いカードのタイトルです" side=top distance=far
 @item b title="とても長いカードのタイトルです" side=right distance=far
 @item c title="とても長いカードのタイトルです" side=bottom distance=far

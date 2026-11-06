@@ -173,10 +173,14 @@ export function pickRoute(
       route === 'curve' ? 'curve' : 'elbow',
       obstacles,
     );
+  const detour: Side[] =
+    Math.abs(end.x - start.x) >= Math.abs(end.y - start.y)
+      ? ['bottom', 'top', 'right', 'left']
+      : ['right', 'left', 'bottom', 'top'];
   const candidates = [
     elbow(start, end, true),
     elbow(start, end, false),
-    around(start, end, bounds, side),
+    ...detour.map((detourSide) => around(start, end, bounds, detourSide)),
   ];
   const clear = candidates.find((points) => !polylineHits(points, obstacles));
   return pathOf(clear || candidates[0], route === 'curve' ? 'curve' : 'elbow', obstacles);
