@@ -158,7 +158,7 @@ $$
 ```css
 --slide-text-body: 27px;
 --slide-leading-body: 1.75;
---slide-radius: 24px;
+--slide-radius-ratio: 12%;
 ```
 
 `npm run build` で単一 HTML と Marp テーマを再生成します。`marp/milo.css` は生成物なので、直接編集しません。

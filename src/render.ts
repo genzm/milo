@@ -1,6 +1,7 @@
 import { prepareSlide } from './markdown/slide';
 import { mountBlocks } from './render/blocks';
 import { RenderScope, type Rendered } from './render/lifecycle';
+import { watchSlideCorners } from './slide-radius';
 import type { RenderContext } from './directives';
 
 export { assetURL, esc, type RenderContext } from './directives';
@@ -32,6 +33,7 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
     };
     root.addEventListener('click', toggleTask);
     scope.onDispose(() => root.removeEventListener('click', toggleTask));
+    scope.add(watchSlideCorners(root));
     scope.update();
     return scope;
   } catch (error) {

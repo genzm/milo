@@ -84,7 +84,9 @@
   --slide-space-footer: 4.4cqw;
   --slide-space-grid: 18px;
   --slide-space-stack: 12px;
-  --slide-radius: 24px;
+  /* Circular corner: this share of the shorter side, so the shape stays the same at any size. */
+  --slide-radius-ratio: 12%;
+  --slide-radius: 16px;
   --slide-ink: #000;
   --slide-muted: #8b747a;
   --slide-card: #f3f3f3;
