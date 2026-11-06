@@ -36,6 +36,7 @@ test('large connecting arrows share an axis when box projections overlap', () =>
   const b = { x: 350, y: 50, width: 180, height: 180 };
   const [from, to] = betweenBoxes(a, b);
   assert.equal(from.y, to.y);
+  assert.equal(from.y, 70);
   assert.equal(from.x, 222);
   assert.equal(to.x, 338);
   const reverse = betweenBoxes(b, a);
@@ -45,6 +46,22 @@ test('large connecting arrows share an axis when box projections overlap', () =>
   assert.equal(arrow.box.x, from.x);
   assert.equal(arrow.box.width, to.x - from.x);
   assert.throws(() => arrowGeometry(from, from, 64), /余白/);
+});
+
+test('a pointed arrow stays on the source center when that center still fits', () => {
+  const node = { x: 0, y: 80, width: 100, height: 40 };
+  const box = { x: 200, y: 0, width: 100, height: 110 };
+  const [from, to] = betweenBoxes(node, box);
+  assert.equal(from.y, 100);
+  assert.equal(to.y, 100);
+});
+
+test('aligned figures of different heights keep the source center', () => {
+  const a = { x: 0, y: 0, width: 100, height: 100 };
+  const b = { x: 200, y: 0, width: 100, height: 140 };
+  const [from, to] = betweenBoxes(a, b);
+  assert.equal(from.y, 50);
+  assert.equal(to.y, 50);
 });
 
 test('axis arrows and crosses follow target geometry in every direction', () => {

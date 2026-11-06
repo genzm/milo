@@ -118,8 +118,47 @@ function mountAnnotations(
           height: (rect.height * height) / outer.height,
         };
       };
-      const bounds = (ref: string) =>
-        ref === 'all' ? union([...parts.values()].map(measure)) : measure(resolveElement(ref));
+      const bounds = (ref: string) => {
+        if (ref === 'all') return union([...parts.values()].map(measure));
+        const element = resolveElement(ref);
+        if (!ref.includes('.')) {
+          const visuals = [...element.children].filter((child) =>
+            child.matches('.milo-diagram, .milo-canvas, .box-block'),
+          );
+          if (visuals.length) return union(visuals.map(measure));
+        }
+        return measure(element);
+      };
+      // Pointing a node at a sibling part should move that part onto the node,
+      // otherwise the arrow hits the box off-center.
+      const column = scene.layout === 'column';
+      for (const part of parts.values()) part.style.transform = '';
+      for (const mark of scene.annotations) {
+        if (mark.kind !== 'arrow' || mark.target) continue;
+        const fromNode = mark.from.includes('.');
+        const toNode = mark.to.includes('.');
+        if (fromNode === toNode) continue;
+        const nodeRef = fromNode ? mark.from : mark.to;
+        const partRef = fromNode ? mark.to : mark.from;
+        if (partRef.includes('.') || partRef === 'all') continue;
+        const partEl = parts.get(partRef);
+        const nodeEl = resolveElement(nodeRef);
+        if (!partEl || partEl.contains(nodeEl) || partEl.style.transform) continue;
+        const nodeBox = bounds(nodeRef),
+          partBox = bounds(partRef);
+        const axis = column ? 'x' : 'y',
+          span = column ? 'width' : 'height',
+          limit = column ? width : height;
+        const nodeMid = nodeBox[axis] + nodeBox[span] / 2;
+        const partMid = partBox[axis] + partBox[span] / 2;
+        let delta = nodeMid - partMid;
+        const start = partBox[axis] + delta,
+          end = start + partBox[span];
+        if (start < 0) delta -= start;
+        if (end > limit) delta -= end - limit;
+        if (Math.abs(delta) >= 0.5)
+          partEl.style.transform = column ? `translateX(${delta}px)` : `translateY(${delta}px)`;
+      }
       const arrows = new Map<string, Box>();
       const fragment = document.createDocumentFragment();
       for (const mark of scene.annotations) {
@@ -218,7 +257,13 @@ function arrowLabel(mark: ArrowAnnotation, geometry: ReturnType<typeof arrowGeom
   } else {
     text.setAttribute(
       'x',
-      String(geometry.vertical ? geometry.box.x + geometry.box.width + 28 : geometry.label.x),
+      String(
+        geometry.vertical
+          ? geometry.box.x + geometry.box.width + 28
+          : inside
+            ? geometry.label.x
+            : geometry.box.x + geometry.box.width / 2,
+      ),
     );
     text.setAttribute('y', String(inside ? geometry.label.y : geometry.box.y - 18));
     text.textContent = mark.label;

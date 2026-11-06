@@ -15,10 +15,23 @@ export interface Point {
   y: number;
 }
 const center = (box: Box) => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
-function commonAxis(a: number, lengthA: number, b: number, lengthB: number) {
-  const low = Math.max(a, b),
-    high = Math.min(a + lengthA, b + lengthB);
-  return high >= low ? (low + high) / 2 : undefined;
+
+// Keep a straight corridor, but prefer a box center that still sits in the
+// overlap so a pointed arrow does not sit on a leftover sliver.
+function sharedAxis(from: Box, to: Box, start: 'x' | 'y', size: 'width' | 'height') {
+  const a0 = from[start],
+    a1 = a0 + from[size],
+    b0 = to[start],
+    b1 = b0 + to[size];
+  const low = Math.max(a0, b0),
+    high = Math.min(a1, b1);
+  if (high < low) return undefined;
+  const aMid = a0 + from[size] / 2,
+    bMid = b0 + to[size] / 2;
+  const fits = (mid: number) => mid >= low - 1e-6 && mid <= high + 1e-6;
+  if (fits(aMid)) return aMid;
+  if (fits(bMid)) return bMid;
+  return (low + high) / 2;
 }
 
 // Overlapping projections share a straight axis, even when centers differ.
@@ -33,7 +46,7 @@ export function betweenBoxes(from: Box, to: Box, padding = 12): [Point, Point] {
     const sign = b.x >= a.x ? 1 : -1;
     if (Math.abs(b.x - a.x) - (from.width + to.width) / 2 - padding * 2 < 8)
       throw new Error('解説矢印の余白が足りません。compose の gap を広げてください。');
-    const y = commonAxis(from.y, from.height, to.y, to.height);
+    const y = sharedAxis(from, to, 'y', 'height');
     return [
       { x: a.x + sign * (from.width / 2 + padding), y: y ?? a.y },
       { x: b.x - sign * (to.width / 2 + padding), y: y ?? b.y },
@@ -42,7 +55,7 @@ export function betweenBoxes(from: Box, to: Box, padding = 12): [Point, Point] {
   const sign = b.y >= a.y ? 1 : -1;
   if (Math.abs(b.y - a.y) - (from.height + to.height) / 2 - padding * 2 < 8)
     throw new Error('解説矢印の余白が足りません。compose の gap を広げてください。');
-  const x = commonAxis(from.x, from.width, to.x, to.width);
+  const x = sharedAxis(from, to, 'x', 'width');
   return [
     { x: x ?? a.x, y: a.y + sign * (from.height / 2 + padding) },
     { x: x ?? b.x, y: b.y - sign * (to.height / 2 + padding) },
