@@ -59,7 +59,7 @@ node cli/milo.mjs examples/annotations.md -o dist/annotations.html
 @arrow id=trade from=exploit to=explore size=72 label="トレードオフ" arrows=both
 ```
 
-ラベルは両端の矢じりを除いた中央に配置し、入りきらない場合は矢印の外側に表示します。[活用と探索の例](../examples/tradeoff.md) も参照してください。
+ラベルは矢印の外側に出します。横向きは矢印の上、縦向きは右側です。[活用と探索の例](../examples/tradeoff.md) も参照してください。
 
 ## 2つのflowをつなぐ
 

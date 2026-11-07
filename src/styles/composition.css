@@ -66,11 +66,6 @@
     stroke: var(--white);
     stroke-width: 5px;
     stroke-linejoin: round;
-
-    &.is-inside {
-      fill: var(--white);
-      stroke: none;
-    }
   }
   .composition-cross {
     fill: none;

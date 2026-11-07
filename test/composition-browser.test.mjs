@@ -18,7 +18,7 @@ async function inspect(page) {
       for (const error of slide.querySelectorAll('.block-error,.inline-error'))
         errors.push(error.textContent);
       for (const element of slide.querySelectorAll(
-        '.canvas-node,.slide-card,.composition-arrow > path,.composition-cross',
+        '.canvas-node,.slide-card,.composition-arrow > path,.composition-cross,.composition-arrow-label',
       )) {
         const r = element.getBoundingClientRect();
         if (
@@ -29,16 +29,11 @@ async function inspect(page) {
         )
           errors.push(`clipped ${element.className.baseVal || element.className}`);
       }
-      for (const label of slide.querySelectorAll('.composition-arrow-label.is-inside')) {
+      for (const label of slide.querySelectorAll('.composition-arrow-label')) {
         const r = label.getBoundingClientRect(),
           arrow = label.parentElement.querySelector('path').getBoundingClientRect();
-        if (
-          r.left < arrow.left - 1 ||
-          r.right > arrow.right + 1 ||
-          r.top < arrow.top - 1 ||
-          r.bottom > arrow.bottom + 1
-        )
-          errors.push('label escaped arrow');
+        if (label.classList.contains('is-inside')) errors.push('label inside arrow');
+        if (r.bottom > arrow.top + 1) errors.push('label not above arrow');
       }
       const composition = slide.querySelector('.milo-composition');
       if (!composition) continue;
@@ -78,7 +73,9 @@ async function inspect(page) {
           errors.push('time arrow not on diagrams');
       }
       if (composition.querySelector('[data-annotation="solve"]')) {
-        const node = composition.querySelector('[data-canvas-node="store"]').getBoundingClientRect();
+        const node = composition
+          .querySelector('[data-canvas-node="store"]')
+          .getBoundingClientRect();
         const line = arrow('solve'),
           box = part('solution');
         if (

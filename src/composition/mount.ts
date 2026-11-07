@@ -269,37 +269,20 @@ function mountAnnotations(
 }
 
 function arrowLabel(mark: ArrowAnnotation, geometry: ReturnType<typeof arrowGeometry>) {
-  const units = [...mark.label].reduce(
-    (sum, ch) => sum + (/[\u3000-\u9fff]/.test(ch) ? 1 : 0.55),
-    0,
-  );
-  const inside = units * 27 + 24 <= geometry.length && mark.size >= 56;
   const text = svgElement('text', {
-    class: `composition-arrow-label${inside ? ' is-inside' : ''}`,
+    class: 'composition-arrow-label',
     'text-anchor': 'middle',
     'dominant-baseline': 'central',
   });
-  if (geometry.vertical && inside) {
-    text.setAttribute('x', String(geometry.label.x));
-    text.setAttribute('y', String(geometry.label.y - (mark.label.length - 1) * 14));
-    [...mark.label].forEach((letter, index) => {
-      const span = svgElement('tspan', { x: geometry.label.x, dy: index ? 28 : 0 });
-      span.textContent = letter;
-      text.append(span);
-    });
-  } else {
-    text.setAttribute(
-      'x',
-      String(
-        geometry.vertical
-          ? geometry.box.x + geometry.box.width + 28
-          : inside
-            ? geometry.label.x
-            : geometry.box.x + geometry.box.width / 2,
-      ),
-    );
-    text.setAttribute('y', String(inside ? geometry.label.y : geometry.box.y - 18));
-    text.textContent = mark.label;
-  }
+  text.setAttribute(
+    'x',
+    String(
+      geometry.vertical
+        ? geometry.box.x + geometry.box.width + 28
+        : geometry.box.x + geometry.box.width / 2,
+    ),
+  );
+  text.setAttribute('y', String(geometry.box.y - 18));
+  text.textContent = mark.label;
   return text;
 }
