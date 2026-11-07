@@ -728,20 +728,17 @@ pattern: free-column｜縦一列
 
 # 形を変える
 
-カード・丸・菱形・素の箱。
+カード・楕円・菱形。
 
 @canvas layout=free route=straight width=1260 height=420
-@node a frame=40,140,200,100 shape=card
+@node a frame=40,140,220,100 shape=card
 節点A
-@node b frame=360,140,200,100 shape=round
+@node b frame=420,140,220,100 shape=ellipse
 節点B
-@node c frame=680,140,200,100 shape=ellipse
+@node c frame=800,140,220,100 shape=diamond
 節点C
-@node d frame=1000,140,200,100 shape=diamond
-節点D
 @edge a --> b
 @edge b --> c
-@edge c --> d
 @endcanvas
 
 @footer

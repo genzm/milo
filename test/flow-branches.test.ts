@@ -90,7 +90,7 @@ function diagramScene(body: string, options: string): FlowSceneInput {
     nodes: scene.items.map((item) => ({
       id: item.id,
       markdown: item.markdown ? `### ${item.title}\n\n${item.markdown}` : `### ${item.title}`,
-      shape: item.shape === 'vertex' ? 'ellipse' : 'round',
+      shape: item.shape === 'vertex' ? 'ellipse' : 'card',
       width: scene.options.nodeWidth,
       dx: 0,
       dy: 0,

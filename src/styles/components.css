@@ -193,10 +193,11 @@
   }
   .canvas-node {
     --canvas-node-bg: var(--white);
+    --canvas-node-stroke: var(--slide-box-border);
     position: absolute;
     box-sizing: border-box;
     padding: var(--slide-space-node-y) var(--slide-space-node-x);
-    border: 2px solid var(--slide-box-border);
+    border: 2px solid var(--canvas-node-stroke);
     border-radius: var(--slide-radius);
     background: var(--canvas-node-bg);
     color: var(--slide-ink);
@@ -235,9 +236,6 @@
       margin: 0.55cqw 0;
     }
   }
-  .canvas-shape-round {
-    border-radius: var(--slide-radius);
-  }
   .canvas-shape-ellipse {
     border-radius: 50%;
     padding-right: 2cqw;
@@ -249,22 +247,45 @@
     clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
     padding: 2cqw 2.7cqw;
   }
-  .canvas-shape-plain {
-    border-color: transparent;
-    background: transparent;
-  }
   .canvas-tone-accent {
     --canvas-node-bg: var(--white);
-    border-color: var(--accent);
+    --canvas-node-stroke: var(--accent);
   }
   .canvas-tone-muted {
     --canvas-node-bg: var(--slide-card);
-    border-color: transparent;
+    --canvas-node-stroke: transparent;
   }
   .canvas-tone-dark {
     --canvas-node-bg: var(--slide-surface-dark);
-    border-color: var(--slide-surface-dark);
+    --canvas-node-stroke: var(--slide-surface-dark);
     color: var(--white);
+  }
+  .canvas-fill-none {
+    --canvas-node-bg: transparent;
+    color: var(--slide-ink);
+  }
+  .canvas-shape-diamond.canvas-fill-none {
+    clip-path: none;
+    overflow: visible;
+  }
+  .canvas-diamond-stroke {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .canvas-diamond-stroke polygon {
+    fill: none;
+    stroke: var(--canvas-node-stroke);
+    stroke-width: 2;
+    stroke-linejoin: miter;
+    vector-effect: non-scaling-stroke;
+  }
+  .canvas-shape-diamond.canvas-fill-none > :not(.canvas-diamond-stroke) {
+    position: relative;
+    z-index: 1;
   }
   .canvas-edge {
     fill: none;

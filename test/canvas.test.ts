@@ -7,17 +7,30 @@ import { SourceStore } from '../src/source.ts';
 
 test('canvas parses Markdown nodes and sequential arrows', () => {
   const scene = parseCanvas(
-    `@node problem tone=accent\n### 問題\n\n普通の **Markdown**。\n\n-->\n\n@node solution shape=round\n### 解決\n\n- 項目A\n- 項目B\n`,
+    `@node problem tone=accent\n### 問題\n\n普通の **Markdown**。\n\n-->\n\n@node solution shape=ellipse fill=none\n### 解決\n\n- 項目A\n- 項目B\n`,
     'layout=flow direction=right route=elbow',
   );
   assert.equal(scene.nodes.length, 2);
   assert.equal(scene.nodes[0].id, 'problem');
+  assert.equal(scene.nodes[0].shape, 'card');
+  assert.equal(scene.nodes[0].fill, 'solid');
+  assert.equal(scene.nodes[1].shape, 'ellipse');
+  assert.equal(scene.nodes[1].fill, 'none');
   assert.match(scene.nodes[0].markdown, /\*\*Markdown\*\*/);
   assert.deepEqual(
     scene.edges.map(({ from, to }) => [from, to]),
     [['problem', 'solution']],
   );
   assert.equal(scene.options.route, 'elbow');
+});
+
+test('canvas shape is card, ellipse or diamond, and fill=none is not a shape', () => {
+  assert.throws(() => parseCanvas('@node a shape=round\nA'), /shape は card \/ ellipse \/ diamond/);
+  assert.throws(() => parseCanvas('@node a shape=plain\nA'), /shape は card \/ ellipse \/ diamond/);
+  assert.throws(() => parseCanvas('@node a fill=transparent\nA'), /fill は solid \/ none/);
+  const scene = parseCanvas('@node a shape=diamond fill=none tone=accent\nA');
+  assert.equal(scene.nodes[0].shape, 'diamond');
+  assert.equal(scene.nodes[0].fill, 'none');
 });
 
 test('canvas accepts loose Markdown as nodes around arrow shorthand', () => {
@@ -81,7 +94,7 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
     const root = window.document.createElement('div');
     const rendered = renderSlide(
       root as unknown as HTMLElement,
-      `# Canvas\n\n@canvas layout=flow direction=right\n@node input tone=accent\n### 入力\n\n通常の **Markdown** と $x^2$。\n\n-->\n\n@node output shape=round\n### 出力\n\n@box\n既存のボックス\n@endbox\n@endcanvas\n`,
+      `# Canvas\n\n@canvas layout=flow direction=right\n@node input tone=accent\n### 入力\n\n通常の **Markdown** と $x^2$。\n\n-->\n\n@node output shape=ellipse fill=none\n### 出力\n\n@box\n既存のボックス\n@endbox\n@endcanvas\n`,
       {
         store: new SourceStore({ html: null, blocks: [] }),
         present: () => false,
@@ -89,6 +102,26 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
       },
     );
     assert.equal(root.querySelectorAll('.canvas-node').length, 2);
+    assert.match(
+      root.querySelector('[data-canvas-node="output"]')?.className || '',
+      /canvas-shape-ellipse/,
+    );
+    assert.match(
+      root.querySelector('[data-canvas-node="output"]')?.className || '',
+      /canvas-fill-none/,
+    );
+    const diamondRoot = window.document.createElement('div');
+    const diamondSlide = renderSlide(
+      diamondRoot as unknown as HTMLElement,
+      '@canvas layout=free\n@node gem frame=10,10,200,100 shape=diamond fill=none tone=accent\n菱形\n@endcanvas',
+      {
+        store: new SourceStore({ html: null, blocks: [] }),
+        present: () => false,
+        inspect: () => {},
+      },
+    );
+    assert.ok(diamondRoot.querySelector('.canvas-diamond-stroke polygon'));
+    diamondSlide.dispose();
     assert.equal(root.querySelector('[data-canvas-node="input"] strong')?.textContent, 'Markdown');
     assert.ok(root.querySelector('[data-canvas-node="input"] .katex'));
     assert.equal(

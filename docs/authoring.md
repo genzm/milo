@@ -184,7 +184,7 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 `layout=free` の `height` は数値です。`height=auto` は使えません。ノードの位置は `x` `y`、または `frame=x,y,width,height` です。`dx` `dy` は流れ配置のあとに足すずれで、`pinned=true` はその座標を固定します。
 
-ノードの `shape` は `card` / `round` / `ellipse` / `diamond` / `plain` です。既定は `card` です。`tone` は `default` / `accent` / `muted` / `dark` です。ID を省略すると `node-1` のように付きます。
+ノードの `shape` は `card` / `ellipse` / `diamond` です。既定は `card` です。`tone` は `default` / `accent` / `muted` / `dark` です。`fill=none` は中の塗りだけ消して、輪郭は `tone` のまま残します。どの形にも付けられます。ID を省略すると `node-1` のように付きます。
 
 辺は `@edge from --> to` です。`label`、`route`、`tone`（`default` / `accent` / `muted`）、`dashed=true`、`arrows`（`none` / `start` / `end` / `both`、既定は `end`）を付けられます。
 

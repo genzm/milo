@@ -13,6 +13,8 @@ export type CanvasDirection = 'right' | 'left' | 'down' | 'up';
 export type CanvasLayout = 'flow' | 'free';
 export type CanvasRoute = 'auto' | 'curve' | 'straight' | 'elbow';
 export type CanvasArrows = 'none' | 'start' | 'end' | 'both';
+export type CanvasShape = 'card' | 'ellipse' | 'diamond';
+export type CanvasFill = 'solid' | 'none';
 
 interface CanvasOptions {
   layout: CanvasLayout;
@@ -27,7 +29,8 @@ interface CanvasOptions {
 interface CanvasNode {
   id: string;
   markdown: string;
-  shape: 'card' | 'round' | 'ellipse' | 'diamond' | 'plain';
+  shape: CanvasShape;
+  fill: CanvasFill;
   tone: 'default' | 'accent' | 'muted' | 'dark';
   x?: number;
   y?: number;
@@ -63,6 +66,17 @@ export interface CanvasFrame {
 
 let canvasSequence = 0;
 
+function diamondOutline() {
+  const outline = svgElement('svg', {
+    class: 'canvas-diamond-stroke',
+    viewBox: '0 0 1 1',
+    preserveAspectRatio: 'none',
+    'aria-hidden': 'true',
+  });
+  outline.append(svgElement('polygon', { points: '0.5,0 1,0.5 0.5,1 0,0.5' }));
+  return outline;
+}
+
 function nodeFrom(attrs: Record<string, string>, markdown: string, index: number): CanvasNode {
   const frame = attrs.frame?.split(',').map((part) => finite(part.trim()));
   if (frame && (frame.length !== 4 || frame.some((value) => value === undefined)))
@@ -76,7 +90,8 @@ function nodeFrom(attrs: Record<string, string>, markdown: string, index: number
   return {
     id: attrs.id || `node-${index + 1}`,
     markdown: markdown.trim(),
-    shape: choice(attrs.shape, ['card', 'round', 'ellipse', 'diamond', 'plain'], 'card', 'shape'),
+    shape: choice(attrs.shape, ['card', 'ellipse', 'diamond'], 'card', 'shape'),
+    fill: choice(attrs.fill, ['solid', 'none'], 'solid', 'fill'),
     tone: choice(attrs.tone, ['default', 'accent', 'muted', 'dark'], 'default', 'tone'),
     x: finite(attrs.x, frame?.[0]),
     y: finite(attrs.y, frame?.[1]),
@@ -280,10 +295,11 @@ export function mountCanvasScene(
   content.className = 'canvas-content';
   const elements = scene.nodes.map((node) => {
     const item = document.createElement('section');
-    item.className = `canvas-node canvas-shape-${node.shape} canvas-tone-${node.tone}`;
+    item.className = `canvas-node canvas-shape-${node.shape} canvas-tone-${node.tone}${node.fill === 'none' ? ' canvas-fill-none' : ''}`;
     item.dataset.canvasNode = node.id;
     if (context.renderMarkdown) item.innerHTML = context.renderMarkdown(node.markdown);
     else item.textContent = node.markdown;
+    if (node.shape === 'diamond' && node.fill === 'none') item.prepend(diamondOutline());
     content.append(item);
     return item;
   });
