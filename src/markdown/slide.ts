@@ -50,17 +50,30 @@ function isEscaped(source: string, at: number) {
   return slashes % 2 === 1;
 }
 
-function alignBlocks(state: any) {
+function lineAttributes(state: any) {
   const tokens = state.tokens;
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (token.type !== 'inline') continue;
     const parent = tokens[i - 1];
     if (!parent || (parent.type !== 'heading_open' && parent.type !== 'paragraph_open')) continue;
-    const match = /(?:^|[ \t]+)@align=(left|center|right)[ \t]*$/.exec(token.content);
-    if (!match) continue;
-    token.content = token.content.slice(0, match.index);
-    parent.attrJoin('class', `align-${match[1]}`);
+    let content = token.content;
+    for (;;) {
+      const align = /(?:^|[ \t]+)@align=(left|center|right)[ \t]*$/.exec(content);
+      if (align) {
+        content = content.slice(0, align.index);
+        parent.attrJoin('class', `align-${align[1]}`);
+        continue;
+      }
+      const mark = /(?:^|[ \t]+)@mark[ \t]*$/.exec(content);
+      if (mark) {
+        content = content.slice(0, mark.index);
+        parent.attrJoin('class', 'line-mark');
+        continue;
+      }
+      break;
+    }
+    token.content = content;
   }
 }
 
@@ -109,7 +122,7 @@ export function prepareSlide(source: string, ctx: RenderContext) {
   const tasks: TaskItem[] = [];
   const display = prepareTaskItems(maskMiloComments(source), tasks);
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
-  md.core.ruler.before('inline', 'milo_align', alignBlocks);
+  md.core.ruler.before('inline', 'milo_line_attrs', lineAttributes);
   const blocks = registerMiloBlocks(md);
   md.block.ruler.before('fence', 'math_block', mathBlock, {
     alt: ['paragraph', 'reference', 'blockquote', 'list'],

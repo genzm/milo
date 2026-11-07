@@ -147,6 +147,10 @@
     word-break: normal;
     overflow-wrap: anywhere;
   }
+  :is(h1, h2, h3, h4, h5, h6, p).line-mark {
+    background: color-mix(in srgb, var(--slide-mark) 27%, transparent);
+    padding-block: 0.12em;
+  }
   :is(h1, h2, h3, h4, h5, h6, p).align-left {
     text-align: left;
   }

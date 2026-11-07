@@ -454,3 +454,42 @@ test('align marks headings and paragraphs inside the slide, boxes, columns and n
     window.close();
   }
 });
+
+test('line mark paints the whole heading or paragraph and keeps mid-line @mark', () => {
+  const window = new Window({ settings: { disableComputedStyleRendering: true } });
+  const originalDocument = globalThis.document;
+  Object.assign(globalThis, { document: window.document });
+  const context = {
+    store: new SourceStore({ html: null, blocks: [] }),
+    present: () => false,
+    inspect: () => {},
+  };
+  try {
+    const root = window.document.createElement('div');
+    renderSlide(
+      root as unknown as HTMLElement,
+      `拡散モデル最高！ @mark
+
+文中の @mark はそのまま残る。
+
+結論です。 @align=center @mark
+
+@box
+箱の中 @mark
+@endbox`,
+      context,
+    );
+    const paragraphs = [...root.querySelectorAll(':scope > p')];
+    assert.equal(paragraphs[0]?.className, 'line-mark');
+    assert.equal(paragraphs[0]?.textContent, '拡散モデル最高！');
+    assert.equal(paragraphs[1]?.className, '');
+    assert.match(paragraphs[1]?.textContent || '', /@mark/);
+    assert.equal(paragraphs[2]?.className, 'line-mark align-center');
+    assert.equal(paragraphs[2]?.textContent, '結論です。');
+    assert.equal(root.querySelector('.box-block p')?.className, 'line-mark');
+    assert.equal(root.querySelector('.box-block p')?.textContent, '箱の中');
+  } finally {
+    Object.assign(globalThis, { document: originalDocument });
+    window.close();
+  }
+});
