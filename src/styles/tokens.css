@@ -25,6 +25,10 @@
   --success: #549a65;
   --accent-pale: #fde7ed;
   --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --slide-font: 'Noto Sans JP', sans-serif;
+  --slide-weight-body: 400;
+  --slide-weight-emphasis: 600;
+  --slide-weight-title: 700;
   --app-header-height: 76px;
   --sidebar-width: 186px;
   --inspector-width: 342px;

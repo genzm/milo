@@ -7,7 +7,7 @@ import { compile, renderHtml } from '../cli/compile.mjs';
 import { SourceStore } from '../src/source.ts';
 import { compileMarpTheme } from '../cli/marp-theme.mjs';
 import { loadBuildResources } from '../cli/resources.mjs';
-import { embedSlideFonts, linkedSlideFonts } from '../cli/fonts.mjs';
+import { embedSlideFonts, FONT_WEIGHTS, linkedSlideFonts } from '../cli/fonts.mjs';
 
 test('embedded and linked slide fonts contain the same WOFF2 files and weights', async () => {
   const { fonts } = await loadBuildResources();
@@ -28,11 +28,12 @@ test('embedded and linked slide fonts contain the same WOFF2 files and weights',
   for (const font of fonts) {
     assert.deepEqual(
       [...new Set([...font.css.matchAll(/font-weight:\s*(\d+)/g)].map((m) => Number(m[1])))],
-      [400, 800],
+      FONT_WEIGHTS,
     );
   }
+  assert.deepEqual(FONT_WEIGHTS, [400, 600, 700]);
   assert.match(embedded.notice, /SIL OPEN FONT LICENSE/);
-  assert.match(embedded.notice, /Yaku Han JP/);
+  assert.doesNotMatch(embedded.notice, /Yaku Han JP/);
 });
 
 test('HTML and Marp consume supplied resources and subsequent builds use current styles', async () => {

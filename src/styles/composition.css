@@ -59,9 +59,9 @@
   }
   .composition-arrow-label {
     fill: currentColor;
-    font-family: YakuHanJP, 'Noto Sans JP', sans-serif;
+    font-family: var(--slide-font);
     font-size: var(--slide-text-body);
-    font-weight: 700;
+    font-weight: var(--slide-weight-emphasis);
     paint-order: stroke;
     stroke: var(--white);
     stroke-width: 5px;

@@ -19,21 +19,20 @@
   transform-origin: top left;
   /* Keep the authored 1600px coordinate system independent of the scaled wrapper. */
   padding: var(--slide-pad-top) var(--slide-pad-x) var(--slide-pad-bottom);
-  font-family:
-    YakuHanJP, 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
+  font-family: var(--slide-font);
   .slide-top {
     display: flex;
     align-items: center;
     position: absolute;
     right: 3.6%;
-    top: 3.0%;
+    top: 3%;
     min-height: 0;
     margin: 0;
     color: #111;
     z-index: 3;
   }
   .slide-series {
-    font: var(--slide-text-series)/1 var(--mono);
+    font: var(--slide-weight-body) var(--slide-text-series)/1 var(--slide-font);
     color: #111;
     letter-spacing: 0.04em;
   }
@@ -66,7 +65,7 @@
   }
   h1 {
     font-size: var(--slide-text-title);
-    font-weight: 800;
+    font-weight: var(--slide-weight-title);
     line-height: var(--slide-leading-title);
     letter-spacing: -0.055em;
     color: var(--accent);
@@ -101,11 +100,11 @@
     letter-spacing: -0.3px;
     color: var(--slide-ink);
     margin: 2.4% 0 1.4%;
-    font-weight: 750;
+    font-weight: var(--slide-weight-emphasis);
   }
   h3 {
     font-size: var(--slide-text-subheading);
-    font-weight: 800;
+    font-weight: var(--slide-weight-emphasis);
     line-height: var(--slide-leading-subheading);
     letter-spacing: -0.03em;
     margin: 1.45cqw 0 0.73cqw;
@@ -167,17 +166,17 @@
   }
   strong {
     color: inherit;
-    font-weight: 800;
+    font-weight: var(--slide-weight-emphasis);
   }
   .accent-emphasis {
     color: var(--accent);
     background: none;
-    font-weight: 800;
+    font-weight: var(--slide-weight-emphasis);
   }
   .impact-block {
     color: var(--accent);
     font-size: var(--slide-text-impact);
-    font-weight: 850;
+    font-weight: var(--slide-weight-title);
     line-height: 1.08;
     letter-spacing: -0.055em;
     margin: 3.2% 0;
@@ -312,7 +311,7 @@
     p {
       font-size: var(--slide-text-quote);
       color: var(--slide-ink);
-      font-weight: 650;
+      font-weight: var(--slide-weight-emphasis);
       margin: 0;
 
       & + p {

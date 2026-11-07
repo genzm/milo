@@ -23,7 +23,7 @@ milo は原稿を単一 HTML にコンパイルし、その HTML が自分の原
 1. `cli/document.mjs` が frontmatter を分け、トップレベルの `---` でスライドに割り、画像参照を集めます。ブロック構文は表示側と同じ `src/markdown/blocks.mjs` で解析します。ブロック内部の水平線は分割せず、コード中の画像ディレクティブは素材参照として扱いません。
 2. 各スライドの `<!-- milo: … -->` を `src/slide-layout.mjs` が検査します。
 3. 相対パスの画像を asset ブロックにします。同じファイルは1回だけ埋めます。
-4. esbuild が `src/app.ts` を IIFE にまとめ、KaTeX と Noto Sans JP、YakuHanJP を CSS へ埋めます。
+4. esbuild が `src/app.ts` を IIFE にまとめ、KaTeX と Noto Sans JP（400 / 600 / 700）を CSS へ埋めます。
 5. HTML を書き出します。`--pdf` のときは、そのあと `cli/pdf.mjs` が別ランタイムで PDF を作ります。
 
 PDF 用 HTML は編集 UI を含みません。`src/pdf-entry.ts` が全スライドを描き、Playwright の Chromium が `src/slide-size.json` の寸法で印刷します。外部リクエストは中断します。

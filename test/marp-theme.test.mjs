@@ -12,7 +12,7 @@ test('marp theme is compiled from the current milo slide settings', async () => 
   assert.match(css, /^\/\* @theme milo \*\//);
   assert.match(css, /section \{\n {2}width: 1600px;\n {2}height: 900px;\n\}\n$/);
   assert.match(css, /--accent: #d42d5a/);
-  assert.match(css, /font-family: YakuHanJP/);
+  assert.doesNotMatch(css, /YakuHanJP/);
   assert.match(css, /font-family: 'Noto Sans JP'/);
   assert.match(
     css,

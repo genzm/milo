@@ -342,9 +342,9 @@ test('built artifact contains one kernel and all dependencies; a source edit pre
   assert.equal(/url\((?!data:)/.test(styles), false);
   assert.equal(/data:font\/woff2;base64,/.test(styles), true);
   assert.match(styles, /@font-face\s*\{[^}]*font-family:\s*'Noto Sans JP'[^}]*font-weight:\s*400/);
-  assert.match(styles, /@font-face\s*\{[^}]*font-family:\s*'Noto Sans JP'[^}]*font-weight:\s*800/);
-  assert.match(styles, /@font-face\{[^}]*font-family:YakuHanJP;[^}]*font-weight:400;/);
-  assert.match(styles, /@font-face\{[^}]*font-family:YakuHanJP;[^}]*font-weight:800;/);
+  assert.match(styles, /@font-face\s*\{[^}]*font-family:\s*'Noto Sans JP'[^}]*font-weight:\s*600/);
+  assert.match(styles, /@font-face\s*\{[^}]*font-family:\s*'Noto Sans JP'[^}]*font-weight:\s*700/);
+  assert.equal(/font-family:\s*YakuHanJP/.test(styles), false);
   assert.match(styles, /SIL OPEN FONT LICENSE Version 1\.1/);
   assert.equal(styles.includes('.component-block'), false);
   assert.equal((styles.match(/\.presenting \.slide\s*\{/g) ?? []).length, 1);
