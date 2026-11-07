@@ -372,9 +372,6 @@
     text-transform: uppercase;
     border-bottom: 2px solid var(--accent);
   }
-  tr:nth-child(even) td {
-    background: var(--slide-table-stripe);
-  }
   hr {
     border: 0;
     border-top: 1px solid #e3d6da;
