@@ -41,7 +41,7 @@ npm run check
 | `src/canvas.ts` | `@canvas` の解析と描画 |
 | `src/diagram.ts` | `@diagram` の公開 API |
 | `src/diagram/parse.ts` | `@diagram` の解析 |
-| `src/diagram/layout.ts` | ring / radial / field の振り分け |
+| `src/diagram/layout.ts` | ring / radial / field の振り分け。[図式の配置](diagram.md) |
 | `src/diagram/layout-ring.ts` | ring |
 | `src/diagram/layout-classic-radial.ts` | `side` も `distance` も無い radial |
 | `src/diagram/layout-radial.ts` | `side` または `distance` がある radial |
@@ -49,7 +49,7 @@ npm run check
 | `src/diagram/links.ts` | `connect=cycle` の辺と、輪郭への接続 |
 | `src/diagram/mount.ts` | ダイアグラムの DOM。flow はキャンバスへ渡す |
 | `src/diagram/measure.ts` | 枠線込みの実寸 |
-| `src/flow/layout.ts` | 順位、寸法、配置、経路、警告の順 |
+| `src/flow/layout.ts` | 流れ図。手順は [流れ図の配置](flow.md) |
 | `src/flow/align.ts` | `route=auto` の中央の枝を揃える |
 | `src/flow/route.ts` / `route-free.ts` | 階層配置 / 自由配置の接続点と経路 |
 | `src/flow/path.ts` | SVG パス、ラベル位置、迂回 |
@@ -68,6 +68,7 @@ npm run check
 | `src/styles/tokens.css` | 色、文字サイズ、余白 |
 | `src/slide-size.json` | 1600×900。PDF のページ寸法もここ |
 | `src/slide-layout.mjs` | レイアウト名の検査と書き換え |
+| `src/slide-radius.ts` | box / panel / step / canvas の角。短い辺の `--slide-radius-ratio` |
 
 文字サイズや色を変えるときは `src/styles/tokens.css` を編集し、`npm run build` で HTML と `marp/milo.css` を作り直します。`marp/milo.css` は直接編集しません。
 

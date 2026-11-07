@@ -43,11 +43,7 @@ PDF 用 HTML は編集 UI を含みません。`src/pdf-entry.ts` が全スラ�
 - `@canvas` は `src/canvas.ts`、`@diagram` の公開入口は `src/diagram.ts`
 - `::image{asset="…"}` は `src/directives.ts`。ダブルクリックで素材を開くのはこの形式です
 
-流れ図は `src/flow/layout.ts` が、順位、寸法、配置、経路、警告の順に進めます。中央の枝を揃えるのは `src/flow/align.ts` です。`route=auto` は直列を直線、分岐と合流を共有幹線にします。階層配置の経路は `src/flow/route.ts`、自由配置は `src/flow/route-free.ts`、パスとラベルは `src/flow/path.ts`、衝突と曲線のサンプルは `src/flow/geometry.ts` です。
-
-`src/diagram.ts` は公開 API を再エクスポートします。解析は `src/diagram/parse.ts` です。`src/diagram/layout.ts` は ring / radial / field を振り分けます。ring は `layout-ring.ts`、`side` も `distance` も無い radial は `layout-classic-radial.ts`、どちらかがある radial は `layout-radial.ts`、field は `layout-field.ts` です。`connect=cycle` の辺と輪郭への接続は `src/diagram/links.ts` です。DOM と実測は `src/diagram/mount.ts` と `src/diagram/measure.ts` です。flow のダイアグラムは、ここでキャンバスと同じ流れ図に渡します。構文解析と配置計算は DOM 描画モジュールに依存しません。`@panel` や `@column` の中で `width` / `height` の無い ring / radial は、`src/diagram/types.ts` の `NESTED_DIAGRAM_FRAME`（640×512）で描きます。
-
-`@compose` の構文は `src/markdown/composition.mjs` で解析します。part の Markdown を展開してから、`src/composition/mount.ts` が実測した対象に矢印と×を重ねます。図の再配置が終わった後に解説要素を更新し、拡縮を含む座標変換は `src/composition/geometry.ts` と描画側で処理します。接続矢印は `betweenBoxes`、1つの対象の外側は `besideBox`、`from` / `to` / `side` の層矢印は `besideSpan` です。
+流れ図の配置は [流れ図](flow.md)、ring / radial / field は [図式](diagram.md) です。`@compose` の接続点は [解説矢印](annotations.md#接続点の計算) です。
 
 ## 保存
 
