@@ -4642,7 +4642,7 @@ section {
   --accent: #d42d5a;
   --white: #fff;
   --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
-  --slide-text-title: 70px;
+  --slide-text-title: 50px;
   --slide-text-heading: 32px;
   --slide-text-subheading: 32px;
   --slide-text-label: 18px;
@@ -4661,7 +4661,7 @@ section {
   --slide-leading-title: 1.2;
   --slide-leading-heading: 1.35;
   --slide-leading-subheading: 1.35;
-  --slide-pad-top: 60px;
+  --slide-pad-top: 50px;
   --slide-pad-x: 82.4px;
   --slide-pad-bottom: 56px;
   --slide-cover-pad-top: 132.8px;
@@ -4705,8 +4705,8 @@ section {
   &::after {
     content: attr(data-marpit-pagination) ' / ' attr(data-marpit-pagination-total);
     position: absolute;
-    right: 4.9%;
-    top: 4.2%;
+    right: 3.6%;
+    top: 3%;
     margin: 0;
     z-index: 3;
     font: var(--slide-text-series)/1 var(--mono);
@@ -4978,8 +4978,8 @@ section.cover {
   justify-content: center;
   &::after {
     content: attr(data-marpit-pagination) ' / ' attr(data-marpit-pagination-total);
-    right: 6.2%;
-    top: 6.1%;
+    right: 5%;
+    top: 5%;
     color: var(--white);
   }
   &::before {
@@ -5034,8 +5034,8 @@ section.section {
   justify-content: center;
   &::after {
     content: attr(data-marpit-pagination) ' / ' attr(data-marpit-pagination-total);
-    right: 5.2%;
-    top: 4.4%;
+    right: 4%;
+    top: 3.2%;
     color: var(--white);
   }
   h1 {

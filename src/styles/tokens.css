@@ -41,8 +41,8 @@
   font-size: var(--ui-text-base);
 
   /* Slide type scale in px so padding and container queries don't drift sizes.
-     70 title / 40 cover tagline / 32 card heading / 27 body / 24 node heading / 18 node body */
-  --slide-text-title: 70px;
+     50 title / 40 cover tagline / 32 card heading / 27 body / 24 node heading / 18 node body */
+  --slide-text-title: 50px;
   --slide-text-heading: 32px;
   --slide-text-subheading: 32px;
   --slide-text-label: 18px;
@@ -67,7 +67,7 @@
   --slide-leading-heading: 1.35;
   --slide-leading-subheading: 1.35;
   --slide-leading-node: 1.5;
-  --slide-pad-top: 60px;
+  --slide-pad-top: 50px;
   --slide-pad-x: 82.4px;
   --slide-pad-bottom: 56px;
   --slide-cover-pad-top: 132.8px;
