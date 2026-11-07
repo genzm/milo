@@ -295,7 +295,7 @@ export function mountCanvasScene(
     item.dataset.canvasNode = node.id;
     if (context.renderMarkdown) item.innerHTML = context.renderMarkdown(node.markdown);
     else item.textContent = node.markdown;
-    if (node.shape === 'diamond' && node.fill === 'none') item.prepend(diamondOutline());
+    if (node.shape === 'diamond') item.prepend(diamondOutline());
     content.append(item);
     return item;
   });

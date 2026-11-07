@@ -244,7 +244,8 @@
   }
   .canvas-shape-diamond {
     border: 0;
-    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    background: transparent;
+    overflow: visible;
     padding: 2cqw 2.7cqw;
   }
   .canvas-tone-accent {
@@ -264,10 +265,6 @@
     --canvas-node-bg: transparent;
     color: var(--slide-ink);
   }
-  .canvas-shape-diamond.canvas-fill-none {
-    clip-path: none;
-    overflow: visible;
-  }
   .canvas-diamond-stroke {
     position: absolute;
     inset: 0;
@@ -277,13 +274,13 @@
     pointer-events: none;
   }
   .canvas-diamond-stroke polygon {
-    fill: none;
+    fill: var(--canvas-node-bg);
     stroke: var(--canvas-node-stroke);
     stroke-width: 2;
     stroke-linejoin: miter;
     vector-effect: non-scaling-stroke;
   }
-  .canvas-shape-diamond.canvas-fill-none > :not(.canvas-diamond-stroke) {
+  .canvas-shape-diamond > :not(.canvas-diamond-stroke) {
     position: relative;
     z-index: 1;
   }

@@ -113,14 +113,15 @@ test('slide renderer mounts Markdown as HTML over an SVG connection layer', () =
     const diamondRoot = window.document.createElement('div');
     const diamondSlide = renderSlide(
       diamondRoot as unknown as HTMLElement,
-      '@canvas layout=free\n@node gem frame=10,10,200,100 shape=diamond fill=none tone=accent\n菱形\n@endcanvas',
+      '@canvas layout=free\n@node gem frame=10,10,200,100 shape=diamond tone=accent\n菱形\n@node cut frame=220,10,200,100 shape=diamond fill=none tone=accent\n抜き\n@endcanvas',
       {
         store: new SourceStore({ html: null, blocks: [] }),
         present: () => false,
         inspect: () => {},
       },
     );
-    assert.ok(diamondRoot.querySelector('.canvas-diamond-stroke polygon'));
+    assert.ok(diamondRoot.querySelector('[data-canvas-node="gem"] .canvas-diamond-stroke polygon'));
+    assert.ok(diamondRoot.querySelector('[data-canvas-node="cut"] .canvas-diamond-stroke polygon'));
     diamondSlide.dispose();
     assert.equal(root.querySelector('[data-canvas-node="input"] strong')?.textContent, 'Markdown');
     assert.ok(root.querySelector('[data-canvas-node="input"] .katex'));
