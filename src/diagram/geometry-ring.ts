@@ -8,14 +8,7 @@ import {
 } from './types';
 import { PAD, NOTE_SIDE_VECTOR, START_PHI } from './constants';
 
-export function overlaps(a: DiagramBox, b: DiagramBox, gap = 8) {
-  return (
-    a.x < b.x + b.width + gap &&
-    a.x + a.width + gap > b.x &&
-    a.y < b.y + b.height + gap &&
-    a.y + a.height + gap > b.y
-  );
-}
+export { overlaps, closestPointOnBox } from './geometry.ts';
 
 export function clampBox(box: DiagramBox, width: number, height: number) {
   box.x = Math.min(Math.max(PAD, box.x), Math.max(PAD, width - PAD - box.width));
@@ -66,27 +59,6 @@ export function boxLeavesFrame(box: DiagramBox, width: number, height: number, g
     box.x + box.width > width - PAD + gap ||
     box.y + box.height > height - PAD + gap
   );
-}
-
-export function closestPointOnBox(box: DiagramBox, point: Vec): Vec {
-  const left = box.x,
-    right = box.x + box.width,
-    top = box.y,
-    bottom = box.y + box.height;
-  if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) {
-    const candidates = [
-      { x: left, y: point.y, d: point.x - left },
-      { x: right, y: point.y, d: right - point.x },
-      { x: point.x, y: top, d: point.y - top },
-      { x: point.x, y: bottom, d: bottom - point.y },
-    ];
-    candidates.sort((a, b) => a.d - b.d);
-    return { x: candidates[0].x, y: candidates[0].y };
-  }
-  return {
-    x: Math.min(Math.max(point.x, left), right),
-    y: Math.min(Math.max(point.y, top), bottom),
-  };
 }
 
 export function segmentHitsBox(a: Vec, b: Vec, box: DiagramBox, pad = 8) {

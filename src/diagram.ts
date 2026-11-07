@@ -35,7 +35,7 @@ export {
   type DiagramLayout,
 } from './diagram/types';
 export { VERTEX_R } from './diagram/constants';
-export { mountDiagram } from './diagram/mount';
+export { mountDiagram, toCanvasScene } from './diagram/mount';
 export {
   estimateTitleSize,
   estimateNoteSize,

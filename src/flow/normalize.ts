@@ -11,7 +11,6 @@ export function fromCanvasScene(scene: FlowSceneInput): FlowGraph {
     nodes: scene.nodes.map((node, index) => ({
       id: node.id,
       markdown: node.markdown,
-      shape: node.shape,
       index,
       width: node.width,
       height: node.height,

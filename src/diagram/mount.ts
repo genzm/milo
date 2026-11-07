@@ -35,7 +35,7 @@ function arrowsFor(kind: DiagramLinkKind): CanvasArrows {
   return kind === 'both' ? 'both' : kind === 'forward' ? 'end' : 'none';
 }
 
-function toCanvasScene(scene: DiagramScene): CanvasScene {
+export function toCanvasScene(scene: DiagramScene): CanvasScene {
   const links = resolvedLinks(scene);
   return {
     options: {

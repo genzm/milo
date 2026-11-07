@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Window } from 'happy-dom';
 import { parseCanvas } from '../src/canvas.ts';
-import { parseDiagram, resolvedLinks } from '../src/diagram.ts';
+import { parseDiagram, toCanvasScene } from '../src/diagram.ts';
 import { layoutFlowFromCanvas } from '../src/flow/layout.ts';
 import { fromCanvasScene } from '../src/flow/normalize.ts';
-import type { FlowDirection, FlowLayoutResult, FlowSceneInput } from '../src/flow/types.ts';
+import type { FlowDirection, FlowLayoutResult } from '../src/flow/types.ts';
 import {
   parseComposition,
   type ArrowAnnotation,
@@ -75,40 +75,10 @@ function loadPatterns(): PatternCase[] {
   });
 }
 
-function diagramScene(body: string, options: string): FlowSceneInput {
-  const scene = parseDiagram(body, options);
-  const links = resolvedLinks(scene);
-  return {
-    options: {
-      direction: scene.options.direction,
-      width: scene.options.width,
-      height: scene.options.height,
-      autoHeight: scene.options.autoHeight,
-      gap: scene.options.gap,
-      route: scene.options.route,
-    },
-    nodes: scene.items.map((item) => ({
-      id: item.id,
-      markdown: item.markdown ? `### ${item.title}\n\n${item.markdown}` : `### ${item.title}`,
-      shape: item.shape === 'vertex' ? 'ellipse' : 'card',
-      width: scene.options.nodeWidth,
-      dx: 0,
-      dy: 0,
-      pinned: false,
-    })),
-    edges: links.map((link) => ({
-      from: link.from,
-      to: link.to,
-      label: link.label,
-      arrows: link.kind === 'both' ? 'both' : link.kind === 'forward' ? 'end' : 'none',
-    })),
-  };
-}
-
 function layoutOf(block: { options: string; body: string }, kind: 'diagram' | 'canvas') {
   const scene =
     kind === 'diagram'
-      ? diagramScene(block.body, block.options)
+      ? toCanvasScene(parseDiagram(block.body, block.options))
       : parseCanvas(block.body, block.options);
   return { scene, layout: layoutFlowFromCanvas(scene) };
 }

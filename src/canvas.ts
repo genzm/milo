@@ -4,7 +4,7 @@ import { svgElement } from './svg.ts';
 import type { RenderContext } from './directives';
 import { layoutFlowFromCanvas } from './flow/layout.ts';
 import { estimateNodeHeight } from './flow/measure.ts';
-import { routeConnection, routeFreeEdges } from './flow/route.ts';
+import { routeFreeEdges } from './flow/route.ts';
 import { fromCanvasScene } from './flow/normalize.ts';
 import { measureBorderBox, sceneRatio } from './diagram/measure.ts';
 import { FLOW, FLOW_DIAGNOSTIC_MESSAGE, FLOW_ROUTES, type FlowDiagnostic } from './flow/types.ts';
@@ -257,10 +257,6 @@ export function layoutCanvas(scene: CanvasScene, measured: number[] = []): Canva
 export function canvasDiagnostics(scene: CanvasScene, measured: number[] = []): FlowDiagnostic[] {
   if (scene.options.layout === 'free') return [];
   return layoutFlowFromCanvas(scene, measured).diagnostics;
-}
-
-export function connection(from: CanvasFrame, to: CanvasFrame, route: CanvasRoute) {
-  return routeConnection(from, to, route);
 }
 
 /** Mount an already-parsed canvas scene and keep its SVG connection layer in sync. */

@@ -2,12 +2,10 @@ export type FlowDirection = 'right' | 'left' | 'down' | 'up';
 export type FlowRoute = 'auto' | 'curve' | 'straight' | 'elbow';
 export type FlowArrows = 'none' | 'start' | 'end' | 'both';
 export const FLOW_ROUTES = ['auto', 'curve', 'straight', 'elbow'] as const;
-export type FlowShape = 'card' | 'ellipse' | 'diamond';
 
 export interface FlowNode {
   id: string;
   markdown: string;
-  shape: FlowShape;
   index: number;
   width?: number;
   height?: number;
@@ -51,7 +49,6 @@ export interface FlowSceneInput {
   nodes: Array<{
     id: string;
     markdown: string;
-    shape: FlowShape;
     width?: number;
     height?: number;
     x?: number;
