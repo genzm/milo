@@ -79,6 +79,17 @@ test('grid, stack and panel nest and stretch as equal-height layout', () => {
   }
 });
 
+test('unhighlighted steps sit on a transparent field instead of a muted card', () => {
+  const components = readFileSync(new URL('../src/styles/components.css', import.meta.url), 'utf8');
+  assert.match(components, /\.step-card \{[^}]*background: transparent/s);
+  assert.doesNotMatch(components, /\.step-card\.is-highlight \{[^}]*border-color/s);
+  assert.match(
+    components,
+    /\.step-card\.is-highlight \.step-badge \{[^}]*background: var\(--accent\)/s,
+  );
+  assert.doesNotMatch(components, /\.step-card \{[^}]*background: var\(--slide-card\)/s);
+});
+
 test('steps lay out numbered cards, arrows and a highlighted current step', () => {
   const { root, close } = render(`@steps highlight=2
 @step title="考え方"

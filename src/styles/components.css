@@ -79,14 +79,8 @@
   flex-direction: column;
   gap: 12px;
   padding: 22px 24px 20px;
-  border: 2px solid transparent;
-  border-radius: var(--slide-radius);
-  background: var(--slide-card);
+  background: transparent;
   color: var(--slide-ink);
-}
-.step-card.is-highlight {
-  background: var(--white);
-  border-color: var(--accent);
 }
 .slide .step-heading {
   display: flex;
