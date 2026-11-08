@@ -130,7 +130,7 @@
     color: var(--slide-ink);
   }
   /* Cards own their text color. .slide p/h* would otherwise paint ink on dark cards. */
-  .slide-card :is(h1, h2, h3, h4, h5, h6, p, ul, ol, li, blockquote) {
+  .slide-card :is(h1, h2, h3, h4, h5, h6, p, ul, ol, li, blockquote, th, td) {
     color: inherit;
   }
   .card-tone-dark :is(em, del) {
@@ -386,11 +386,11 @@
     vertical-align: top;
   }
   th {
-    color: var(--accent);
+    color: var(--slide-ink);
     font-size: 0.86em;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    border-bottom: 2px solid var(--accent);
+    border-bottom: 2px solid var(--slide-ink);
   }
   hr {
     border: 0;

@@ -7229,11 +7229,11 @@ section {
     vertical-align: top;
   }
   th {
-    color: var(--accent);
+    color: var(--slide-ink);
     font-size: 0.86em;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    border-bottom: 2px solid var(--accent);
+    border-bottom: 2px solid var(--slide-ink);
   }
   hr {
     border: 0;
