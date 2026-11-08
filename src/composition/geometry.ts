@@ -69,8 +69,8 @@ export function besideBox(
   size: number,
   offset: number,
 ): [Point, Point] {
-  const distance = size / 2 + offset;
   const horizontal = side === 'top' || side === 'bottom';
+  const distance = arrowThickness(horizontal ? box.width : box.height, size) / 2 + offset;
   const fixed =
     side === 'top'
       ? box.y - distance
@@ -109,10 +109,10 @@ export function besideSpan(
   obstacles: readonly Box[] = [],
 ): [Point, Point] {
   const bodies = obstacles.length > 0 ? [...obstacles, from, to] : [from, to];
-  const distance = size / 2 + offset;
   if (side === 'top' || side === 'bottom') {
     const x0 = Math.min(from.x, to.x);
     const x1 = Math.max(from.x + from.width, to.x + to.width);
+    const distance = arrowThickness(x1 - x0, size) / 2 + offset;
     const hits = bodies.filter((box) => overlapsRange(box.x, box.width, x0, x1));
     const cloud = hits.length > 0 ? hits : [from, to];
     const y =
@@ -127,6 +127,7 @@ export function besideSpan(
   }
   const y0 = Math.min(from.y, to.y);
   const y1 = Math.max(from.y + from.height, to.y + to.height);
+  const distance = arrowThickness(y1 - y0, size) / 2 + offset;
   const x =
     side === 'left'
       ? Math.min(...bodies.map((box) => box.x)) - distance
@@ -136,6 +137,34 @@ export function besideSpan(
     { x, y: y1 },
   ];
   return direction === 'up' ? [points[1], points[0]] : points;
+}
+
+// Similar block-arrow: thickness follows length so a short arrow is a smaller
+// copy of a long one. `size` is the maximum thickness.
+export const ARROW_THICKNESS_RATIO = 0.48;
+export const ARROW_HEAD_RATIO = 0.55;
+export const ARROW_SHAFT_RATIO = 0.48;
+
+export function arrowThickness(length: number, size: number) {
+  return Math.min(size, Math.max(0, length) * ARROW_THICKNESS_RATIO);
+}
+
+function arrowMetrics(length: number, size: number, arrows: AnnotationArrows) {
+  let thickness = arrowThickness(length, size);
+  let half = thickness / 2;
+  let shaft = half * ARROW_SHAFT_RATIO;
+  let head = thickness * ARROW_HEAD_RATIO;
+  const heads = arrows === 'both' ? 2 : 1;
+  const minBody = thickness * 0.4;
+  const needed = heads * head + minBody;
+  if (needed > length && needed > 0) {
+    const scale = length / needed;
+    thickness *= scale;
+    half *= scale;
+    shaft *= scale;
+    head *= scale;
+  }
+  return { thickness, half, shaft, head };
 }
 
 export function arrowGeometry(
@@ -150,9 +179,7 @@ export function arrowGeometry(
   if (length < 8) throw new Error('解説矢印の余白が足りません。compose の gap を広げてください。');
   const ux = dx / length,
     uy = dy / length;
-  const half = Math.min(size / 2, length * 0.45),
-    shaft = half * 0.48;
-  const head = Math.min(half * 1.1, length * 0.4);
+  const { half, shaft, head } = arrowMetrics(length, size, arrows);
   const point = (x: number, y: number) => ({
     x: from.x + ux * x - uy * y,
     y: from.y + uy * x + ux * y,

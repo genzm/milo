@@ -206,6 +206,7 @@ function mountAnnotations(
           class: `composition-arrow annotation-tone-${mark.tone}`,
           'data-annotation': mark.id,
           'data-arrows': mark.arrows,
+          'data-size': String(mark.size),
           role: 'img',
           'aria-label': mark.label || (mark.arrows === 'both' ? '両向きの解説矢印' : '解説矢印'),
         });

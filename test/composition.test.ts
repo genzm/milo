@@ -2,7 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseComposition } from '../src/markdown/composition.mjs';
 import {
+  ARROW_HEAD_RATIO,
+  ARROW_SHAFT_RATIO,
+  ARROW_THICKNESS_RATIO,
   arrowGeometry,
+  arrowThickness,
   betweenBoxes,
   besideBox,
   besideSpan,
@@ -182,4 +186,58 @@ test('bidirectional arrowheads reach both endpoints with a centered label in eve
   }
   const short = arrowGeometry({ x: 0, y: 0 }, { x: 10, y: 0 }, 72, 'both');
   assert.ok(short.length > 0);
+});
+
+function pathPoints(path: string) {
+  return [...path.matchAll(/[ML] ([\d.e+-]+) ([\d.e+-]+)/g)].map((match) => ({
+    x: Number(match[1]),
+    y: Number(match[2]),
+  }));
+}
+
+function horizontalMetrics(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  path: string,
+) {
+  const points = pathPoints(path);
+  const tip = points.find(
+    (point) => Math.abs(point.x - to.x) < 1e-6 && Math.abs(point.y - to.y) < 1e-6,
+  );
+  assert.ok(tip, 'missing tip');
+  const flares = points.filter((point) => Math.abs(point.x - to.x) > 1);
+  const headBack = Math.max(...flares.map((point) => point.x));
+  const half = Math.max(...points.map((point) => Math.abs(point.y - from.y)));
+  const shaft = Math.min(
+    ...points
+      .filter((point) => Math.abs(point.x - from.x) < 1e-6)
+      .map((point) => Math.abs(point.y - from.y)),
+  );
+  return {
+    thickness: half * 2,
+    head: Math.abs(to.x - from.x) - Math.abs(headBack - from.x),
+    half,
+    shaft,
+  };
+}
+
+test('short arrows keep the long block-arrow proportions instead of becoming a bowtie', () => {
+  const from = { x: 0, y: 0 };
+  const long = arrowGeometry(from, { x: 240, y: 0 }, 88);
+  const short = arrowGeometry(from, { x: 80, y: 0 }, 88);
+  const both = arrowGeometry(from, { x: 80, y: 0 }, 88, 'both');
+  const capped = arrowGeometry(from, { x: 400, y: 0 }, 64);
+  assert.ok(Math.abs(long.box.height - 88) < 1e-6);
+  assert.ok(Math.abs(capped.box.height - 64) < 1e-6);
+  assert.ok(Math.abs(short.box.height / short.box.width - ARROW_THICKNESS_RATIO) < 0.02);
+  assert.ok(Math.abs(both.box.height / both.box.width - ARROW_THICKNESS_RATIO) < 0.02);
+  assert.ok(both.length > both.box.height * 0.35);
+  const longParts = horizontalMetrics(from, { x: 240, y: 0 }, long.path);
+  const shortParts = horizontalMetrics(from, { x: 80, y: 0 }, short.path);
+  assert.ok(Math.abs(longParts.head / longParts.thickness - ARROW_HEAD_RATIO) < 0.02);
+  assert.ok(Math.abs(shortParts.head / shortParts.thickness - ARROW_HEAD_RATIO) < 0.02);
+  assert.ok(Math.abs(longParts.shaft / longParts.half - ARROW_SHAFT_RATIO) < 0.02);
+  assert.ok(Math.abs(shortParts.shaft / shortParts.half - ARROW_SHAFT_RATIO) < 0.02);
+  assert.equal(arrowThickness(80, 88), 80 * ARROW_THICKNESS_RATIO);
+  assert.equal(arrowThickness(400, 64), 64);
 });

@@ -84,4 +84,4 @@ npm run check
 
 サンプル原稿は `content/slides.md` と `marp/example.md` です。
 
-解説矢印と図の組み合わせは `test/composition.test.ts`、`test/composition-render.test.ts`、`test/composition-browser.test.mjs` で検証します。ブラウザテストは `examples/annotations.md` を使い、スライド内への収まり、拡縮・対象寸法変更時の接続、発表とPDFを確認します。図式と分岐の配置パターンは `test/fixtures/diagram-patterns.md` と `test/fixtures/flow-branches.md`、対応する `test/diagram-patterns.test.ts` と `test/flow-branches.test.ts` です。
+解説矢印と図の組み合わせは `test/composition.test.ts`、`test/composition-render.test.ts`、`test/composition-browser.test.mjs` で検証します。ブラウザテストは `examples/annotations.md` を使い、スライド内への収まり、拡縮・対象寸法変更時の接続、発表とPDFを確認します。向き・長さ・外側配置の網羅は `test/fixtures/annotation-arrows.md` と `test/annotation-arrows.test.ts`、ブラウザでは `test/annotation-arrows-browser.test.mjs` です。図式と分岐の配置パターンは `test/fixtures/diagram-patterns.md` と `test/fixtures/flow-branches.md`、対応する `test/diagram-patterns.test.ts` と `test/flow-branches.test.ts` です。

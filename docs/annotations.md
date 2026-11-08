@@ -2,10 +2,11 @@
 
 `@compose` で図・ボックス・文章・画像をまとめ、`@arrow` と `@cross` を重ねられます。色は既存のアクセント、本文色、補助色です。書体やボックスの見た目も既存のものを使います。
 
-6枚の実例は [examples/annotations.md](../examples/annotations.md) にあります。
+6枚の実例は [examples/annotations.md](../examples/annotations.md) にあります。向き・長さ・外側配置の網羅は [test/fixtures/annotation-arrows.md](../test/fixtures/annotation-arrows.md) です。
 
 ```sh
 node cli/milo.mjs examples/annotations.md -o dist/annotations.html
+node cli/milo.mjs test/fixtures/annotation-arrows.md -o dist/annotation-arrows.html
 ```
 
 ## ボックス間の大きな矢印
@@ -53,7 +54,7 @@ node cli/milo.mjs examples/annotations.md -o dist/annotations.html
 
 ## 両向きの矢印
 
-トレードオフや相互作用には `arrows=both` を付けます。省略時は `arrows=end`（片向き）です。縦方向や図の外側に置く矢印でも使えます。
+トレードオフや相互作用には `arrows=both` を付けます。省略時は `arrows=end`（片向き）です。縦方向や図の外側に置く矢印でも使えます。短いときも片向きと同じブロック矢印のまま縮小し、菱形にはしません。
 
 ```markdown
 @arrow id=trade from=exploit to=explore size=72 label="トレードオフ" arrows=both
@@ -93,7 +94,7 @@ node cli/milo.mjs examples/annotations.md -o dist/annotations.html
 | `top` / `bottom` | 始点と終点が決める左右の幅 | その幅に重なるノードを避けた、一番近い平行位置 |
 | `right` / `left` | 始点と終点が決める上下の高さ | 図の右端 / 左端 |
 
-`side` は top / right / bottom / left。top / bottom の既定方向は右、right / left は下です。`direction=left` / `up` で反転できます。`size` は矢印の太さ（既定64）、`offset` は対象からの距離（既定20）です。`direction` には `side` が必要で、`side` と平行な向きだけ書けます。
+`side` は top / right / bottom / left。top / bottom の既定方向は右、right / left は下です。`direction=left` / `up` で反転できます。`size` は太さの上限（既定64）です。短い矢印は長さに比例して同じ形のまま縮小し、両向きでも菱形にはしません。`offset` は対象からの距離（既定20）です。`direction` には `side` が必要で、`side` と平行な向きだけ書けます。
 
 対象の名前は、その `@compose` の中で解決します。
 
@@ -131,6 +132,6 @@ node cli/milo.mjs examples/annotations.md -o dist/annotations.html
 | `betweenBoxes` | `from` と `to`。上下の投影が重なるときは水平、左右が重なるときは垂直。重なりの中では、先に始点の中心、次に終点の中心、どちらも外れるときは重なりの中央 |
 | `besideBox` | `target` と `side`。1つの枠の外側に、その辺と平行な矢印 |
 | `besideSpan` | `from` と `to` と `side`。2つの枠が決める幅または高さの層の外側に、平行な矢印 |
-| `arrowGeometry` | 太さ `size` の多角形。`arrows=both` のとき両端が矢じり |
+| `arrowGeometry` | 長さに比例したブロック矢印。`size` は太さの上限。`arrows=both` のとき両端が矢じり |
 
 余白が足りないときはエラーにします。拡縮は実測のたびにやり直すので、発表モードの拡大にも追従します。流れ図の接続線とは別物です。配置の本体は [流れ図](flow.md) と [図式](diagram.md) です。
