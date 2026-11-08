@@ -159,6 +159,53 @@ function unifyRankWidths(groups: number[][], widths: number[]) {
   return next;
 }
 
+function find(parent: number[], index: number): number {
+  return parent[index] === index ? index : (parent[index] = find(parent, parent[index]));
+}
+
+/** Stretch linked cards to the tallest in the group, unless one is far taller. */
+export function unifyConnectedHeights(graph: FlowGraph, heights: number[]) {
+  const next = [...heights];
+  const frozen = graph.nodes.map((node) => node.height !== undefined);
+  const parent = graph.nodes.map((_, i) => i);
+  const indexOf = new Map(graph.nodes.map((node, i) => [node.id, i]));
+  for (const edge of graph.edges) {
+    const from = indexOf.get(edge.from);
+    const to = indexOf.get(edge.to);
+    if (from === undefined || to === undefined || frozen[from] || frozen[to]) continue;
+    const a = find(parent, from);
+    const b = find(parent, to);
+    if (a !== b) parent[a] = b;
+  }
+  const groups = new Map<number, number[]>();
+  next.forEach((_, i) => {
+    if (frozen[i]) return;
+    const root = find(parent, i);
+    const members = groups.get(root) || [];
+    members.push(i);
+    groups.set(root, members);
+  });
+  for (const members of groups.values()) {
+    if (members.length < 2) continue;
+    const tallest = Math.max(...members.map((i) => next[i]));
+    for (const i of members) if (tallest - next[i] <= FLOW.HEIGHT_VARIANCE) next[i] = tallest;
+  }
+  return next;
+}
+
+function withUnifiedHeights(
+  graph: FlowGraph,
+  sizes: { width: number; height: number }[],
+): { width: number; height: number }[] {
+  const heights = unifyConnectedHeights(
+    graph,
+    sizes.map((size) => size.height),
+  );
+  return sizes.map((size, i) =>
+    heights[i] === size.height ? size : { ...size, height: heights[i] },
+  );
+}
+
 function shrinkWidest(graph: FlowGraph, widths: number[]) {
   const flexible = widths
     .map((width, i) => (graph.nodes[i].width === undefined ? width : -1))
@@ -180,7 +227,9 @@ function consider(
   gap: number,
   best: { measures: FlowNodeMeasure[]; gap: number; score: number; overflow: boolean } | undefined,
 ) {
-  const sizes = widths.map((width, i) => ({ width, height: heightFor(graph, i, width, hints) }));
+  const natural = widths.map((width, i) => ({ width, height: heightFor(graph, i, width, hints) }));
+  const unified = withUnifiedHeights(graph, natural);
+  const sizes = packFits(graph, ranked.groups, unified, gap) ? unified : natural;
   if (!packFits(graph, ranked.groups, sizes, gap)) return best;
   const score = scoreSizes(graph, sizes, gap);
   if (best && score <= best.score) return best;
@@ -193,7 +242,7 @@ function consider(
       minWidth: graph.nodes[i].width ?? FLOW.MIN_WIDTH,
       preferredWidth: size.width,
       maxWidth: graph.nodes[i].width ?? FLOW.MAX_WIDTH,
-      measuredHeight: size.height,
+      measuredHeight: natural[i].height,
       width: size.width,
       height: size.height,
     })),
@@ -241,10 +290,11 @@ export function resolveNodeSizes(
   if (best) return { ...best, diagnostics };
 
   const fallbackWidth = horizontal ? FLOW.MIN_WIDTH : FLOW.VERTICAL_WIDTH;
-  const sizes = graph.nodes.map((node, i) => {
+  const natural = graph.nodes.map((node, i) => {
     const width = node.width ?? fallbackWidth;
     return { width, height: heightFor(graph, i, width, hints) };
   });
+  const sizes = withUnifiedHeights(graph, natural);
   diagnostics.push(
     diagnostic(
       'INSUFFICIENT_SPACE',
@@ -261,7 +311,7 @@ export function resolveNodeSizes(
       minWidth: graph.nodes[i].width ?? FLOW.MIN_WIDTH,
       preferredWidth: size.width,
       maxWidth: graph.nodes[i].width ?? FLOW.MAX_WIDTH,
-      measuredHeight: size.height,
+      measuredHeight: natural[i].height,
       width: size.width,
       height: size.height,
     })),

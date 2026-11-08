@@ -174,6 +174,37 @@ test('long flow body grows height instead of shrinking type', () => {
   );
 });
 
+test('linked nodes share height when the difference is small', () => {
+  const scene = parseCanvas(`@node a\n### A\n-->\n@node b\n### B`, 'layout=flow direction=right');
+  const layout = layoutFlowFromCanvas(scene, [100, 132]);
+  assert.equal(layout.nodeFrames.get('a')!.height, 132);
+  assert.equal(layout.nodeFrames.get('b')!.height, 132);
+});
+
+test('linked nodes keep their height when the difference is extreme', () => {
+  const scene = parseCanvas(`@node a\n### A\n-->\n@node b\n### B`, 'layout=flow direction=right');
+  const layout = layoutFlowFromCanvas(scene, [80, 200]);
+  assert.equal(layout.nodeFrames.get('a')!.height, 80);
+  assert.equal(layout.nodeFrames.get('b')!.height, 200);
+});
+
+test('unlinked nodes do not share height', () => {
+  const scene = parseCanvas(`@node a\n### A\n@node b\n### B`, 'layout=flow direction=right');
+  const layout = layoutFlowFromCanvas(scene, [100, 132]);
+  assert.equal(layout.nodeFrames.get('a')!.height, 100);
+  assert.equal(layout.nodeFrames.get('b')!.height, 132);
+});
+
+test('explicit node height is not overwritten by linked neighbors', () => {
+  const scene = parseCanvas(
+    `@node a height=90\n### A\n-->\n@node b\n### B`,
+    'layout=flow direction=right',
+  );
+  const layout = layoutFlowFromCanvas(scene, [90, 132]);
+  assert.equal(layout.nodeFrames.get('a')!.height, 90);
+  assert.equal(layout.nodeFrames.get('b')!.height, 132);
+});
+
 test('branch and merge stay on shared ranks without crossing', () => {
   const scene = parseCanvas(
     `@node a\n### 入力\n@node b\n### 経路A\n@node c\n### 経路B\n@node d\n### 統合\n@edge a --> b\n@edge a --> c\n@edge b --> d\n@edge c --> d`,
