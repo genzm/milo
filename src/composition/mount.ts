@@ -52,13 +52,12 @@ export function prepareComposition(
   return () => mountAnnotations(root, scene, content);
 }
 
+const PART_VISUAL = '.milo-diagram, .milo-canvas, .box-block, .panel-block';
+const PART_CARD = '.box-block, .panel-block';
+
 function partSoloBox(part: HTMLElement) {
-  const visuals = [...part.children].filter((child) =>
-    child.matches('.milo-diagram, .milo-canvas, .box-block'),
-  );
-  return visuals.length === 1 && visuals[0].classList.contains('box-block')
-    ? (visuals[0] as HTMLElement)
-    : null;
+  const visuals = [...part.children].filter((child) => child.matches(PART_VISUAL));
+  return visuals.length === 1 && visuals[0].matches(PART_CARD) ? (visuals[0] as HTMLElement) : null;
 }
 
 function equalizeLinkedPartBoxes(scene: CompositionScene, parts: Map<string, HTMLElement>) {
@@ -149,7 +148,7 @@ function mountAnnotations(
     if (!observer || disposed) return;
     observer.observe(root);
     for (const element of content.querySelectorAll(
-      '.composition-part, .box-block, .canvas-node, .diagram-card, .diagram-vertex, .diagram-dot',
+      '.composition-part, .box-block, .panel-block, .canvas-node, .diagram-card, .diagram-vertex, .diagram-dot',
     ))
       observer.observe(element);
   };
@@ -186,9 +185,7 @@ function mountAnnotations(
         if (ref === 'all') return union([...parts.values()].map(measure));
         const element = resolveElement(ref);
         if (!ref.includes('.')) {
-          const visuals = [...element.children].filter((child) =>
-            child.matches('.milo-diagram, .milo-canvas, .box-block'),
-          );
+          const visuals = [...element.children].filter((child) => child.matches(PART_VISUAL));
           if (visuals.length) return union(visuals.map(measure));
         }
         return measure(element);

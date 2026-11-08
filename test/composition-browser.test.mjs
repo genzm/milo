@@ -161,23 +161,26 @@ test(
 title: boxes
 ---
 
-@compose gap=160
-@part problem width=300
-@box tone=accent
-### 課題
+@compose gap=180 height=295
+@part symptom width=315
+@panel tone=muted
+### 顧客が言うこと
 
-短い
+「使いづらい」
+
+**主観的な認識**
+@endpanel
+@endpart
+@part cause width=350
+@box
+### 探り当てたいこと
+
+どの場面・動作が、なぜ障害になるか
+
+**観察事実と原因の仮説**
 @endbox
 @endpart
-@part solution width=300
-@box tone=dark
-### 解決策
-
-うまくいくようにする。
-次の一手まで書く。
-@endbox
-@endpart
-@arrow id=proposal from=problem to=solution size=88
+@arrow id=doctor from=symptom to=cause label="深掘り" size=76
 @endcompose
 `,
     );
@@ -186,7 +189,9 @@ title: boxes
     await page.setContent(await createPdfHtml(result.deck, result.parts));
     await waitForPdfReady(page);
     const heights = await page.evaluate(() => {
-      const boxes = [...document.querySelectorAll('.composition-part > .box-block')];
+      const boxes = [
+        ...document.querySelectorAll('.composition-part > :is(.box-block, .panel-block)'),
+      ];
       return boxes.map((box) => Math.round(box.getBoundingClientRect().height));
     });
     assert.equal(heights.length, 2);
