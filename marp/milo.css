@@ -6920,7 +6920,6 @@
     U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 section {
-  --ink: #030b09;
   --accent: #d42d5a;
   --white: #fff;
   --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -7138,15 +7137,34 @@ section {
   ol {
     padding-left: 1em;
     li::marker {
-      color: var(--ink);
-      font-family: var(--mono);
-      font-size: 0.82em;
+      color: currentColor;
+      font-family: var(--slide-font);
     }
     ul,
     ol {
       margin-top: 0.25em;
       margin-bottom: 0.25em;
       font-size: 0.92em;
+    }
+  }
+  ul {
+    list-style-type: square;
+    > li::marker {
+      font-size: 0.62em;
+      color: color-mix(in srgb, currentColor 68%, transparent);
+    }
+    ul {
+      list-style-type: disc;
+    }
+    ul ul {
+      list-style-type: circle;
+    }
+  }
+  ol {
+    padding-left: 1.35em;
+    > li::marker {
+      font-weight: var(--slide-weight-emphasis);
+      font-variant-numeric: tabular-nums;
     }
   }
   li + li {
