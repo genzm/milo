@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -144,6 +144,54 @@ test(
     await page.waitForTimeout(180);
     assert.deepEqual(await inspect(page), [], 'presentation');
     assert.deepEqual(runtimeErrors, []);
+  },
+);
+
+test(
+  'linked composition boxes share height when the difference is small',
+  { timeout: 60_000 },
+  async (t) => {
+    const browser = await launchTestBrowser(t);
+    if (!browser) return;
+    const dir = await mkdtemp(join(tmpdir(), 'milo-box-heights-'));
+    t.after(() => rm(dir, { recursive: true, force: true }));
+    await writeFile(
+      join(dir, 'slides.md'),
+      `---
+title: boxes
+---
+
+@compose gap=160
+@part problem width=300
+@box tone=accent
+### 課題
+
+短い
+@endbox
+@endpart
+@part solution width=300
+@box tone=dark
+### 解決策
+
+うまくいくようにする。
+次の一手まで書く。
+@endbox
+@endpart
+@arrow id=proposal from=problem to=solution size=88
+@endcompose
+`,
+    );
+    const result = await compile({ input: join(dir, 'slides.md'), out: join(dir, 'slides.html') });
+    const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+    await page.setContent(await createPdfHtml(result.deck, result.parts));
+    await waitForPdfReady(page);
+    const heights = await page.evaluate(() => {
+      const boxes = [...document.querySelectorAll('.composition-part > .box-block')];
+      return boxes.map((box) => Math.round(box.getBoundingClientRect().height));
+    });
+    assert.equal(heights.length, 2);
+    assert.ok(heights[0] > 40);
+    assert.equal(heights[0], heights[1]);
   },
 );
 

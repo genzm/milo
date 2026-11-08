@@ -163,23 +163,22 @@ function find(parent: number[], index: number): number {
   return parent[index] === index ? index : (parent[index] = find(parent, parent[index]));
 }
 
-/** Stretch linked cards to the tallest in the group, unless one is far taller. */
-export function unifyConnectedHeights(graph: FlowGraph, heights: number[]) {
+/** Stretch linked sizes to the group max, unless one is far taller. */
+export function unifyGroupedHeights(
+  heights: number[],
+  links: Iterable<readonly [number, number]>,
+  variance = FLOW.HEIGHT_VARIANCE,
+) {
   const next = [...heights];
-  const frozen = graph.nodes.map((node) => node.height !== undefined);
-  const parent = graph.nodes.map((_, i) => i);
-  const indexOf = new Map(graph.nodes.map((node, i) => [node.id, i]));
-  for (const edge of graph.edges) {
-    const from = indexOf.get(edge.from);
-    const to = indexOf.get(edge.to);
-    if (from === undefined || to === undefined || frozen[from] || frozen[to]) continue;
+  const parent = next.map((_, i) => i);
+  for (const [from, to] of links) {
+    if (from === to || from < 0 || to < 0 || from >= next.length || to >= next.length) continue;
     const a = find(parent, from);
     const b = find(parent, to);
     if (a !== b) parent[a] = b;
   }
   const groups = new Map<number, number[]>();
   next.forEach((_, i) => {
-    if (frozen[i]) return;
     const root = find(parent, i);
     const members = groups.get(root) || [];
     members.push(i);
@@ -188,9 +187,23 @@ export function unifyConnectedHeights(graph: FlowGraph, heights: number[]) {
   for (const members of groups.values()) {
     if (members.length < 2) continue;
     const tallest = Math.max(...members.map((i) => next[i]));
-    for (const i of members) if (tallest - next[i] <= FLOW.HEIGHT_VARIANCE) next[i] = tallest;
+    for (const i of members) if (tallest - next[i] <= variance) next[i] = tallest;
   }
   return next;
+}
+
+/** Stretch linked cards to the tallest in the group, unless one is far taller. */
+export function unifyConnectedHeights(graph: FlowGraph, heights: number[]) {
+  const frozen = graph.nodes.map((node) => node.height !== undefined);
+  const indexOf = new Map(graph.nodes.map((node, i) => [node.id, i]));
+  const links: Array<[number, number]> = [];
+  for (const edge of graph.edges) {
+    const from = indexOf.get(edge.from);
+    const to = indexOf.get(edge.to);
+    if (from === undefined || to === undefined || frozen[from] || frozen[to]) continue;
+    links.push([from, to]);
+  }
+  return unifyGroupedHeights(heights, links);
 }
 
 function withUnifiedHeights(

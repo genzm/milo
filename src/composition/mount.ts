@@ -4,6 +4,8 @@ import {
   type CompositionScene,
   type ArrowAnnotation,
 } from '../markdown/composition.mjs';
+import { unifyGroupedHeights } from '../flow/measure.ts';
+import { FLOW } from '../flow/types.ts';
 import { svgElement } from '../svg';
 import type { Rendered } from '../render/lifecycle';
 import {
@@ -48,6 +50,50 @@ export function prepareComposition(
   }
   root.replaceChildren(content);
   return () => mountAnnotations(root, scene, content);
+}
+
+function partSoloBox(part: HTMLElement) {
+  const visuals = [...part.children].filter((child) =>
+    child.matches('.milo-diagram, .milo-canvas, .box-block'),
+  );
+  return visuals.length === 1 && visuals[0].classList.contains('box-block')
+    ? (visuals[0] as HTMLElement)
+    : null;
+}
+
+function equalizeLinkedPartBoxes(scene: CompositionScene, parts: Map<string, HTMLElement>) {
+  const boxes: HTMLElement[] = [];
+  const indexOf = new Map<HTMLElement, number>();
+  const index = (box: HTMLElement) => {
+    const existing = indexOf.get(box);
+    if (existing !== undefined) return existing;
+    const next = boxes.length;
+    boxes.push(box);
+    indexOf.set(box, next);
+    return next;
+  };
+  const boxOf = (ref: string) => {
+    if (ref === 'all' || ref.includes('.')) return null;
+    const part = parts.get(ref);
+    return part ? partSoloBox(part) : null;
+  };
+  const links: Array<[number, number]> = [];
+  for (const mark of scene.annotations) {
+    if (mark.kind !== 'arrow' || mark.side || mark.target !== undefined) continue;
+    const from = boxOf(mark.from);
+    const to = boxOf(mark.to);
+    if (!from || !to || from === to) continue;
+    links.push([index(from), index(to)]);
+  }
+  if (!boxes.length) return;
+  for (const box of boxes) box.style.minHeight = '';
+  const natural = boxes.map((box) => box.offsetHeight);
+  if (natural.every((height) => height < 1)) return;
+  const next = unifyGroupedHeights(natural, links, FLOW.BOX_HEIGHT_VARIANCE);
+  boxes.forEach((box, i) => {
+    const value = next[i] > natural[i] + 0.5 ? `${Math.round(next[i])}px` : '';
+    if (box.style.minHeight !== value) box.style.minHeight = value;
+  });
 }
 
 function union(boxes: Box[]): Box {
@@ -97,10 +143,21 @@ function mountAnnotations(
     return matches[0];
   };
   let disposed = false,
-    frame: number | null = null;
+    frame: number | null = null,
+    observer: ResizeObserver | null = null;
+  const observe = () => {
+    if (!observer || disposed) return;
+    observer.observe(root);
+    for (const element of content.querySelectorAll(
+      '.composition-part, .box-block, .canvas-node, .diagram-card, .diagram-vertex, .diagram-dot',
+    ))
+      observer.observe(element);
+  };
   const update = () => {
     if (disposed) return;
+    observer?.disconnect();
     try {
+      equalizeLinkedPartBoxes(scene, parts);
       const outer = root.getBoundingClientRect();
       const width = root.clientWidth,
         height = root.clientHeight;
@@ -240,10 +297,12 @@ function mountAnnotations(
       error.textContent = cause instanceof Error ? cause.message : String(cause);
       error.hidden = false;
       error.classList.add('block-error');
+    } finally {
+      observe();
     }
   };
   const view = root.ownerDocument.defaultView;
-  const observer =
+  observer =
     typeof ResizeObserver === 'undefined'
       ? null
       : new ResizeObserver(() => {
@@ -253,11 +312,7 @@ function mountAnnotations(
             update();
           });
         });
-  observer?.observe(root);
-  for (const element of content.querySelectorAll(
-    '.composition-part, .canvas-node, .diagram-card, .diagram-vertex, .diagram-dot',
-  ))
-    observer?.observe(element);
+  observe();
   return {
     update,
     dispose: () => {

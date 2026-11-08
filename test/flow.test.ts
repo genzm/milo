@@ -4,7 +4,11 @@ import { Window } from 'happy-dom';
 import { canvasDiagnostics, canvasHeight, layoutCanvas, parseCanvas } from '../src/canvas.ts';
 import { parseDiagram } from '../src/diagram.ts';
 import { layoutFlowFromCanvas } from '../src/flow/layout.ts';
-import { estimateEdgeLabel, estimateHeightAtWidth } from '../src/flow/measure.ts';
+import {
+  estimateEdgeLabel,
+  estimateHeightAtWidth,
+  unifyGroupedHeights,
+} from '../src/flow/measure.ts';
 import { fromCanvasScene } from '../src/flow/normalize.ts';
 import { FLOW } from '../src/flow/types.ts';
 import { validateFlow } from '../src/flow/validate.ts';
@@ -172,6 +176,24 @@ test('long flow body grows height instead of shrinking type', () => {
     layout.diagnostics.some((item) => item.code === 'TEXT_OVERFLOW'),
     false,
   );
+});
+
+test('grouped heights match unless the gap is extreme or there is no link', () => {
+  assert.deepEqual(unifyGroupedHeights([100, 132], [[0, 1]]), [132, 132]);
+  assert.deepEqual(unifyGroupedHeights([80, 200], [[0, 1]]), [80, 200]);
+  assert.deepEqual(unifyGroupedHeights([100, 132], []), [100, 132]);
+  assert.deepEqual(
+    unifyGroupedHeights(
+      [100, 120, 200],
+      [
+        [0, 1],
+        [1, 2],
+      ],
+    ),
+    [100, 200, 200],
+  );
+  assert.deepEqual(unifyGroupedHeights([147, 241], [[0, 1]], FLOW.BOX_HEIGHT_VARIANCE), [241, 241]);
+  assert.deepEqual(unifyGroupedHeights([89, 336], [[0, 1]], FLOW.BOX_HEIGHT_VARIANCE), [89, 336]);
 });
 
 test('linked nodes share height when the difference is small', () => {
