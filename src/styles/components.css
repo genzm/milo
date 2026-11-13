@@ -154,13 +154,20 @@
   margin: 12px auto;
 }
 .image-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
   margin: 15px 0;
 
   .image-caption {
+    display: block;
+    width: 100%;
     font-size: var(--slide-text-image-caption);
+    line-height: 1.45;
     text-align: center;
     color: var(--slide-muted);
-    margin: 7px 0;
+    margin: 7px 0 0;
   }
 }
 .milo-canvas {

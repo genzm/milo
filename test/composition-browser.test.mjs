@@ -201,6 +201,64 @@ title: boxes
 );
 
 test(
+  'idle composition arrows are not redrawn after layout settles',
+  { timeout: 60_000 },
+  async (t) => {
+    const browser = await launchTestBrowser(t);
+    if (!browser) return;
+    const dir = await mkdtemp(join(tmpdir(), 'milo-arrow-idle-'));
+    t.after(() => rm(dir, { recursive: true, force: true }));
+    await writeFile(
+      join(dir, 'slides.md'),
+      `---
+title: idle arrows
+---
+
+@compose gap=180 height=295
+@part left width=315
+@box
+短い箱
+@endbox
+@endpart
+@part right width=350
+@box
+もう少し本文がある箱。矢印の位置は安定したあとに動かない。
+@endbox
+@endpart
+@arrow id=go from=left to=right label="関係" size=76
+@endcompose
+`,
+    );
+    const result = await compile({ input: join(dir, 'slides.md'), out: join(dir, 'slides.html') });
+    const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+    await page.goto(pathToFileURL(result.outPath).href);
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForSelector('.composition-arrow');
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+    await page.waitForTimeout(180);
+    const redraws = await page.evaluate(async () => {
+      const svg = document.querySelector('.composition-annotations');
+      let changes = 0;
+      const observer = new MutationObserver((records) => {
+        changes += records.length;
+      });
+      observer.observe(svg, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['d', 'viewBox'],
+      });
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      observer.disconnect();
+      return changes;
+    });
+    assert.equal(redraws, 0, `arrows were redrawn ${redraws} time(s) while idle`);
+  },
+);
+
+test(
   'the trade-off example keeps both tips and its external label aligned in PDF and the editor',
   { timeout: 60_000 },
   async (t) => {

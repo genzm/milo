@@ -143,18 +143,10 @@ function mountAnnotations(
   };
   let disposed = false,
     frame: number | null = null,
+    drawn = '',
     observer: ResizeObserver | null = null;
-  const observe = () => {
-    if (!observer || disposed) return;
-    observer.observe(root);
-    for (const element of content.querySelectorAll(
-      '.composition-part, .box-block, .panel-block, .canvas-node, .diagram-card, .diagram-vertex, .diagram-dot',
-    ))
-      observer.observe(element);
-  };
   const update = () => {
     if (disposed) return;
-    observer?.disconnect();
     try {
       equalizeLinkedPartBoxes(scene, parts);
       const outer = root.getBoundingClientRect();
@@ -238,6 +230,7 @@ function mountAnnotations(
       }
       const arrows = new Map<string, Box>();
       const fragment = document.createDocumentFragment();
+      const marks = [`${width} ${height}`];
       for (const mark of scene.annotations) {
         if (mark.kind !== 'arrow') continue;
         const endpoints =
@@ -256,6 +249,7 @@ function mountAnnotations(
               : betweenBoxes(bounds(mark.from), bounds(mark.to));
         const geometry = arrowGeometry(...endpoints, mark.size, mark.arrows);
         arrows.set(mark.id, geometry.box);
+        marks.push(mark.id, geometry.path, mark.label);
         const group = svgElement('g', {
           class: `composition-arrow annotation-tone-${mark.tone}`,
           'data-annotation': mark.id,
@@ -275,6 +269,7 @@ function mountAnnotations(
           mark.scale,
           mark.size,
         );
+        marks.push(mark.target, geometry.path, geometry.stroke);
         const cross = svgElement('path', {
           class: `composition-cross annotation-tone-${mark.tone}`,
           d: geometry.path,
@@ -285,31 +280,50 @@ function mountAnnotations(
         });
         fragment.append(cross);
       }
-      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-      svg.replaceChildren(fragment);
+      const next = marks.join('\0');
+      if (next !== drawn) {
+        drawn = next;
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        svg.replaceChildren(fragment);
+      }
       error.hidden = true;
       error.classList.remove('block-error');
     } catch (cause) {
+      drawn = '';
       svg.replaceChildren();
       error.textContent = cause instanceof Error ? cause.message : String(cause);
       error.hidden = false;
       error.classList.add('block-error');
-    } finally {
-      observe();
     }
   };
   const view = root.ownerDocument.defaultView;
+  const sizes = new WeakMap<Element, string>();
   observer =
     typeof ResizeObserver === 'undefined'
       ? null
-      : new ResizeObserver(() => {
-          if (frame !== null || disposed) return;
+      : new ResizeObserver((entries) => {
+          if (disposed) return;
+          let changed = false;
+          for (const entry of entries) {
+            const size = `${Math.round(entry.contentRect.width)}x${Math.round(entry.contentRect.height)}`;
+            if (sizes.get(entry.target) === size) continue;
+            sizes.set(entry.target, size);
+            changed = true;
+          }
+          if (!changed || frame !== null) return;
           frame = view!.requestAnimationFrame(() => {
             frame = null;
             update();
           });
         });
-  observe();
+  // Observe once. Re-registering after each layout retriggers ResizeObserver.
+  if (observer) {
+    observer.observe(root);
+    for (const element of content.querySelectorAll(
+      '.composition-part, .box-block, .panel-block, .canvas-node, .diagram-card, .diagram-vertex, .diagram-dot',
+    ))
+      observer.observe(element);
+  }
   return {
     update,
     dispose: () => {

@@ -11,7 +11,11 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
   const scope = new RenderScope();
   try {
     const { md, blocks, tasks, display } = prepareSlide(source, ctx);
-    const context: RenderContext = { ...ctx, renderMarkdown: (text) => md.render(text) };
+    const context: RenderContext = {
+      ...ctx,
+      renderMarkdown: (text) => md.render(text),
+      renderInline: (text) => md.renderInline(text),
+    };
     root.dataset.markdown = 'slide';
     root.innerHTML = md.render(display);
     mountBlocks(root, blocks, md, context, scope);

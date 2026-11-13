@@ -34,3 +34,46 @@ test('compositions mount nested Markdown and report missing annotation targets',
     window.close();
   }
 });
+
+test('composition observes resize targets once', () => {
+  const window = new Window({ settings: { disableComputedStyleRendering: true } });
+  const previousDocument = globalThis.document;
+  const previousObserver = globalThis.ResizeObserver;
+  let observes = 0;
+  class FakeObserver {
+    observe() {
+      observes++;
+    }
+    disconnect() {}
+    unobserve() {}
+  }
+  Object.assign(globalThis, {
+    document: window.document,
+    ResizeObserver: FakeObserver,
+  });
+  const ctx = {
+    store: new SourceStore({ html: null, blocks: [] }),
+    present: () => false,
+    inspect: () => {},
+  };
+  try {
+    const root = document.createElement('div');
+    const rendered = renderSlide(
+      root,
+      '@compose\n@part a\n@box\nHello\n@endbox\n@endpart\n@part b\n@box\nWorld\n@endbox\n@endpart\n@arrow id=go from=a to=b\n@endcompose',
+      ctx,
+    );
+    const mounted = observes;
+    assert.ok(mounted > 0);
+    rendered.update();
+    rendered.update();
+    assert.equal(observes, mounted);
+    rendered.dispose();
+  } finally {
+    Object.assign(globalThis, {
+      document: previousDocument,
+      ResizeObserver: previousObserver,
+    });
+    window.close();
+  }
+});

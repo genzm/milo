@@ -78,3 +78,32 @@ test('Markdown images and image directives render different same-named assets by
     window.close();
   }
 });
+
+test('image captions render inline markdown instead of plain text', () => {
+  const window = new Window();
+  const originalDocument = globalThis.document;
+  Object.assign(globalThis, { document: window.document });
+  try {
+    const root = window.document.createElement('div');
+    const rendered = renderSlide(
+      root as unknown as HTMLElement,
+      '![図](./photo.png "==出典== **本**より")\n\n::image{asset="./photo.png" caption="==注== `図`"}',
+      { store: fixture(), present: () => false, inspect: () => {} },
+    );
+    const captions = [...root.querySelectorAll('.image-caption')];
+    assert.equal(captions.length, 2);
+    for (const caption of captions) {
+      assert.equal(caption.tagName, 'SPAN');
+      assert.equal(caption.parentElement?.classList.contains('image-block'), true);
+    }
+    assert.equal(captions[0].querySelector('mark.accent-emphasis')?.textContent, '出典');
+    assert.equal(captions[0].querySelector('strong')?.textContent, '本');
+    assert.equal(captions[0].textContent, '出典 本より');
+    assert.equal(captions[1].querySelector('mark.accent-emphasis')?.textContent, '注');
+    assert.equal(captions[1].querySelector('code')?.textContent, '図');
+    rendered.dispose();
+  } finally {
+    Object.assign(globalThis, { document: originalDocument });
+    window.close();
+  }
+});

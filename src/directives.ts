@@ -44,6 +44,7 @@ export interface RenderContext {
   patchSource?: (from: number, to: number, replacement: string) => void;
   inspect: (id: string) => void;
   renderMarkdown?: (source: string) => string;
+  renderInline?: (source: string) => string;
 }
 export interface Directive {
   name: string;
@@ -62,9 +63,10 @@ export function mountImage(el: HTMLElement, attrs: Record<string, string>, ctx: 
   el.classList.add('image-block');
   el.append(img);
   if (attrs.caption) {
-    const c = document.createElement('p');
+    const c = document.createElement('span');
     c.className = 'image-caption';
-    c.textContent = attrs.caption;
+    if (ctx.renderInline) c.innerHTML = ctx.renderInline(attrs.caption);
+    else c.textContent = attrs.caption;
     el.append(c);
   }
   img.addEventListener('dblclick', () => {
