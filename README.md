@@ -40,7 +40,7 @@ GIFは印刷時の静止フレームになります。PDFの基準はコンパ�
 
 ## 原稿
 
-先頭の frontmatter にタイトル、各スライド先頭のコメントにレイアウトを書きます。レイアウトは `cover`、`section`、`lab`、`media`、`essay` です。
+先頭の frontmatter にタイトル、各スライド先頭のコメントにレイアウトを書きます。レイアウトは `cover`、`section`、`lab`、`media`、`essay` です。`present: true` を書くと、HTML は編集画面ではなく発表の1枚目から開きます。URL の `#present` でも同じです。
 
 ```markdown
 ---

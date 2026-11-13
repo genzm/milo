@@ -75,9 +75,13 @@ function createFile(text: string) {
     },
   };
 }
-async function launch(html = initial, file = createFile(html)) {
+async function launch(
+  html = initial,
+  file = createFile(html),
+  url = 'https://milo.invalid/deck.html',
+) {
   const w = new Window({
-    url: 'https://milo.invalid/deck.html',
+    url,
     settings: {
       enableJavaScriptEvaluation: false,
       disableJavaScriptFileLoading: true,
@@ -140,6 +144,7 @@ test('standalone app boots and all three slides render without network dependenc
     assert.equal(app.query('#insert-block'), null);
     assert.equal(app.query('#undo'), null);
     assert.equal(app.query('#redo'), null);
+    assert.equal(app.query('body').classList.contains('presenting'), false);
     assert.deepEqual(app.errors, []);
   } finally {
     await app.close();
@@ -178,6 +183,34 @@ test('layout control edits the hidden slide metadata as the single source of tru
     assert.deepEqual(app.errors, []);
   } finally {
     await app.close();
+  }
+});
+
+test('a present flag or #present hash boots into presentation on the first slide', async () => {
+  const store = SourceStore.fromHTML(initial);
+  store.setText('manifest', '{\n  "title": "Fixture",\n  "present": true\n}\n');
+  const flagged = await launch(store.html!);
+  try {
+    assert.ok(flagged.query('body').classList.contains('presenting'));
+    assert.equal(flagged.query('#slide-content h1').textContent, '君とボク。');
+    assert.match(flagged.query('#present').textContent, /編集に戻る/);
+    assert.deepEqual(flagged.errors, []);
+  } finally {
+    await flagged.close();
+  }
+
+  const hashed = await launch(
+    initial,
+    createFile(initial),
+    'https://milo.invalid/deck.html#present',
+  );
+  try {
+    assert.ok(hashed.query('body').classList.contains('presenting'));
+    assert.equal(hashed.query('#slide-content h1').textContent, '君とボク。');
+    assert.match(hashed.query('#present').textContent, /編集に戻る/);
+    assert.deepEqual(hashed.errors, []);
+  } finally {
+    await hashed.close();
   }
 });
 

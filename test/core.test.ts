@@ -369,6 +369,8 @@ test('built artifact contains one kernel and all dependencies; a source edit pre
   assert.ok(s.get('slide-20').text.includes('@zone'));
   assert.ok(s.get('slide-21').text.includes('cluster-region=halo'));
   assert.equal(json(s.get('manifest').text).title, '小さな実験室');
+  assert.equal(Object.hasOwn(json(s.get('manifest').text), 'present'), false);
+  assert.equal(html.includes('<body class="presenting">'), false);
   assert.equal(Object.hasOwn(json(s.get('manifest').text), 'layouts'), false);
   assert.equal(s.list('asset')[0]?.name, 'assets/flow.gif');
   assert.equal(Object.hasOwn(json(s.get('manifest').text), 'slides'), false);

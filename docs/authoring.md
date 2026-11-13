@@ -6,13 +6,14 @@
 
 ## frontmatter
 
-ファイル先頭の YAML です。`title` を省略すると、最初の `# 見出し`、それも無ければディレクトリ名を使います。`description` は HTML の説明文です。`documentId` は下書きの識別子で、省略時は `milo` です。
+ファイル先頭の YAML です。`title` を省略すると、最初の `# 見出し`、それも無ければディレクトリ名を使います。`description` は HTML の説明文です。`documentId` は下書きの識別子で、省略時は `milo` です。`present: true` にすると、生成した HTML を開いたときに編集画面ではなく発表の1枚目から始まります。
 
 ```markdown
 ---
 title: 小さな実験室
 description: 数式と図の実験
 documentId: lab-notes
+present: true
 ---
 ```
 

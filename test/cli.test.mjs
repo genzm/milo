@@ -5,7 +5,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
-import { buildReport, compile, parseTalkMarkdown, loadDeck, slideLayout } from '../cli/compile.mjs';
+import {
+  buildReport,
+  compile,
+  parseTalkMarkdown,
+  loadDeck,
+  renderHtml,
+  slideLayout,
+} from '../cli/compile.mjs';
 import { json } from '../src/source.ts';
 
 const exec = promisify(execFile);
@@ -163,6 +170,46 @@ After the rule
   assert.equal(talk.slides.length, 2);
   assert.match(talk.slides[0], /After the rule/);
   assert.match(talk.slides[1], /^# Next/);
+});
+
+test('present frontmatter compiles into the manifest and marks HTML to open in presentation', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'milo-present-'));
+  const file = join(dir, 'slides.md');
+  try {
+    await writeFile(
+      file,
+      `---
+title: Talk
+present: true
+---
+
+# Hello
+`,
+    );
+    const deck = await loadDeck(file);
+    assert.equal(deck.present, true);
+    assert.deepEqual(json(deck.blocks.find((b) => b.id === 'manifest').text), {
+      title: 'Talk',
+      present: true,
+    });
+    assert.match(
+      renderHtml(deck, { runtime: '', mathCSS: '', css: '' }),
+      /<body class="presenting">/,
+    );
+    await writeFile(
+      file,
+      `---
+title: Talk
+present: 1
+---
+
+# Hello
+`,
+    );
+    await assert.rejects(() => loadDeck(file), /present は true か false/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test('YAML frontmatter keeps quoted titles and multiline descriptions', () => {

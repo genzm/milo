@@ -165,6 +165,7 @@ export async function loadDeck(inputPath) {
     typeof meta.title === 'string' && meta.title.trim()
       ? meta.title.trim()
       : slideTexts[0].match(/^#\s+(.+)$/m)?.[1]?.trim() || basename(dir);
+  const present = booleanMeta(meta, 'present');
   for (let index = 0; index < slides.length; index++) {
     try {
       slideLayout(slides[index].text);
@@ -176,7 +177,7 @@ export async function loadDeck(inputPath) {
     id: 'manifest',
     kind: 'manifest',
     name: 'manifest.jsonc',
-    text: JSON.stringify({ title }, null, 2) + '\n',
+    text: JSON.stringify(present ? { title, present: true } : { title }, null, 2) + '\n',
   };
 
   const assets = await loadReferencedAssets(dir, talk.imageRefs);
@@ -192,6 +193,7 @@ export async function loadDeck(inputPath) {
       typeof meta.documentId === 'string' && meta.documentId.trim()
         ? meta.documentId.trim()
         : 'milo',
+    present,
     blocks: [manifest, ...slides, ...assets],
   };
 }
@@ -338,7 +340,7 @@ ${runtime}
 };</script>
 <!-- END MILO TOOLBOX -->
 </head>
-<body>
+<body${deck.present ? ' class="presenting"' : ''}>
 <div id="app"></div>
 <noscript>この文書を表示・編集するにはJavaScriptを有効にしてください。原稿はHTML内の MILO SOURCES にあります。</noscript>
 
@@ -357,6 +359,13 @@ ${sources}
 </body>
 </html>
 `;
+}
+
+function booleanMeta(meta, key) {
+  if (!Object.hasOwn(meta, key)) return false;
+  if (typeof meta[key] !== 'boolean')
+    throw new Error(`frontmatter の ${key} は true か false にしてください。`);
+  return meta[key];
 }
 
 function count(value, noun) {

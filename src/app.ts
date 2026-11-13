@@ -5,7 +5,7 @@ import { updateNavigation } from './app/navigation';
 import { refreshInspector as renderInspector } from './app/inspector';
 import slideSize from './slide-size.json';
 import { slideNumber } from './slide-frame';
-import { SourceStore, type Kind } from './source';
+import { SourceStore, json, type Kind } from './source';
 import { Autosaver, readFile, type FileHandle } from './save';
 import { renderSlide, esc, type Rendered } from './render';
 import { cacheGet, cacheSet } from './cache';
@@ -25,6 +25,16 @@ let present = false,
   binding = false;
 const docId = document.querySelector('meta[name="milo-id"]')?.getAttribute('content') || 'milo';
 const cacheKey = docId + '|' + location.href.split('#')[0];
+const startPresenting =
+  location.hash.replace(/^#/, '').toLowerCase() === 'present' ||
+  (() => {
+    try {
+      return json<any>(session.store.get('manifest').text)?.present === true;
+    } catch {
+      return false;
+    }
+  })();
+if (startPresenting) document.body.classList.add('presenting');
 const drafts = new DraftStore(cacheKey, session.store, session.opening.blocks);
 const saver = new Autosaver(
   () => session.store.html,
@@ -541,6 +551,7 @@ updateNav();
 session.activeBlock = session.currentId();
 refreshInspector();
 refreshSlide();
+if (startPresenting) setPresent(true);
 const slideResizeObserver =
   typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scaleSlide);
 slideResizeObserver?.observe($('stage-scroll'));

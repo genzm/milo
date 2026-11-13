@@ -12,7 +12,7 @@ milo は原稿を単一 HTML にコンパイルし、その HTML が自分の原
 
 各ブロックの本文は `amp-lt-v1` です。`&` を `&amp;`、`<` を `&lt;`、NUL を `&#0;` にします。実装は `src/source-format.mjs` です。`src/source.ts` の `SourceStore` が HTML からブロックを読み、ID 重複や区画の欠損を拒否します。
 
-`manifest` は JSONC で、文書の `title` を持ちます。スライドの順序は HTML 内の slide ブロックの物理順序です。スライド本文は、区切り前の Markdown そのものです。画像は `mime:` 行と本体を持つ asset ブロックで、GIF / PNG / JPEG / WebP は Base64、SVG はテキストです。
+`manifest` は JSONC で、文書の `title` を持ちます。frontmatter の `present: true` があるときは `present` も入り、HTML は発表の1枚目から開きます。スライドの順序は HTML 内の slide ブロックの物理順序です。スライド本文は、区切り前の Markdown そのものです。画像は `mime:` 行と本体を持つ asset ブロックで、GIF / PNG / JPEG / WebP は Base64、SVG はテキストです。
 
 実行時は `meta name="milo" content="1"` と、設定・スライド・素材それぞれの終端コメント、`<!-- END MILO SOURCES -->` が揃ったファイルだけを milo 形式として開きます。
 
