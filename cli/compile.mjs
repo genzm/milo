@@ -199,8 +199,10 @@ export async function loadDeck(inputPath) {
 }
 
 export async function bundleRuntime(entry) {
-  const markdownRequire = createRequire(join(packageRoot, 'node_modules/markdown-it/package.json'));
-  const entitiesRoot = dirname(dirname(markdownRequire.resolve('entities')));
+  // parse5 8.1+ imports HtmlEntityDecoder from entities 9. markdown-it still
+  // nests entities 8, so the alias must follow parse5 or the bundle fails.
+  const parse5Require = createRequire(join(packageRoot, 'node_modules/parse5/package.json'));
+  const entitiesRoot = dirname(dirname(parse5Require.resolve('entities')));
   if (basename(entitiesRoot) !== 'entities') throw new Error('entities package layout changed');
   const result = await build({
     absWorkingDir: packageRoot,

@@ -2,8 +2,12 @@
   "name": "milo",
   "version": "0.1.0",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "description": "A source-preserving, self-editing, single-file research slide deck.",
+  "engines": {
+    "node": ">=22"
+  },
   "bin": {
     "milo": "cli/milo.mjs"
   },
@@ -16,31 +20,28 @@
     "format:check": "prettier --check \"**/*.{ts,mjs,css}\""
   },
   "dependencies": {
-    "@codemirror/autocomplete": "6.20.3",
+    "@codemirror/autocomplete": "6.20.4",
     "@codemirror/commands": "6.11.1",
     "@codemirror/lang-json": "6.0.2",
     "@codemirror/lang-markdown": "6.5.2",
-    "@codemirror/language": "6.12.4",
+    "@codemirror/language": "6.13.1",
     "@codemirror/search": "6.7.2",
-    "@codemirror/state": "6.7.5",
-    "@codemirror/view": "6.43.12",
-    "@fontsource/noto-sans-jp": "5.3.0",
-    "@types/katex": "0.16.8",
-    "@types/markdown-it": "14.2.0",
-    "@types/node": "22.20.3",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
+    "@fontsource/noto-sans-jp": "5.3.1",
     "esbuild": "0.28.2",
-    "happy-dom": "20.14.5",
     "jsonc-parser": "3.3.1",
-    "katex": "0.18.7",
-    "markdown-it": "15.0.2",
-    "parse5": "8.0.1",
-    "playwright": "1.64.0",
-    "tsx": "4.23.13",
-    "typescript": "5.9.3",
-    "yakuhanjp": "4.1.1",
+    "katex": "0.19.1",
+    "markdown-it": "15.0.3",
+    "parse5": "8.1.1",
+    "playwright": "1.65.0",
     "yaml": "2.9.1"
   },
   "devDependencies": {
-    "prettier": "3.9.8"
+    "@types/node": "22.20.5",
+    "happy-dom": "21.0.4",
+    "prettier": "3.10.1",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
   }
 }

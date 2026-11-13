@@ -269,7 +269,7 @@ function mountAnnotations(
           mark.scale,
           mark.size,
         );
-        marks.push(mark.target, geometry.path, geometry.stroke);
+        marks.push(mark.target, geometry.path, String(geometry.stroke));
         const cross = svgElement('path', {
           class: `composition-cross annotation-tone-${mark.tone}`,
           d: geometry.path,

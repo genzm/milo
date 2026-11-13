@@ -216,7 +216,7 @@ export function prepareSlide(source: string, ctx: RenderContext) {
       const id = resolveAssetRef(ctx.store, src);
       const img = `<img class="embedded-image" src="${esc(assetURL(ctx.store.get(id).text))}" alt="${esc(alt)}">`;
       if (!title) return img;
-      return `<span class="image-block">${img}<span class="image-caption">${md.renderInline(title)}</span></span>`;
+      return `<span class="image-block">${img}<span class="image-caption">${md.renderInline(String(title))}</span></span>`;
     } catch (e: any) {
       return `<span class="inline-error">${esc(e.message)}</span>`;
     }
