@@ -140,13 +140,6 @@ function parseSteps(groups) {
     return true;
   };
 }
-function args(raw) {
-  const a = {};
-  const leftovers = raw.replace(/([\w-]+)\s*=\s*"([^"\r\n]*)"/g, (_, k, v) => ((a[k] = v), ''));
-  if (leftovers.trim())
-    throw new Error('ディレクティブの設定は name="value" の形式で書いてください。');
-  return a;
-}
 function registerMiloBlocks(md) {
   const compositions = [];
   registerPairedBlock(md, 'compose', compositions, {
@@ -155,7 +148,6 @@ function registerMiloBlocks(md) {
     nested: true,
     sources: (source, options) => parseComposition(source, options).parts,
   });
-  const directives = [];
   const canvases = [];
   const diagrams = [];
   const boxes = [];
@@ -254,37 +246,8 @@ function registerMiloBlocks(md) {
   registerPairedBlock(md, 'footer', footers, { className: 'slide-footer-content', tag: 'footer' });
   registerPairedBlock(md, 'canvas', canvases, { className: 'milo-canvas', attributes: true });
   registerPairedBlock(md, 'diagram', diagrams, { className: 'milo-diagram', attributes: true });
-  md.block.ruler.before('fence', 'milo-directive', (s, line, _end, silent) => {
-    const text = s.src.slice(s.bMarks[line] + s.tShift[line], s.eMarks[line]);
-    const match = /^::([a-z]+)\{(.*)\}\s*$/.exec(text);
-    let name = match?.[1] || '',
-      raw = match?.[2] || '',
-      nextLine = line + 1;
-    if (!name) return false;
-    if (silent) return true;
-    let item;
-    try {
-      item = {
-        name,
-        attrs: args(raw),
-      };
-    } catch (e) {
-      item = { name, attrs: {}, error: e.message };
-    }
-    const token = s.push('milo_directive', '', 0);
-    token.meta = { index: directives.push(item) - 1, directive: item };
-    token.map = [line, nextLine];
-    s.line = nextLine;
-    return true;
-  });
-  md.renderer.rules.milo_directive = (
-    tokens,
-    index,
-  ) => `<div class="live-block" data-live="${tokens[index].meta.index}"></div>
-`;
   return {
     compositions,
-    directives,
     canvases,
     diagrams,
     boxes,

@@ -234,7 +234,6 @@ test('CLI names the slide when an image or layout cannot be compiled', async () 
       '# One\n\n---\n\n![gone](./missing.png)\n',
       /スライド 2: 画像が見つかりません: \.\/missing\.png/,
     ],
-    ['::image{asset="./missing.png"}\n', /スライド 1: 画像が見つかりません: \.\/missing\.png/],
     ['![x](./notes.txt)\n', /スライド 1: 未対応の画像です: \.\/notes\.txt/],
     ['![x](../outside.png)\n', /スライド 1: 画像パスが文書の外を指しています: \.\.\/outside\.png/],
     [

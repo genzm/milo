@@ -54,7 +54,7 @@ test('ambiguous or missing images are reported and other source kinds cannot res
   assert.throws(() => resolveAssetRef(store, 'a/logo.svg'), /複数に一致/);
 });
 
-test('Markdown images and image directives render different same-named assets by their paths', () => {
+test('Markdown images render different same-named assets by their paths', () => {
   const window = new Window();
   const originalDocument = globalThis.document;
   Object.assign(globalThis, { document: window.document });
@@ -62,7 +62,7 @@ test('Markdown images and image directives render different same-named assets by
     const root = window.document.createElement('div');
     const rendered = renderSlide(
       root as unknown as HTMLElement,
-      '![A](a/logo.svg)\n\n::image{asset="b/logo.svg" alt="B"}',
+      '![A](a/logo.svg)\n\n![B](b/logo.svg)',
       { store: fixture(), present: () => false, inspect: () => {} },
     );
     assert.equal(root.querySelector('.inline-error, .block-error'), null);
@@ -70,6 +70,8 @@ test('Markdown images and image directives render different same-named assets by
     assert.equal(images.length, 2);
     assert.equal(images[0].alt, 'A');
     assert.equal(images[1].alt, 'B');
+    assert.equal(images[0].dataset.asset, 'asset-a');
+    assert.equal(images[1].dataset.asset, 'asset-b');
     assert.match(decodeURIComponent(images[0].src), /id="a"/);
     assert.match(decodeURIComponent(images[1].src), /id="b"/);
     rendered.dispose();
@@ -87,7 +89,7 @@ test('image captions render inline markdown instead of plain text', () => {
     const root = window.document.createElement('div');
     const rendered = renderSlide(
       root as unknown as HTMLElement,
-      '![図](./photo.png "==出典== **本**より")\n\n::image{asset="./photo.png" caption="==注== `図`"}',
+      '![図](./photo.png "==出典== **本**より")\n\n![注](./photo.png "==注== `図`")',
       { store: fixture(), present: () => false, inspect: () => {} },
     );
     const captions = [...root.querySelectorAll('.image-caption')];
@@ -101,6 +103,32 @@ test('image captions render inline markdown instead of plain text', () => {
     assert.equal(captions[0].textContent, '出典 本より');
     assert.equal(captions[1].querySelector('mark.accent-emphasis')?.textContent, '注');
     assert.equal(captions[1].querySelector('code')?.textContent, '図');
+    rendered.dispose();
+  } finally {
+    Object.assign(globalThis, { document: originalDocument });
+    window.close();
+  }
+});
+
+test('double-clicking a Markdown image opens the asset unless presenting', () => {
+  const window = new Window();
+  const originalDocument = globalThis.document;
+  Object.assign(globalThis, { document: window.document });
+  try {
+    const inspected: string[] = [];
+    let present = false;
+    const root = window.document.createElement('div');
+    const rendered = renderSlide(root as unknown as HTMLElement, '![A](a/logo.svg)', {
+      store: fixture(),
+      present: () => present,
+      inspect: (id) => inspected.push(id),
+    });
+    const img = root.querySelector('img.embedded-image');
+    assert.ok(img);
+    img.dispatchEvent(new window.Event('dblclick', { bubbles: true }));
+    present = true;
+    img.dispatchEvent(new window.Event('dblclick', { bubbles: true }));
+    assert.deepEqual(inspected, ['asset-a']);
     rendered.dispose();
   } finally {
     Object.assign(globalThis, { document: originalDocument });

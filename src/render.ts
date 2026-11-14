@@ -37,8 +37,19 @@ export function renderSlide(root: HTMLElement, source: string, ctx: RenderContex
       );
       ctx.patchSource?.(task.at, task.at + 1, task.checked ? 'x' : ' ');
     };
+    const openAsset = (event: Event) => {
+      if (ctx.present()) return;
+      const img = (event.target as Element | null)?.closest<HTMLImageElement>('img.embedded-image');
+      if (!img || !root.contains(img) || !img.dataset.asset) return;
+      event.preventDefault();
+      ctx.inspect(img.dataset.asset);
+    };
     root.addEventListener('click', toggleTask);
-    scope.onDispose(() => root.removeEventListener('click', toggleTask));
+    root.addEventListener('dblclick', openAsset);
+    scope.onDispose(() => {
+      root.removeEventListener('click', toggleTask);
+      root.removeEventListener('dblclick', openAsset);
+    });
     scope.add(watchSlideCorners(root));
     scope.update();
     return scope;

@@ -6,7 +6,6 @@ import { mountCanvas } from '../canvas';
 import { mountDiagram } from '../diagram';
 import { esc } from '../escape';
 import type { RenderContext } from './context';
-import { mountImage } from './image';
 import { RenderScope, type Rendered } from './lifecycle';
 
 function showError(el: HTMLElement, e: any) {
@@ -141,17 +140,6 @@ export function mountBlocks(
     for (const mount of handlers) mounted = mount() || mounted;
   } while (mounted);
 
-  for (const element of root.querySelectorAll<HTMLElement>('[data-live]')) {
-    const directive = blocks.directives[Number(element.dataset.live)];
-    try {
-      if (directive.error) throw new Error(directive.error);
-      if (directive.name !== 'image')
-        throw new Error(`未対応のディレクティブです: ${directive.name}`);
-      mountImage(element, directive.attrs, context);
-    } catch (error) {
-      showError(element, error);
-    }
-  }
   // Diagram updates run before overlays, including nested compositions.
   for (const mount of annotations.reverse()) scope.add(mount());
 }

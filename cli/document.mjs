@@ -56,9 +56,6 @@ function collectImageRef(token, map, refs) {
     refs.set(src, map ? map[0] : undefined);
   };
   if (token.type === 'image') add(token.attrGet('src'));
-  if (token.type === 'milo_directive' && token.meta.directive.name === 'image') {
-    add(token.meta.directive.attrs.asset);
-  }
 }
 
 function slideNumber(line, separators) {

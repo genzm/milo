@@ -4,7 +4,7 @@ import { Window } from 'happy-dom';
 import { renderSlide } from '../src/render.ts';
 import { SourceStore } from '../src/source.ts';
 
-test('removed model directives are unsupported while static math and literal references remain visible', () => {
+test('removed model directives stay visible as text while static math still renders', () => {
   const window = new Window({ settings: { disableComputedStyleRendering: true } });
   const originalDocument = globalThis.document;
   Object.assign(globalThis, { document: window.document });
@@ -22,11 +22,10 @@ test('removed model directives are unsupported while static math and literal ref
     assert.equal(root.querySelectorAll('.katex').length, 2);
     assert.match(root.textContent, /\{\{wave\.gamma\}\}/);
     assert.equal(root.querySelector('code')?.textContent.trim(), '{"input":"t"}');
-    const errors = [...root.querySelectorAll('.block-error')];
-    assert.equal(errors.length, 3);
-    for (const [index, name] of ['plot', 'slider', 'equation'].entries()) {
-      assert.equal(errors[index].textContent, `未対応のディレクティブです: ${name}`);
-    }
+    assert.equal(root.querySelector('.block-error'), null);
+    assert.match(root.textContent, /::plot\{model="wave"\}/);
+    assert.match(root.textContent, /::slider\{param="wave.gamma"\}/);
+    assert.match(root.textContent, /::equation\{model="wave"\}/);
     rendered.dispose();
   } finally {
     Object.assign(globalThis, { document: originalDocument });

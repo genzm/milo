@@ -10,14 +10,8 @@ export interface StepGroup {
   steps: { attrs: Record<string, string>; source: string }[];
   error?: string;
 }
-export interface ParsedDirective {
-  name: string;
-  attrs: Record<string, string>;
-  error?: string;
-}
 export interface MiloBlocks {
   compositions: PairedBlock[];
-  directives: ParsedDirective[];
   canvases: PairedBlock[];
   diagrams: PairedBlock[];
   boxes: PairedBlock[];

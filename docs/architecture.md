@@ -20,7 +20,7 @@ milo は原稿を単一 HTML にコンパイルし、その HTML が自分の原
 
 `milo <パス>` は `cli/milo.mjs` から `compile` を呼びます。
 
-1. `cli/document.mjs` が frontmatter を分け、トップレベルの `---` でスライドに割り、画像参照を集めます。ブロック構文は表示側と同じ `src/markdown/blocks.mjs` で解析します。ブロック内部の水平線は分割せず、コード中の画像ディレクティブは素材参照として扱いません。
+1. `cli/document.mjs` が frontmatter を分け、トップレベルの `---` でスライドに割り、画像参照を集めます。ブロック構文は表示側と同じ `src/markdown/blocks.mjs` で解析します。ブロック内部の水平線は分割せず、コード中の画像は素材参照として扱いません。
 2. 各スライドの `<!-- milo: … -->` を `src/slide-layout.mjs` が検査します。
 3. 相対パスの画像を asset ブロックにします。同じファイルは1回だけ埋めます。
 4. esbuild が `src/app.ts` を IIFE にまとめ、KaTeX と Noto Sans JP（400 / 600 / 700）を CSS へ埋めます。
@@ -42,7 +42,7 @@ PDF 用 HTML は編集 UI を含みません。`src/pdf-entry.ts` が全スラ�
 - `@box` `@panel` `@grid` `@stack` `@columns` `@steps` `@impact` `@footer` の構文は `src/markdown/blocks.mjs`、DOM は `src/render/blocks.ts`
 - `@canvas` の公開入口は `src/canvas.ts`。解析は `src/canvas/parse.ts`、DOM は `src/canvas/mount.ts`
 - `@diagram` の公開入口は `src/diagram.ts`
-- `::image{asset="…"}` の DOM は `src/render/image.ts`。参照の解決は `src/assets.ts`。ダブルクリックで素材を開くのはこの形式です
+- Markdown 画像は `src/markdown/slide.ts`。参照の解決は `src/assets.ts`。編集画面でダブルクリックすると素材タブが開きます
 
 流れ図の配置は [流れ図](flow.md)、ring / radial / field は [図式](diagram.md) です。`@compose` の接続点は [解説矢印](annotations.md#接続点の計算) です。
 

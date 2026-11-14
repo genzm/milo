@@ -9,7 +9,7 @@ export function updateNavigation(session: EditorSession, go: (index: number) => 
   $('slides').innerHTML = session.manifest.slides
     .map((id, i) => {
       const text = session.store.get(id).text,
-        kind = /!\[[^\]]*]\([^)]+\)/.test(text) || text.includes('::image') ? 'image' : 'text',
+        kind = /!\[[^\]]*]\([^)]+\)/.test(text) ? 'image' : 'text',
         layout = session.layoutOf(id);
       const art =
         kind === 'image'
