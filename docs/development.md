@@ -50,6 +50,7 @@ npm run check
 | `src/diagram/layout-radial.ts` | `side` または `distance` がある radial |
 | `src/diagram/layout-field.ts` | field、zone、cluster |
 | `src/diagram/links.ts` | `connect=cycle` の辺と、輪郭への接続 |
+| `src/diagram/to-canvas.ts` | `layout=flow` をキャンバスのシーンへ変換 |
 | `src/diagram/mount.ts` | ダイアグラムの DOM。flow はキャンバスへ渡す |
 | `src/diagram/measure.ts` | 枠線込みの実寸 |
 | `src/flow/layout.ts` | 流れ図。手順は [流れ図の配置](flow.md) |

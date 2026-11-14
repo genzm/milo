@@ -1,6 +1,6 @@
 # 図式の配置
 
-`@diagram` は要素と関係を宣言し、`layout` で置き方だけ切り替えます。解析は `src/diagram/parse.ts`、振り分けは `src/diagram/layout.ts` です。DOM と実測は `src/diagram/mount.ts` です。計算は描画に依存しません。テストは見積もり寸法だけで再現できます。
+`@diagram` は要素と関係を宣言し、`layout` で置き方だけ切り替えます。解析は `src/diagram/parse.ts`、振り分けは `src/diagram/layout.ts` です。`layout=flow` は `src/diagram/to-canvas.ts` でキャンバスのシーンに直し、DOM はキャンバス側です。それ以外の DOM と実測は `src/diagram/mount.ts` です。計算は描画に依存しません。テストは見積もり寸法だけで再現できます。
 
 | layout | 実装 | 既定の領域 |
 | --- | --- | --- |
