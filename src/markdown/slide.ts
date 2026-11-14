@@ -1,7 +1,9 @@
 import MarkdownIt from 'markdown-it';
 import katex from 'katex';
 import { registerMiloBlocks, lineText } from './blocks.mjs';
-import { assetURL, esc, resolveAssetRef, type RenderContext } from '../directives';
+import { assetURL, resolveAssetRef } from '../assets';
+import { esc } from '../escape';
+import type { RenderContext } from '../render/context';
 
 function mathBlock(state: any, line: number, end: number, silent: boolean) {
   if (state.sCount[line] - state.blkIndent >= 4) return false;

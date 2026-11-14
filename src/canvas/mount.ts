@@ -1,5 +1,5 @@
 import { svgElement } from '../svg.ts';
-import type { RenderContext } from '../directives';
+import type { RenderContext } from '../render/context';
 import { layoutFlowFromCanvas } from '../flow/layout.ts';
 import { estimateNodeHeight } from '../flow/measure.ts';
 import { routeFreeEdges } from '../flow/route.ts';

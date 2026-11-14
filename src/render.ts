@@ -2,9 +2,11 @@ import { prepareSlide } from './markdown/slide';
 import { mountBlocks } from './render/blocks';
 import { RenderScope, type Rendered } from './render/lifecycle';
 import { watchSlideCorners } from './slide-radius';
-import type { RenderContext } from './directives';
+import type { RenderContext } from './render/context';
 
-export { assetURL, esc, type RenderContext } from './directives';
+export { assetURL } from './assets';
+export { esc } from './escape';
+export type { RenderContext } from './render/context';
 export type { Rendered } from './render/lifecycle';
 
 export function renderSlide(root: HTMLElement, source: string, ctx: RenderContext): Rendered {

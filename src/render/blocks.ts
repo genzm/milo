@@ -4,8 +4,15 @@ import type { MiloBlocks, StepGroup } from '../markdown/blocks.mjs';
 import { atAttributes } from '../markdown/attributes.mjs';
 import { mountCanvas } from '../canvas';
 import { mountDiagram } from '../diagram';
-import { esc, mountImage, showError, type RenderContext } from '../directives';
+import { esc } from '../escape';
+import type { RenderContext } from './context';
+import { mountImage } from './image';
 import { RenderScope, type Rendered } from './lifecycle';
+
+function showError(el: HTMLElement, e: any) {
+  el.classList.add('block-error');
+  el.textContent = e.message || String(e);
+}
 
 const CARD_TONES = ['accent', 'default', 'muted', 'dark'] as const;
 type CardTone = (typeof CARD_TONES)[number];

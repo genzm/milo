@@ -1,6 +1,7 @@
 import { type DiagramLevel, type DiagramBox, NESTED_DIAGRAM_FRAME } from './types';
 import { mountCanvasScene } from '../canvas/mount.ts';
-import { type RenderContext, esc } from '../directives';
+import { esc } from '../escape';
+import type { RenderContext } from '../render/context';
 import { parseDiagram } from './parse';
 import { toCanvasScene } from './to-canvas.ts';
 import { svgElement } from '../svg.ts';

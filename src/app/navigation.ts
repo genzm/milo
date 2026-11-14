@@ -1,5 +1,5 @@
 import { $ } from './shell';
-import { esc } from '../directives';
+import { esc } from '../escape';
 import type { EditorSession } from './session';
 export function updateNavigation(session: EditorSession, go: (index: number) => void) {
   session.readManifest();

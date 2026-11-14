@@ -1,5 +1,6 @@
 import { $, icon } from './shell';
-import { esc, assetURL } from '../directives';
+import { assetURL } from '../assets';
+import { esc } from '../escape';
 import { LAYOUTS, setSlideLayout, type SlideLayout } from '../slide-layout.mjs';
 import type { Kind } from '../source';
 import type { SourceEditor } from '../editor';

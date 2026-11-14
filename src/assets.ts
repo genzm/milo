@@ -1,3 +1,40 @@
+import { SourceStore } from './source';
+
+export function assetURL(text: string): string {
+  const match = /^mime:\s*(image\/(?:gif|png|jpeg|webp|svg\+xml))\r?\n\r?\n([\s\S]*)$/.exec(text);
+  if (!match) throw new Error('画像素材の形式を確認してください。');
+  if (match[1] === 'image/svg+xml')
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(match[2]);
+  const base64 = match[2].replace(/\s/g, '');
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) throw new Error('画像データが不正です。');
+  return `data:${match[1]};base64,${base64}`;
+}
+
+function normAssetPath(value: string) {
+  return value.replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+export function resolveAssetRef(store: SourceStore, ref: string): string {
+  const raw = ref.startsWith('asset:') ? ref.slice(6) : ref;
+  if (!raw) throw new Error('画像の参照が空です。');
+  if (store.blocks.get(raw)?.kind === 'asset') return raw;
+  const prefixed = raw.startsWith('asset-') ? raw : `asset-${raw}`;
+  if (store.blocks.get(prefixed)?.kind === 'asset') return prefixed;
+  const n = normAssetPath(raw),
+    base = n.split('/').pop() || n;
+  const assets = store.list('asset');
+  const exact = assets.filter((b) => normAssetPath(b.name) === n);
+  const matches = exact.length
+    ? exact
+    : assets.filter((b) => {
+        const name = normAssetPath(b.name);
+        return name.endsWith('/' + n) || name.split('/').pop() === base;
+      });
+  if (matches.length > 1) throw new Error(`画像の参照が複数に一致します: ${ref}`);
+  if (matches.length === 1) return matches[0].id;
+  throw new Error(`埋め込み画像が見つかりません: ${ref}`);
+}
+
 export async function readImageAsset(file: File): Promise<string> {
   if (file.size > 12 * 1024 * 1024) throw new Error('初版では12MB以下の画像を使ってください。');
   const allowed = ['image/gif', 'image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];

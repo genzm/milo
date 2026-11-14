@@ -32,7 +32,11 @@ npm run check
 | `cli/marp-theme.mjs` | Marp テーマの CSS |
 | `cli/styles.mjs` | `src/style.css` を1つの CSS にまとめる |
 | `cli/fonts.mjs` | スライド用フォントの埋め込みと Marp 向けの参照 |
+| `src/escape.ts` | HTML エスケープ |
+| `src/assets.ts` | 埋め込み画像の URL、参照解決、実行時の取り込み |
 | `src/render.ts` | `renderSlide`。表示準備と DOM 配置をつなぐ |
+| `src/render/context.ts` | 描画時の原稿・選択・Markdown 変換 |
+| `src/render/image.ts` | `::image` の DOM |
 | `src/markdown/slide.ts` | 数式、強調、下線、`@align`、チェック、Markdown 画像 |
 | `src/markdown/blocks.mjs` | ブロック構文。CLI と表示で共有 |
 | `src/markdown/attributes.mjs` | `名前=値` と行頭の `#id` |
