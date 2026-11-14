@@ -38,7 +38,10 @@ npm run check
 | `src/markdown/attributes.mjs` | `名前=値` と行頭の `#id` |
 | `src/render/blocks.ts` | ブロックの DOM |
 | `src/render/lifecycle.ts` | 再配置と後片付け |
-| `src/canvas.ts` | `@canvas` の解析と描画 |
+| `src/canvas.ts` | `@canvas` の公開入口 |
+| `src/canvas/parse.ts` | `@canvas` の解析 |
+| `src/canvas/layout.ts` | 高さ解決と free 配置。flow は流れ図へ委譲 |
+| `src/canvas/mount.ts` | キャンバスの DOM と接続線 |
 | `src/diagram.ts` | `@diagram` の公開 API |
 | `src/diagram/parse.ts` | `@diagram` の解析 |
 | `src/diagram/layout.ts` | ring / radial / field の振り分け。[図式の配置](diagram.md) |

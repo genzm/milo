@@ -40,7 +40,8 @@ PDF 用 HTML は編集 UI を含みません。`src/pdf-entry.ts` が全スラ�
 
 - 数式、`==アクセント==`、`++下線++`、行末の `@align`、チェック項目、Markdown 画像は `src/markdown/slide.ts`
 - `@box` `@panel` `@grid` `@stack` `@columns` `@steps` `@impact` `@footer` の構文は `src/markdown/blocks.mjs`、DOM は `src/render/blocks.ts`
-- `@canvas` は `src/canvas.ts`、`@diagram` の公開入口は `src/diagram.ts`
+- `@canvas` の公開入口は `src/canvas.ts`。解析は `src/canvas/parse.ts`、DOM は `src/canvas/mount.ts`
+- `@diagram` の公開入口は `src/diagram.ts`
 - `::image{asset="…"}` は `src/directives.ts`。ダブルクリックで素材を開くのはこの形式です
 
 流れ図の配置は [流れ図](flow.md)、ring / radial / field は [図式](diagram.md) です。`@compose` の接続点は [解説矢印](annotations.md#接続点の計算) です。

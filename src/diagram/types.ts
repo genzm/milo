@@ -1,4 +1,4 @@
-import { type CanvasRoute } from '../canvas';
+import { type FlowRoute } from '../flow/types.ts';
 import { type RadialOverflowReason } from './layout-radial.ts';
 
 export type DiagramLayoutKind = 'ring' | 'flow' | 'radial' | 'field';
@@ -86,7 +86,7 @@ export interface DiagramOptions {
   start: DiagramStart;
   order: DiagramOrder;
   direction: 'right' | 'left' | 'down' | 'up';
-  route: CanvasRoute;
+  route: FlowRoute;
   center: string;
   width: number;
   height: number;
