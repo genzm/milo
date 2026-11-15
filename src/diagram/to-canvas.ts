@@ -43,6 +43,7 @@ export function toCanvasScene(scene: DiagramScene): CanvasScene {
       tone: 'default' as const,
       dashed: false,
       arrows: arrowsFor(link.kind),
+      shape: 'line' as const,
     })),
   };
 }

@@ -7,6 +7,7 @@ import { fromCanvasScene } from '../flow/normalize.ts';
 import { measureBorderBox, sceneRatio } from '../diagram/measure.ts';
 import { FLOW, FLOW_DIAGNOSTIC_MESSAGE } from '../flow/types.ts';
 import { canvasHeight, layoutCanvas } from './layout.ts';
+import { CANVAS_HEAD_SIZE, headTerminal, headTriangle } from './head.ts';
 import { parseCanvas } from './parse.ts';
 import type { CanvasScene } from './types.ts';
 
@@ -117,16 +118,39 @@ export function mountCanvasScene(
     for (const { item, edge } of routed) {
       if (!edge) continue;
       const arrows = item.arrows ?? edge.arrows;
-      const attrs: Record<string, string | number> = {
-        d: item.path,
-        'data-edge-from': item.from,
-        'data-edge-to': item.to,
-        'data-edge-role': item.role || 'edge',
-        class: `canvas-edge canvas-edge-${edge.tone}${edge.dashed ? ' is-dashed' : ''}`,
-      };
-      if (arrows === 'end' || arrows === 'both') attrs['marker-end'] = `url(#${uid}-arrow)`;
-      if (arrows === 'start' || arrows === 'both') attrs['marker-start'] = `url(#${uid}-arrow)`;
-      layer.append(svgElement('path', attrs));
+      if (edge.shape === 'head') {
+        const ends = [
+          arrows === 'start' || arrows === 'both' ? 'start' : '',
+          arrows === 'end' || arrows === 'both' ? 'end' : '',
+        ].filter(Boolean);
+        for (const end of ends) {
+          const terminal = headTerminal(item.path, end === 'start');
+          const points = terminal
+            ? headTriangle(terminal.tip, terminal.back, edge.headSize ?? CANVAS_HEAD_SIZE)
+            : '';
+          if (!points) continue;
+          layer.append(
+            svgElement('polygon', {
+              points,
+              'data-edge-from': item.from,
+              'data-edge-to': item.to,
+              'data-edge-role': item.role || 'edge',
+              class: `canvas-edge-head canvas-edge-${edge.tone}`,
+            }),
+          );
+        }
+      } else {
+        const attrs: Record<string, string | number> = {
+          d: item.path,
+          'data-edge-from': item.from,
+          'data-edge-to': item.to,
+          'data-edge-role': item.role || 'edge',
+          class: `canvas-edge canvas-edge-${edge.tone}${edge.dashed ? ' is-dashed' : ''}`,
+        };
+        if (arrows === 'end' || arrows === 'both') attrs['marker-end'] = `url(#${uid}-arrow)`;
+        if (arrows === 'start' || arrows === 'both') attrs['marker-start'] = `url(#${uid}-arrow)`;
+        layer.append(svgElement('path', attrs));
+      }
       if (edge.label && item.role !== 'stem' && item.role !== 'bus' && !labeled.has(item.index)) {
         labeled.add(item.index);
         layer.append(

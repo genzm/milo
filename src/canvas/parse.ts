@@ -1,6 +1,13 @@
 import { atAttributes, finite, choice } from '../markdown/attributes.mjs';
 import { FLOW, FLOW_ROUTES } from '../flow/types.ts';
-import type { CanvasEdge, CanvasNode, CanvasOptions, CanvasRoute, CanvasScene } from './types.ts';
+import type {
+  CanvasEdge,
+  CanvasEdgeShape,
+  CanvasNode,
+  CanvasOptions,
+  CanvasRoute,
+  CanvasScene,
+} from './types.ts';
 
 function nodeFrom(attrs: Record<string, string>, markdown: string, index: number): CanvasNode {
   const frame = attrs.frame?.split(',').map((part) => finite(part.trim()));
@@ -30,14 +37,25 @@ function nodeFrom(attrs: Record<string, string>, markdown: string, index: number
 
 function edgeFrom(attrs: Record<string, string>): CanvasEdge {
   if (!attrs.from || !attrs.to) throw new Error('edge には from と to が必要です。');
+  const shape = choice<CanvasEdgeShape>(attrs.shape, ['line', 'head'], 'line', 'shape');
+  const headSize = finite(attrs.size);
+  if (headSize !== undefined && headSize <= 0)
+    throw new Error('edge の size は正の数にしてください。');
   return {
     from: attrs.from,
     to: attrs.to,
     label: attrs.label || '',
     route: attrs.route ? choice<CanvasRoute>(attrs.route, FLOW_ROUTES, 'auto', 'route') : undefined,
-    tone: choice(attrs.tone, ['default', 'accent', 'muted'], 'default', 'tone'),
+    tone: choice(
+      attrs.tone,
+      ['default', 'accent', 'muted'],
+      shape === 'head' ? 'muted' : 'default',
+      'tone',
+    ),
     dashed: attrs.dashed === 'true',
     arrows: choice(attrs.arrows, ['none', 'start', 'end', 'both'], 'end', 'arrows'),
+    shape,
+    headSize,
   };
 }
 

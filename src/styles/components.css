@@ -303,6 +303,19 @@
   .canvas-edge-muted {
     stroke: #a9999e;
   }
+  .canvas-edge-head {
+    fill: #2d2628;
+    stroke: none;
+  }
+  &.canvas-layout-flow .canvas-edge-head {
+    fill: color-mix(in srgb, var(--slide-ink) 28%, var(--slide-muted));
+  }
+  .canvas-edge-accent.canvas-edge-head {
+    fill: var(--accent);
+  }
+  .canvas-edge-muted.canvas-edge-head {
+    fill: #a9999e;
+  }
   .canvas-edge.is-dashed {
     stroke-dasharray: 7 6;
   }

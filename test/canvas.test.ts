@@ -33,6 +33,68 @@ test('canvas shape is card, ellipse or diamond, and fill=none is not a shape', (
   assert.equal(scene.nodes[0].fill, 'none');
 });
 
+test('a head edge is a muted triangle and keeps the shaft off', () => {
+  const scene = parseCanvas(
+    '@node a\nA\n@node b\nB\n@edge a --> b shape=head size=28',
+    'layout=free width=400 height=320',
+  );
+  assert.equal(scene.edges[0].shape, 'head');
+  assert.equal(scene.edges[0].tone, 'muted');
+  assert.equal(scene.edges[0].headSize, 28);
+  assert.equal(parseCanvas('@node a\nA\n@node b\nB\n@edge a --> b').edges[0].shape, 'line');
+  assert.throws(
+    () => parseCanvas('@node a\nA\n@node b\nB\n@edge a --> b shape=dot'),
+    /shape は line \/ head/,
+  );
+
+  const window = new Window({ settings: { disableComputedStyleRendering: true } });
+  const originalDocument = globalThis.document;
+  const originalResizeObserver = globalThis.ResizeObserver;
+  Object.assign(globalThis, {
+    document: window.document,
+    ResizeObserver: window.ResizeObserver,
+  });
+  try {
+    const root = window.document.createElement('div');
+    const rendered = renderSlide(
+      root as unknown as HTMLElement,
+      `@canvas layout=free width=400 height=320\n@node a x=40 y=20 width=120\nA\n@node b x=40 y=200 width=120\nB\n@edge a --> b shape=head\n@endcanvas`,
+      {
+        store: new SourceStore({ html: null, blocks: [] }),
+        present: () => false,
+        inspect: () => {},
+      },
+    );
+    const head = root.querySelector('.canvas-edge-head');
+    assert.equal(root.querySelector('.canvas-edge'), null);
+    assert.match(head?.className || '', /canvas-edge-muted/);
+    const points = (head?.getAttribute('points') || '')
+      .trim()
+      .split(/\s+/)
+      .map((pair) => {
+        const [x, y] = pair.split(',').map(Number);
+        return { x, y };
+      });
+    assert.equal(points.length, 3);
+    const [apex, left, right] = points;
+    assert.ok(apex.y > left.y && apex.y > right.y);
+    const base = Math.hypot(left.x - right.x, left.y - right.y);
+    const baseY = (left.y + right.y) / 2;
+    const height = Math.hypot(apex.x - (left.x + right.x) / 2, apex.y - baseY);
+    assert.ok(Math.abs(base / height - 1.8) < 0.02);
+    const centerY = (apex.y + baseY) / 2;
+    assert.ok(centerY > 100 && centerY < 180);
+    assert.ok(apex.y < 200);
+    rendered.dispose();
+  } finally {
+    Object.assign(globalThis, {
+      document: originalDocument,
+      ResizeObserver: originalResizeObserver,
+    });
+    window.close();
+  }
+});
+
 test('canvas accepts loose Markdown as nodes around arrow shorthand', () => {
   const scene = parseCanvas('### Before\n\n説明。\n\n-->\n\n### After\n\n説明。');
   assert.equal(scene.nodes.length, 2);

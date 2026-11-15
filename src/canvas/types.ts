@@ -6,6 +6,7 @@ export type CanvasRoute = FlowRoute;
 export type CanvasArrows = FlowArrows;
 export type CanvasShape = 'card' | 'ellipse' | 'diamond';
 export type CanvasFill = 'solid' | 'none';
+export type CanvasEdgeShape = 'line' | 'head';
 
 export interface CanvasOptions {
   layout: CanvasLayout;
@@ -40,6 +41,10 @@ export interface CanvasEdge {
   tone: 'default' | 'accent' | 'muted';
   dashed: boolean;
   arrows: CanvasArrows;
+  /** `head` draws only the triangular tip. `line` keeps the shaft. */
+  shape: CanvasEdgeShape;
+  /** Length of a head-only triangle, in canvas units. */
+  headSize?: number;
 }
 
 export interface CanvasScene {
