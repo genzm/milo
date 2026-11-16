@@ -44,6 +44,7 @@ export function toCanvasScene(scene: DiagramScene): CanvasScene {
       dashed: false,
       arrows: arrowsFor(link.kind),
       shape: 'line' as const,
+      inset: link.inset,
     })),
   };
 }

@@ -24,6 +24,8 @@ export interface FlowEdge {
   route?: FlowRoute;
   arrows?: FlowArrows;
   feedback?: boolean;
+  /** Pull both ends in by this many units so the arrow sits in the gap. */
+  inset?: number;
 }
 
 export interface FlowGraph {
@@ -63,6 +65,7 @@ export interface FlowSceneInput {
     label: string;
     route?: FlowRoute;
     arrows?: FlowArrows;
+    inset?: number;
   }>;
 }
 

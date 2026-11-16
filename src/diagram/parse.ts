@@ -22,7 +22,9 @@ function parseLink(text: string): DiagramLink | null {
   const attrs = atAttributes(match[4] || '');
   const kind: DiagramLinkKind =
     match[2] === '<->' ? 'both' : match[2] === '->' ? 'forward' : 'undirected';
-  return { from: match[1], to: match[3], kind, label: attrs.label || '' };
+  const inset = finite(attrs.inset, 0)!;
+  if (inset < 0) throw new Error('link の inset は 0 以上にしてください。');
+  return { from: match[1], to: match[3], kind, label: attrs.label || '', inset };
 }
 
 function itemFrom(

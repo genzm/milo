@@ -117,7 +117,7 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 ### ステップ
 
-`@steps highlight=2` は番号付きの横並びです。`highlight` は 1 始まりで、その番号だけピンクになります。カードの囲いは使いません。`0` か省略で、どれも強調しません。各 `@step` には `title` が必要です。ステップ内の改行は、空行でなくても改行として描きます。
+`@steps highlight=2` は番号付きの横並びです。`highlight` は 1 始まりで、その番号だけピンクになります。カードの囲いは使いません。`0` か省略で、どれも強調しません。各 `@step` には `title` が必要です。ステップ内の改行は、空行でなくても改行として描きます。`place=center` は見出しを上に残したまま、ステップをスライドの縦の中央に置きます。省略すると見出しのすぐ下です。
 
 ```markdown
 @steps highlight=2
@@ -225,7 +225,7 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 ### flow
 
-`@canvas` の flow と同じ高さ指定と `route` を使います。`height` の省略と `height=auto` は内容に合わせて伸びます。`height=auto` は flow だけで使えます。関係は `@link` で書きます。
+`@canvas` の flow と同じ高さ指定と `route` を使います。`height` の省略と `height=auto` は内容に合わせて伸びます。`height=auto` は flow だけで使えます。関係は `@link` で書きます。`inset=28` は線の両端をカードから離し、間に短い矢印を置きます。
 
 ```markdown
 @diagram layout=flow direction=right route=auto

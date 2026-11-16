@@ -78,6 +78,8 @@ export interface DiagramLink {
   to: string;
   kind: DiagramLinkKind;
   label: string;
+  /** Pull both ends in by this many units so the arrow sits in the gap. */
+  inset?: number;
 }
 
 export interface DiagramOptions {

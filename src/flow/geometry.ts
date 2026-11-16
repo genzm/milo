@@ -140,3 +140,21 @@ export function graphBounds(frames: FlowFrame[]): FlowFrame {
 export function edgeHitsNode(path: string, box: FlowFrame) {
   return polylineHits(samplePath(path), [inflate(box, 1)]);
 }
+
+const MIN_FLOATING_ARROW = 22;
+
+/** Pull both ends of a segment toward its middle, leaving the arrow in the gap. */
+export function insetEndpoints(start: Point, end: Point, inset: number): [Point, Point] {
+  if (!(inset > 0)) return [start, end];
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy);
+  const pull = Math.min(inset, Math.max(0, (length - MIN_FLOATING_ARROW) / 2));
+  if (pull <= 0) return [start, end];
+  const ux = dx / length;
+  const uy = dy / length;
+  return [
+    { x: start.x + ux * pull, y: start.y + uy * pull },
+    { x: end.x - ux * pull, y: end.y - uy * pull },
+  ];
+}

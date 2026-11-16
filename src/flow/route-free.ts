@@ -5,6 +5,7 @@ import {
   polylineHits,
   sampleCubic,
   graphBounds,
+  insetEndpoints,
   type Side,
   type Point,
 } from './geometry.ts';
@@ -110,14 +111,15 @@ export function routeFreeEdges(graph: FlowGraph, frames: Map<string, FlowFrame>)
     const from = frames.get(edge.from)!;
     const to = frames.get(edge.to)!;
     const { out, inn, horizontal } = sides[i];
-    const start = portPoint(from, out, ports.get(`${edge.index}:from`)!);
-    const end = portPoint(to, inn, ports.get(`${edge.index}:to`)!);
+    const attachedStart = portPoint(from, out, ports.get(`${edge.index}:from`)!);
+    const attachedEnd = portPoint(to, inn, ports.get(`${edge.index}:to`)!);
     if (
       groups.get(`${edge.from}:${out}`)!.length === 1 &&
       groups.get(`${edge.to}:${inn}`)!.length === 1
     ) {
-      alignPorts(from, to, start, end, horizontal);
+      alignPorts(from, to, attachedStart, attachedEnd, horizontal);
     }
+    const [start, end] = insetEndpoints(attachedStart, attachedEnd, edge.inset ?? 0);
     const obstacles = [...frames.values()]
       .filter((box) => box !== from && box !== to)
       .map((box) => inflate(box, 8));

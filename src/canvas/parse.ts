@@ -41,6 +41,8 @@ function edgeFrom(attrs: Record<string, string>): CanvasEdge {
   const headSize = finite(attrs.size);
   if (headSize !== undefined && headSize <= 0)
     throw new Error('edge の size は正の数にしてください。');
+  const inset = finite(attrs.inset, 0)!;
+  if (inset < 0) throw new Error('edge の inset は 0 以上にしてください。');
   return {
     from: attrs.from,
     to: attrs.to,
@@ -56,6 +58,7 @@ function edgeFrom(attrs: Record<string, string>): CanvasEdge {
     arrows: choice(attrs.arrows, ['none', 'start', 'end', 'both'], 'end', 'arrows'),
     shape,
     headSize,
+    inset,
   };
 }
 

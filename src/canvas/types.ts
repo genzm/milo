@@ -45,6 +45,8 @@ export interface CanvasEdge {
   shape: CanvasEdgeShape;
   /** Length of a head-only triangle, in canvas units. */
   headSize?: number;
+  /** Pull both ends in by this many units so the arrow sits in the gap. */
+  inset?: number;
 }
 
 export interface CanvasScene {

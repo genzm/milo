@@ -36,10 +36,13 @@ function renderSteps(group: StepGroup, md: InstanceType<typeof MarkdownIt>) {
   const attrs = atAttributes(group.options);
   const style = attrs.style || 'cards';
   if (style !== 'cards') throw new Error('steps の style は cards です。');
+  const place = attrs.place || 'start';
+  if (place !== 'start' && place !== 'center')
+    throw new Error('steps の place は start / center から選んでください。');
   const highlight = integerOption('highlight', attrs.highlight, 0, 0);
   if (highlight > group.steps.length)
     throw new Error(`highlight は 1〜${group.steps.length} にしてください。`);
-  return group.steps
+  const html = group.steps
     .map((step, index) => {
       const title = step.attrs.title?.trim();
       if (!title) throw new Error(`@step ${index + 1} には title が必要です。`);
@@ -50,6 +53,7 @@ function renderSteps(group: StepGroup, md: InstanceType<typeof MarkdownIt>) {
       return card + arrow;
     })
     .join('');
+  return { html, place };
 }
 
 export function mountBlocks(
@@ -118,7 +122,9 @@ export function mountBlocks(
     element.innerHTML = md.render(panel.source);
   });
   register('steps', blocks.steps, (element, group) => {
-    element.innerHTML = renderSteps(group, md);
+    const { html, place } = renderSteps(group, md);
+    if (place === 'center') element.classList.add('steps-place-center');
+    element.innerHTML = html;
   });
   register('impact', blocks.impacts, (element, impact) => {
     element.innerHTML = md.render(impact.source);

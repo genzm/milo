@@ -110,8 +110,41 @@ test('steps lay out numbered cards, arrows and a highlighted current step', () =
     assert.equal(cards[0].classList.contains('is-highlight'), false);
     assert.match(cards[2].textContent, /全体像/);
     assert.ok(cards[0].querySelector('.step-body br'));
+    assert.equal(
+      root.querySelector('.steps-block')?.classList.contains('steps-place-center'),
+      false,
+    );
   } finally {
     close();
+  }
+});
+
+test('place=center anchors the steps row in the middle of the slide', () => {
+  const { root, close } = render(`@steps place=center
+@step title="収集"
+読む
+@step title="整理"
+分ける
+@endsteps`);
+  try {
+    assert.equal(
+      root.querySelector('.steps-block')?.classList.contains('steps-place-center'),
+      true,
+    );
+  } finally {
+    close();
+  }
+  const bad = render(`@steps place=bottom
+@step title="収集"
+読む
+@endsteps`);
+  try {
+    assert.match(
+      bad.root.querySelector('.block-error')?.textContent ?? '',
+      /place は start \/ center/,
+    );
+  } finally {
+    bad.close();
   }
 });
 

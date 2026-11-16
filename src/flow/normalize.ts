@@ -27,6 +27,7 @@ export function fromCanvasScene(scene: FlowSceneInput): FlowGraph {
       label: edge.label,
       route: edge.route,
       arrows: edge.arrows,
+      inset: edge.inset,
     })),
   };
 }

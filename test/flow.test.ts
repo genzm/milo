@@ -272,6 +272,37 @@ test('cycles become a ranked line plus a feedback diagnostic', () => {
   assert.ok(xs[1] < xs[2]);
 });
 
+test('inset parks a flow arrow in the gap instead of on the cards', () => {
+  const scene = parseCanvas(
+    `@node a\n### 入力\n@node b\n### 実行\n@edge a --> b inset=28`,
+    'layout=flow direction=right width=520 gap=28',
+  );
+  assert.equal(scene.edges[0].inset, 28);
+  const diagram = parseDiagram(
+    `@item a title="入力"\n@item b title="実行"\n@link a -> b inset=28`,
+    'layout=flow',
+  );
+  assert.equal(diagram.links[0].inset, 28);
+  assert.throws(
+    () =>
+      parseDiagram(
+        `@item a title="入力"\n@item b title="実行"\n@link a -> b inset=-4`,
+        'layout=flow',
+      ),
+    /inset は 0 以上/,
+  );
+  const layout = layoutFlowFromCanvas(scene);
+  const a = layout.nodeFrames.get('a')!;
+  const b = layout.nodeFrames.get('b')!;
+  const numbers = layout.edgePaths[0].path.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+  const startX = numbers[0];
+  const endX = numbers[numbers.length - 2];
+  assert.ok(startX > a.x + a.width + 8);
+  assert.ok(endX < b.x - 8);
+  const gapMid = (a.x + a.width + b.x) / 2;
+  assert.ok(Math.abs((startX + endX) / 2 - gapMid) < 4);
+});
+
 test('route=curve keeps a cubic for a two-point edge', () => {
   const scene = parseCanvas(
     `@node a\n### 入力\n-->\n@node b\n### 実行`,

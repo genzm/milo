@@ -13,6 +13,7 @@ import {
   inflate,
   graphBounds,
   polylineHits,
+  insetEndpoints,
   type Point,
   type Side,
 } from './geometry.ts';
@@ -414,8 +415,11 @@ function routeLegacy(
     const inTotal = centered ? 1 : totals.get(`${edge.to}:${sides.inn}`) || 1;
     const outIndex = centered ? 1 : bump(`${edge.from}:${sides.out}:i`);
     const inIndex = centered ? 1 : bump(`${edge.to}:${sides.inn}:i`);
-    const start = portPoint(from, sides.out, outIndex / (outTotal + 1));
-    const end = portPoint(to, sides.inn, inIndex / (inTotal + 1));
+    const [start, end] = insetEndpoints(
+      portPoint(from, sides.out, outIndex / (outTotal + 1)),
+      portPoint(to, sides.inn, inIndex / (inTotal + 1)),
+      edge.inset ?? 0,
+    );
     const obstacles = boxes
       .filter((box) => box !== from && box !== to)
       .map((box) => inflate(box, 8));
