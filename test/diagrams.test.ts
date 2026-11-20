@@ -83,9 +83,15 @@ test('unhighlighted steps sit on a transparent field instead of a muted card', (
   const components = readFileSync(new URL('../src/styles/components.css', import.meta.url), 'utf8');
   assert.match(components, /\.step-card \{[^}]*background: transparent/s);
   assert.doesNotMatch(components, /\.step-card\.is-highlight \{[^}]*border-color/s);
+  assert.match(components, /\.step-badge::after \{[^}]*content: '\. '[^}]*white-space: pre/s);
+  assert.doesNotMatch(components, /\.step-badge \{[^}]*border-radius: 50%/s);
   assert.match(
     components,
-    /\.step-card\.is-highlight \.step-badge \{[^}]*background: var\(--accent\)/s,
+    /\.step-card\.is-highlight \.step-badge,\n\.step-card\.is-highlight \.step-title \{[^}]*color: var\(--accent\)/s,
+  );
+  assert.match(
+    components,
+    /\.step-card\.is-highlight \.step-badge::after \{[^}]*color: var\(--accent\)/s,
   );
   assert.doesNotMatch(components, /\.step-card \{[^}]*background: var\(--slide-card\)/s);
 });
