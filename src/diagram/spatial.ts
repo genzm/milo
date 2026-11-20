@@ -82,15 +82,6 @@ export function semanticToDisplay(point: SemanticPoint, frame: SpatialFrame): Ve
   };
 }
 
-export function displayToSemantic(point: Vec, frame: SpatialFrame): SemanticPoint {
-  const plot = plotRect(frame);
-  const cx = plot.x + plot.width / 2;
-  const cy = plot.y + plot.height / 2;
-  const rx = plot.width / 2 || 1;
-  const ry = plot.height / 2 || 1;
-  return { x: (point.x - cx) / rx, y: (cy - point.y) / ry };
-}
-
 export function boxFromCenter(center: Vec, size: { width: number; height: number }): Box {
   return {
     x: center.x - size.width / 2,

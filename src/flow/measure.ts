@@ -330,15 +330,3 @@ export function resolveNodeSizes(
     })),
   };
 }
-
-export function measureNodes(graph: FlowGraph, measured: FlowMeasureHints = []): FlowNodeMeasure[] {
-  return resolveNodeSizes(
-    graph,
-    {
-      rank: graph.nodes.map((_, i) => i),
-      groups: [graph.nodes.map((_, i) => i)],
-      feedback: new Set(),
-    },
-    measured,
-  ).measures;
-}
