@@ -6932,6 +6932,7 @@ section {
   --slide-text-subheading: 32px;
   --slide-text-label: 18px;
   --slide-text-body: 27px;
+  --slide-text-code: calc(var(--slide-text-body) * 0.8);
   --slide-text-footer: 12px;
   --slide-text-quote: 32px;
   --slide-text-table: 27px;
@@ -7123,6 +7124,19 @@ section {
   > :last-child {
     margin-bottom: 0;
   }
+  :has(> .steps-place-center) {
+    display: grid;
+  }
+  :has(> .steps-place-center) > h1:first-of-type {
+    grid-area: 1 / 1;
+    align-self: start;
+  }
+  > .steps-place-center {
+    grid-area: 1 / 1;
+    align-self: center;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
   p + p {
     margin-top: var(--slide-space-paragraph-following);
   }
@@ -7207,11 +7221,13 @@ section {
     padding: 1.36cqw;
     overflow: auto;
     max-width: 100%;
+    font-size: var(--slide-text-code);
     line-height: var(--slide-leading-body);
     code {
       padding: 0;
       border: 0;
       background: transparent;
+      font-size: inherit;
     }
   }
   table {

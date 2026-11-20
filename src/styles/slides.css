@@ -376,12 +376,14 @@
     padding: 1.36cqw;
     overflow: auto;
     max-width: 100%;
+    font-size: var(--slide-text-code);
     line-height: var(--slide-leading-body);
 
     code {
       padding: 0;
       border: 0;
       background: transparent;
+      font-size: inherit;
     }
   }
   table {

@@ -186,6 +186,12 @@ function registerMiloBlocks(md) {
       error = '';
     const sources = [];
     const bodies = [];
+    const flush = (at) => {
+      if (columnStart < 0) return;
+      sources.push(s.src.slice(s.bMarks[columnStart], s.bMarks[at]));
+      bodies.push({ source: sources.at(-1), line: columnStart });
+      columnStart = -1;
+    };
     for (const [structuralLine, text] of structuralLines(s, line + 1, end)) {
       cursor = structuralLine;
       if (text === '@columns') {
@@ -194,26 +200,21 @@ function registerMiloBlocks(md) {
       }
       if (text === '@endcolumns') {
         if (--depth === 0) {
-          if (columnStart >= 0) error = 'columnを閉じる @endcolumn がありません。';
+          flush(cursor);
           break;
         }
         continue;
       }
       if (depth !== 1) continue;
       if (text === '@column') {
-        if (columnStart >= 0) {
-          error = 'columnを閉じる @endcolumn がありません。';
-          break;
-        }
+        flush(cursor);
         columnStart = cursor + 1;
       } else if (text === '@endcolumn') {
         if (columnStart < 0) {
           error = '@endcolumn に対応する @column がありません。';
           break;
         }
-        sources.push(s.src.slice(s.bMarks[columnStart], s.bMarks[cursor]));
-        bodies.push({ source: sources.at(-1), line: columnStart });
-        columnStart = -1;
+        flush(cursor);
       } else if (columnStart < 0 && text) {
         error = '@columns の内容は @column で囲んでください。';
         break;

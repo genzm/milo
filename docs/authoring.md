@@ -85,16 +85,14 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 ### 列とカード
 
-`@columns` は等幅の列です。中は `@column` … `@endcolumn` を2つ以上置きます。
+`@columns` は等幅の列です。中は `@column` を2つ以上置きます。次の `@column` か `@endcolumns` で区切ります。`@endcolumn` も使えます。
 
 ```markdown
 @columns
 @column
 左
-@endcolumn
 @column
 右
-@endcolumn
 @endcolumns
 ```
 
@@ -180,7 +178,7 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 `route=auto` は、直列を直線にし、分岐と合流を共有幹線付きの直交線にします。横に収まらないときは `direction=down` を書きます。循環は戻り線になります。表示する警告は、重なり、文字切れ、領域超過、線の横断、ラベルの衝突、余白不足です。
 
-`layout=free` の `height` は数値です。`height=auto` は使えません。ノードの位置は `x` `y`、または `frame=x,y,width,height` です。`dx` `dy` は流れ配置のあとに足すずれで、`pinned=true` はその座標を固定します。
+`layout=free` の `height` は数値です。`height=auto` は使えません。自由配置の文字はスライド本文と同じ大きさです。flow のカードは狭いので、本文より小さいままです。ノードの位置は `x` `y`、または `frame=x,y,width,height` です。`dx` `dy` は流れ配置のあとに足すずれで、`pinned=true` はその座標を固定します。
 
 ノードの `shape` は `card` / `ellipse` / `diamond` です。既定は `card` です。`tone` は `default` / `accent` / `muted` / `dark` です。`fill=none` は中の塗りだけ消して、輪郭は `tone` のまま残します。どの形にも付けられます。ID を省略すると `node-1` のように付きます。
 

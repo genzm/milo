@@ -266,6 +266,15 @@
     --canvas-node-bg: transparent;
     color: var(--slide-ink);
   }
+  /* 自由配置はスライドのレイアウトなので、flowカード用の小さい文字ではなく本文の大きさを使う。 */
+  &.canvas-layout-free .canvas-node {
+    :is(h1, h2, h3, h4, h5, h6) {
+      font-size: var(--slide-text-heading);
+    }
+    :is(p, ul, ol, blockquote) {
+      font-size: var(--slide-text-body);
+    }
+  }
   .canvas-diamond-stroke {
     position: absolute;
     inset: 0;

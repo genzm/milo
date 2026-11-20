@@ -33,7 +33,6 @@ description: 原稿・数式・画像・編集道具を内蔵する、自己編�
 通常のMarkdownを書けます。
 通常のMarkdownを書けます。
 
-@endcolumn
 @column
 
 ### 記法の種類 @align=center
@@ -45,7 +44,6 @@ description: 原稿・数式・画像・編集道具を内蔵する、自己編�
 print()
 ```
 
-@endcolumn
 @endcolumns
 
 ---

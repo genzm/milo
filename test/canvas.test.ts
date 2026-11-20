@@ -347,13 +347,41 @@ test('columns render two or more Markdown columns with nested structural content
     assert.equal(fenced.querySelectorAll('.column-block').length, 2);
     assert.match(fenced.querySelector('code')?.textContent || '', /@endcolumn/);
 
+    const implicit = window.document.createElement('div');
+    renderSlide(
+      implicit as unknown as HTMLElement,
+      '@columns\n@column\n左\n@column\n右\n@endcolumns',
+      context,
+    );
+    const implicitColumns = [...implicit.querySelectorAll('.column-block')];
+    assert.equal(implicitColumns.length, 2);
+    assert.equal(implicitColumns[0]?.textContent.trim(), '左');
+    assert.equal(implicitColumns[1]?.textContent.trim(), '右');
+
+    const nested = window.document.createElement('div');
+    renderSlide(
+      nested as unknown as HTMLElement,
+      '@columns\n@column\n外左\n\n@columns\n@column\n内左\n@column\n内右\n@endcolumns\n@column\n外右\n@endcolumns',
+      context,
+    );
+    assert.equal(nested.querySelectorAll('.columns-block').length, 2);
+    assert.equal(nested.querySelectorAll('.column-block').length, 4);
+
     const broken = window.document.createElement('div');
     renderSlide(
       broken as unknown as HTMLElement,
-      '@columns\n@column\nひとつだけ\n@endcolumn\n@endcolumns',
+      '@columns\n@column\nひとつだけ\n@endcolumns',
       context,
     );
     assert.match(broken.querySelector('.block-error')?.textContent || '', /2つ以上/);
+
+    const unclosed = window.document.createElement('div');
+    renderSlide(
+      unclosed as unknown as HTMLElement,
+      '@columns\n@column\n左\n@column\n右\n',
+      context,
+    );
+    assert.match(unclosed.querySelector('.block-error')?.textContent || '', /@endcolumns/);
   } finally {
     Object.assign(globalThis, { document: originalDocument });
     window.close();
