@@ -496,9 +496,14 @@ document.addEventListener('keydown', (e) => {
   else if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) setPresent(!present);
 });
 window.addEventListener('beforeunload', (e) => {
-  if ((saver.handle && saver.dirty()) || (!saver.handle && session.sourceChanged())) {
-    e.preventDefault();
-    e.returnValue = '';
+  const fileDirty = Boolean(saver.handle && saver.dirty());
+  const draftPending = !saver.handle && session.sourceChanged() && !drafts.currentIsStored();
+  if (!fileDirty && !draftPending) return;
+  e.preventDefault();
+  e.returnValue = '';
+  if (draftPending) {
+    updates.cancelCache();
+    void drafts.persist('hidden');
   }
 });
 document.addEventListener('visibilitychange', () => {

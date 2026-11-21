@@ -104,6 +104,47 @@ test('failed conflict backup retains the draft and successful backup remains rec
   assert.equal(await drafts.recovery(), null);
 });
 
+test('the current edit is stored only after the latest draft write succeeds', async () => {
+  const { store, drafts, failures } = fixture();
+  store.setText('slide-a', '# Draft');
+  assert.equal(drafts.currentIsStored(), false);
+  failures.add('draft:test');
+  assert.equal(await drafts.persist(), null);
+  assert.equal(drafts.currentIsStored(), false);
+  failures.clear();
+  await drafts.persist();
+  assert.equal(drafts.currentIsStored(), true);
+  store.setText('slide-a', '# Newer');
+  assert.equal(drafts.currentIsStored(), false);
+  await drafts.discard();
+  assert.equal(drafts.currentIsStored(), false);
+});
+
+test('a slower draft write cannot mark a newer edit as stored', async () => {
+  const { store, baseline, drafts } = fixture();
+  const gates: Array<() => void> = [];
+  const delayed = new DraftStore('delayed', store, baseline.blocks, {
+    get: async () => undefined,
+    set: async () => {
+      if (gates.length < 2) await new Promise<void>((resolve) => gates.push(resolve));
+      return true;
+    },
+  });
+  store.setText('slide-a', '# First');
+  const first = delayed.persist();
+  store.setText('slide-a', '# Second');
+  const second = delayed.persist();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  gates[1]();
+  await second;
+  assert.equal(delayed.currentIsStored(), true);
+  gates[0]();
+  await first;
+  assert.equal(delayed.currentIsStored(), true);
+  store.setText('slide-a', '# First');
+  assert.equal(delayed.currentIsStored(), false);
+});
+
 test('rebasing records the current baseline and ignores differences in newline encoding', async () => {
   const { store, drafts } = fixture();
   store.setText('slide-a', '# External\n\nText');

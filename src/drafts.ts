@@ -45,6 +45,8 @@ interface Cache {
 export class DraftStore {
   private base: string;
   private keys: Record<DraftStorage | 'previous', string>;
+  private generation = 0;
+  private stored: string | null = null;
 
   constructor(
     cacheKey: string,
@@ -74,10 +76,21 @@ export class DraftStore {
       when: Date.now(),
       reason,
     };
-    return (await this.cache.set(this.keys.active, draft)) ? draft : null;
+    const generation = ++this.generation;
+    if (!(await this.cache.set(this.keys.active, draft))) return null;
+    if (generation === this.generation) this.stored = draft.content;
+    return draft;
+  }
+
+  currentIsStored() {
+    return this.stored !== null && this.stored === blockFingerprint(this.store.list());
   }
 
   discard(storage: DraftStorage = 'active') {
+    if (storage === 'active') {
+      this.generation++;
+      this.stored = null;
+    }
     return this.cache.set(this.keys[storage], undefined);
   }
 
