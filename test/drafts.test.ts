@@ -121,7 +121,7 @@ test('the current edit is stored only after the latest draft write succeeds', as
 });
 
 test('a slower draft write cannot mark a newer edit as stored', async () => {
-  const { store, baseline, drafts } = fixture();
+  const { store, baseline } = fixture();
   const gates: Array<() => void> = [];
   const delayed = new DraftStore('delayed', store, baseline.blocks, {
     get: async () => undefined,

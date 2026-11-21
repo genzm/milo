@@ -17,6 +17,29 @@ test('literal and fenced Markdown images do not become asset dependencies', () =
   assert.deepEqual(parseTalkMarkdown(source).imageRefs, [{ ref: './real.png', slide: 1 }]);
 });
 
+test('each slide records the source line where its text begins', () => {
+  const source = [
+    '---',
+    'title: T',
+    '---',
+    '',
+    '# One',
+    '',
+    '---',
+    '',
+    '',
+    '<!-- milo: layout=lab -->',
+    '',
+    '@box',
+    '---',
+    '@endbox',
+    '---',
+    '# Three',
+  ].join('\n');
+  assert.deepEqual(parseTalkMarkdown(source).slideLines, [5, 10, 16]);
+  assert.deepEqual(parseTalkMarkdown('# A\n\n---\n# B').slideLines, [1, 4]);
+});
+
 test('paired blocks keep thematic breaks inside the slide and collect nested images', () => {
   for (const name of ['box', 'panel', 'grid', 'stack', 'impact', 'footer', 'canvas', 'diagram']) {
     const source = `# Slide\n\n@${name}\nAlpha\n\n---\n\n![one](./one.png)\n\n![two](./two.png)\n@end${name}\n\n---\n\n# Next\n\n![three](./three.png)\n`;

@@ -83,6 +83,20 @@ npm run check
 
 ブロック記法は `src/markdown/blocks.mjs` と `src/render/blocks.ts`、行内の記法は `src/markdown/slide.ts` に置きます。対応するテストは `test/` に追加します。キャンバスとダイアグラムは、Markdown 本文を解釈する前に行単位で構造だけ読みます。コードフェンスの中は構造行にしません。
 
+## 描画の検査
+
+`milo check <パス>` は PDF と同じ寸法で全スライドを Chromium で描き、はみ出し・折り返し・描画エラーを報告します。`--json` はエージェント向けの出力で、各指摘に `rule`、`severity`、`slide`、`line`、`message`、`hint`、`text`、`metrics` が付きます。error があると終了コード 1、`--strict` では warning でも 1 です。`milo check --rules` で一覧を出します。
+
+検査は描画済みの DOM を読むだけで、描画側は検査を知りません。図の内部の判定は、描画側が付ける `data-canvas-overflow` / `data-diagram-overflow` と `.block-error` を通じて受け取ります。
+
+検査を足すときは次の3つを揃えます。
+
+1. `src/lint/rules.json` に ID、`severity`、`summary`、`hint` を書く
+2. `src/lint/rules/<ID>.ts` に `Check` を書く。`report({ message, text, metrics })` で指摘する。`text` は原稿にある語句を一つ置く。行の特定はそこを優先し、原稿に無いときは `message` に含まれる語句を使う
+3. `src/lint/index.ts` の `CHECKS` に登録する。未登録だと型エラーになる
+
+計測の共通部品（行の分割、内容領域、見えている文字列）は `src/lint/dom.ts` です。描画と待機は PDF と共有の `src/headless.ts`、ブラウザの起動は `cli/headless.mjs` です。
+
 ## テストの置き場所
 
 `test/core.test.ts` と `test/render-blocks.test.ts` が記法です。流れ図は `test/canvas.test.ts`、`test/flow.test.ts`、`test/flow-geometry.test.ts`、ブラウザでは `test/flow-browser.test.mjs` です。ダイアグラムは `test/diagram.test.ts`、`test/diagrams.test.ts`、`test/spatial.test.ts`、ブラウザでは `test/diagram-browser.test.mjs` と `test/diagram-regressions-browser.test.mjs` です。編集画面は `test/app.test.ts`、`test/session.test.ts`、`test/drafts.test.ts` です。CLI、PDF、ビルド、Marp、原稿分割、レイアウト名、素材は `test/cli.test.mjs`、`test/pdf.test.mjs`、`test/build.test.mjs`、`test/marp-theme.test.mjs`、`test/document.test.mjs`、`test/slide-layout.test.mjs`、`test/assets.test.ts`、`test/asset-refs.test.ts` です。

@@ -194,6 +194,7 @@ export async function loadDeck(inputPath) {
         ? meta.documentId.trim()
         : 'milo',
     present,
+    slideLines: talk.slideLines,
     blocks: [manifest, ...slides, ...assets],
   };
 }
@@ -227,13 +228,9 @@ export async function bundleRuntime(entry) {
   return result;
 }
 
-let toolboxPromise = null;
-async function toolbox() {
-  if (toolboxPromise) return toolboxPromise;
-  toolboxPromise = (async () => {
-    const result = await bundleRuntime('app.ts');
-    const runtime = result.outputFiles[0].text;
-    if (/<\/script[\s>]/i.test(runtime)) throw new Error('Unsafe script terminator in runtime');
+let mathPromise = null;
+function mathStyles() {
+  return (mathPromise ??= (async () => {
     const katexRoot = resolve(dirname(require.resolve('katex/package.json')), 'dist');
     let mathCSS = await readFile(resolve(katexRoot, 'katex.min.css'), 'utf8');
     const fonts = [...mathCSS.matchAll(/src:([^;}]+)/g)];
@@ -248,6 +245,24 @@ async function toolbox() {
       }
     }
     if (/url\((?!data:)/.test(mathCSS)) throw new Error('Unembedded font dependency');
+    return mathCSS;
+  })());
+}
+
+/** The CSS a slide needs to render: KaTeX, embedded slide fonts and the app styles. */
+export async function slideStyles(resources) {
+  const shared = await (resources ?? loadBuildResources());
+  const [mathCSS, fonts] = await Promise.all([mathStyles(), embedSlideFonts(shared.fonts)]);
+  return { mathCSS, css: `${fonts.css}${shared.styles}`, fontNotice: fonts.notice };
+}
+
+let toolboxPromise = null;
+async function toolbox() {
+  if (toolboxPromise) return toolboxPromise;
+  toolboxPromise = (async () => {
+    const result = await bundleRuntime('app.ts');
+    const runtime = result.outputFiles[0].text;
+    if (/<\/script[\s>]/i.test(runtime)) throw new Error('Unsafe script terminator in runtime');
     const packages = [
       ...new Set(
         Object.keys(result.metafile.inputs)
@@ -296,7 +311,7 @@ async function toolbox() {
       if (!license) throw new Error(`Missing dependency license: ${root}`);
       notices += `${info.name} ${info.version}\n${'='.repeat(60)}\n${license}\n\n`;
     }
-    return { runtime, mathCSS, notices };
+    return { runtime, notices };
   })();
   return toolboxPromise;
 }
@@ -407,12 +422,12 @@ export async function compile({
     if (source && output && source.dev === output.dev && source.ino === output.ino)
       throw new Error(message);
   }
-  const [toolboxParts, shared] = await Promise.all([toolbox(), resources ?? loadBuildResources()]);
-  const fonts = await embedSlideFonts(shared.fonts);
+  const [toolboxParts, styles] = await Promise.all([toolbox(), slideStyles(resources)]);
   const parts = {
-    ...toolboxParts,
-    css: `${fonts.css}${shared.styles}`,
-    notices: toolboxParts.notices + fonts.notice,
+    runtime: toolboxParts.runtime,
+    mathCSS: styles.mathCSS,
+    css: styles.css,
+    notices: toolboxParts.notices + styles.fontNotice,
   };
   const html = renderHtml(deck, parts);
   await mkdir(dirname(outPath), { recursive: true });

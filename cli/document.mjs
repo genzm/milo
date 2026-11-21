@@ -12,6 +12,7 @@ export function splitFrontmatter(source) {
     return {
       meta: {},
       body: lines.join('\n'),
+      bodyLine: 0,
     };
   }
 
@@ -38,6 +39,7 @@ export function splitFrontmatter(source) {
   return {
     meta,
     body: lines.slice(end + 1).join('\n'),
+    bodyLine: end + 1,
   };
 }
 
@@ -65,6 +67,7 @@ function slideNumber(line, separators) {
 function makeSlides(lines, separators) {
   const boundaries = [-1, ...separators, lines.length];
   const slides = [];
+  const starts = [];
   for (let i = 0; i < boundaries.length - 1; i++) {
     const start = boundaries[i] + 1;
     const end = boundaries[i + 1];
@@ -74,12 +77,15 @@ function makeSlides(lines, separators) {
       .replace(/^\n+|\n+$/g, '');
     if (!text.trim()) throw new Error(`スライド ${i + 1} は空です。`);
     slides.push(text + '\n');
+    let first = start;
+    while (lines[first] === '') first++;
+    starts.push(first);
   }
-  return slides;
+  return { slides, starts };
 }
 
 export function parseTalkMarkdown(source) {
-  const { meta, body } = splitFrontmatter(source);
+  const { meta, body, bodyLine } = splitFrontmatter(source);
   const lines = body.split('\n');
   const md = new MarkdownIt({ html: false, linkify: false, typographer: false, breaks: false });
   registerMiloBlocks(md);
@@ -111,9 +117,12 @@ export function parseTalkMarkdown(source) {
   };
   collect(tokens);
 
+  const { slides, starts } = makeSlides(lines, separators);
   return {
     meta,
-    slides: makeSlides(lines, separators),
+    slides,
+    /** 1-based line in the source file where each slide's text begins. */
+    slideLines: starts.map((start) => bodyLine + start + 1),
     imageRefs: [...imageRefs].map(([ref, line]) => ({
       ref,
       slide: line == null ? undefined : slideNumber(line, separators),

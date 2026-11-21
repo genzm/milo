@@ -1,8 +1,4 @@
-import { SourceStore } from './source';
-import { renderSlide, type Rendered } from './render';
-import { slideLayout } from './slide-layout.mjs';
-import { slideFrameMarkup, slideNumber } from './slide-frame';
-import size from './slide-size.json';
+import { renderDeck } from './headless';
 
 declare global {
   interface Window {
@@ -10,69 +6,18 @@ declare global {
   }
 }
 
-const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-
 async function renderPdf() {
   window.__miloPdfReady = false;
-  const store = SourceStore.fromDOM(document);
-  const slides = store.list('slide');
-  if (!slides.length) throw new Error('スライドがありません。');
-  document.documentElement.style.setProperty('--slide-width', `${size.width}px`);
-  document.documentElement.style.setProperty('--slide-height', `${size.height}px`);
-  const rendered: Rendered[] = [];
-  for (const [index, block] of slides.entries()) {
-    const slide = document.createElement('article');
-    slide.className = `slide layout-${slideLayout(block.text) ?? 'lab'}`;
-    slide.innerHTML = slideFrameMarkup();
-    slide.querySelector('.slide-series')!.textContent = slideNumber(index, slides.length);
-    document.body.append(slide);
-    rendered.push(
-      renderSlide(slide.querySelector<HTMLElement>('.slide-content')!, block.text, {
-        store,
-        present: () => true,
-        inspect: () => {},
-      }),
-    );
+  const { dispose } = await renderDeck();
+  try {
+    const broken = [...document.images].find((image) => !image.complete || !image.naturalWidth);
+    if (broken) throw new Error(`画像を読み込めません: ${broken.alt || broken.src.slice(0, 100)}`);
+    const error = document.querySelector('.block-error, .inline-error');
+    if (error) throw new Error(error.textContent || 'スライドを描画できません。');
+  } finally {
+    dispose();
   }
-  await document.fonts.ready;
-  await Promise.all(
-    [...document.images].map(async (image) => {
-      try {
-        await image.decode();
-      } catch {
-        throw new Error(`画像を読み込めません: ${image.alt || image.src.slice(0, 100)}`);
-      }
-    }),
-  );
-
-  // Reuse renderer updates after fonts/images load, then wait for the Canvas
-  // ResizeObservers to settle. Readiness must reflect the final print layout.
-  let previous = '',
-    stable = 0;
-  for (let attempt = 0; attempt < 60; attempt++) {
-    rendered.forEach((slide) => slide.update());
-    await frame();
-    const geometry = JSON.stringify(
-      [
-        ...document.querySelectorAll(
-          '.milo-canvas, .canvas-node, .milo-diagram, .diagram-vertex, .diagram-card, .diagram-dot, .diagram-label, .diagram-note',
-        ),
-      ].map((element) => {
-        const rect = element.getBoundingClientRect();
-        return [rect.x, rect.y, rect.width, rect.height, element.scrollHeight];
-      }),
-    );
-    stable = geometry === previous ? stable + 1 : 0;
-    previous = geometry;
-    if (stable >= 2) {
-      const error = document.querySelector('.block-error, .inline-error');
-      if (error) throw new Error(error.textContent || 'スライドを描画できません。');
-      rendered.forEach((slide) => slide.dispose());
-      window.__miloPdfReady = true;
-      return;
-    }
-  }
-  throw new Error('Canvasの配置が安定しません。');
+  window.__miloPdfReady = true;
 }
 
 void renderPdf().catch((error: unknown) => {

@@ -48,11 +48,16 @@ const saver = new Autosaver(
 
 app.innerHTML = appMarkup;
 
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
 function toast(text: string) {
   const el = $('toast');
   el.textContent = text;
   el.hidden = false;
-  setTimeout(() => (el.hidden = true), 4500);
+  if (toastTimer !== null) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toastTimer = null;
+    el.hidden = true;
+  }, 4500);
 }
 function dialog(title: string, html: string) {
   $('dialog-title').textContent = title;

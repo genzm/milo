@@ -1,0 +1,32 @@
+{
+  "render-error": {
+    "severity": "error",
+    "summary": "記法の誤りでブロックや数式を描画できない",
+    "hint": "メッセージに従って記法を直してください。"
+  },
+  "broken-image": {
+    "severity": "error",
+    "summary": "画像を読み込めない",
+    "hint": "画像のパスを確認してください。外部URLの画像はオフラインのHTMLとPDFでは表示されません。"
+  },
+  "slide-overflow": {
+    "severity": "warning",
+    "summary": "内容がスライドの本文領域からはみ出して切れている",
+    "hint": "文や項目を減らすか、スライドを2枚に分けてください。"
+  },
+  "box-overflow": {
+    "severity": "warning",
+    "summary": "カード・コード・脚注などの枠の中で内容が切れている",
+    "hint": "その枠の文字を減らすか、行を短くしてください。"
+  },
+  "figure-overflow": {
+    "severity": "warning",
+    "summary": "@canvas / @diagram が領域に収まらない",
+    "hint": "図の項目や各項目の文字を減らすか、図を分けてください。"
+  },
+  "orphan-line": {
+    "severity": "warning",
+    "summary": "段落や項目の最終行に数文字だけが残る折り返し",
+    "hint": "数文字削るか言い換えて、前の行に収めてください。"
+  }
+}
