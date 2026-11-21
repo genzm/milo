@@ -125,33 +125,25 @@
   font-weight: var(--slide-weight-body);
 }
 .step-arrow {
-  --step-arrow-length: 40px;
-  --step-arrow-stroke: 3px;
-  --step-arrow-head: 8px;
   flex: 1 1 0;
-  min-width: calc(var(--step-arrow-length) + var(--step-arrow-head));
+  min-width: 48.75px;
   align-self: center;
-  height: var(--step-arrow-stroke);
-  position: relative;
-}
-.step-arrow::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: calc(var(--step-arrow-length) + var(--step-arrow-head));
-  height: calc(var(--step-arrow-head) * 2);
-  background: #c8c8c8;
-  transform: translate(-50%, -50%);
-  clip-path: polygon(
-    0 calc(50% - var(--step-arrow-stroke) / 2),
-    var(--step-arrow-length) calc(50% - var(--step-arrow-stroke) / 2),
-    var(--step-arrow-length) 0,
-    100% 50%,
-    var(--step-arrow-length) 100%,
-    var(--step-arrow-length) calc(50% + var(--step-arrow-stroke) / 2),
-    0 calc(50% + var(--step-arrow-stroke) / 2)
-  );
+  display: flex;
+  justify-content: center;
+
+  svg {
+    display: block;
+    overflow: visible;
+    color: color-mix(in srgb, var(--slide-ink) 28%, var(--slide-muted));
+  }
+  line {
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+  }
+  path {
+    fill: currentColor;
+  }
 }
 .math-prose {
   overflow-x: auto;

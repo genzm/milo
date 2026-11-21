@@ -49,7 +49,9 @@ function renderSteps(group: StepGroup, md: InstanceType<typeof MarkdownIt>) {
       const on = highlight === index + 1;
       const card = `<article class="step-card${on ? ' is-highlight' : ''}"><h3 class="step-heading"><span class="step-badge">${index + 1}</span><span class="step-title">${esc(title)}</span></h3><div class="step-body">${md.render(step.source.replace(/([^\n])\n(?!\n)/g, '$1  \n'))}</div></article>`;
       const arrow =
-        index < group.steps.length - 1 ? '<span class="step-arrow" aria-hidden="true"></span>' : '';
+        index < group.steps.length - 1
+          ? '<span class="step-arrow" aria-hidden="true"><svg viewBox="0 0 48.75 8.75" width="48.75" height="8.75" focusable="false"><line x1="0.875" y1="4.375" x2="41" y2="4.375"/><path d="M40 0 L48.75 4.375 L40 8.75 Z"/></svg></span>'
+          : '';
       return card + arrow;
     })
     .join('');
