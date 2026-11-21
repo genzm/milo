@@ -6,7 +6,7 @@
 
 ## frontmatter
 
-ファイル先頭の YAML です。`title` を省略すると、最初の `# 見出し`、それも無ければディレクトリ名を使います。`description` は HTML の説明文です。`documentId` は下書きの識別子で、省略時は `milo` です。`present: true` にすると、生成した HTML を開いたときに編集画面ではなく発表の1枚目から始まります。
+ファイル先頭の YAML です。`title` を省略すると、最初の `# 見出し`、それも無ければディレクトリ名を使います。`description` は HTML の説明文です。`documentId` は下書きの識別子で、省略時は `milo` です。`present: true`、設定の `"present": true`、URL の `#present` のいずれかで、開いたとき発表の1枚目から始まります。
 
 ```markdown
 ---
@@ -63,7 +63,7 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 ![図](./assets/plot.png 'キャプション')
 ```
 
-`title` を書くとキャプションになります。キャプションはインラインの Markdown として描画します。GIF は HTML では動きます。PDF では印刷時の静止フレームです。編集画面で画像をダブルクリックすると、素材タブが開きます。発表中はこの操作を止めます。
+`title` を書くとキャプションになります。キャプションはインラインの Markdown として描画します。GIF は HTML では動きます。PDF では印刷時の静止フレームです。
 
 ## ブロック
 
@@ -130,7 +130,7 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 ## 解説矢印と否定の×
 
-`@compose` の中に `@part` で図・ボックス・文章・画像をまとめ、`@arrow` で結び、`@cross` で×を重ねます。対象の名前を指定するため、位置の変更に追従します。`@arrow` で結んだ `@box` と `@panel` は、高さの差が小さければ高い方に揃えます。本文が1〜2行違う程度なら揃え、段落ごと違うときはそのままです。大きな矢印、2つのflowの比較、図の外の深さと広さ、ノードから説明ボックスへの接続は [解説矢印と否定の×](annotations.md) を参照してください。
+`@compose` の中に `@part` で図・ボックス・文章・画像をまとめ、`@arrow` で結び、`@cross` で×を重ねます。書き方と高さの揃えは [解説矢印と否定の×](annotations.md) です。
 
 ## キャンバス
 
@@ -176,7 +176,7 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 | `height`    | 数値、または flow での `auto`。flow の省略と `auto` は内容に合わせて伸びる。`free` の既定は 420 |
 | `gap`       | ノード間隔。0 以上。既定は 48                                                                   |
 
-`route=auto` は、直列を直線にし、分岐と合流を共有幹線付きの直交線にします。横に収まらないときは `direction=down` を書きます。循環は戻り線になります。表示する警告は、重なり、文字切れ、領域超過、線の横断、ラベルの衝突、余白不足です。
+`route=auto` では、直列は直線、分岐と合流は共有幹線です。横に収まらないときは `direction=down`、循環は戻り線です。配置と警告は [流れ図の配置](flow.md) です。
 
 `layout=free` の `height` は数値です。`height=auto` は使えません。自由配置の文字はスライド本文と同じ大きさです。flow のカードは狭いので、本文より小さいままです。ノードの位置は `x` `y`、または `frame=x,y,width,height` です。`dx` `dy` は流れ配置のあとに足すずれで、`pinned=true` はその座標を固定します。
 
@@ -190,9 +190,9 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 `@diagram` は要素と関係を宣言し、配置だけ切り替えます。中に書けるのは `@item`、`@link`、`@zone`、`@cluster` です。`layout` は `ring` / `flow` / `radial` / `field` です。既定は `ring` です。`tree` と `free` は使えません。座標を1つずつ置くときは `@canvas` を使います。
 
-既定の領域は、ring が 1000×500、flow が 1280×560、radial が 1040×580、field が 1280×580 です。`width` と `height` で変えられます。`note=outside` のとき、高さの下限は 620 です。`height=auto` は flow だけで使え、省略した高さも内容に合わせて伸びます。
+既定の領域は [図式の配置](diagram.md) の表です。`width` と `height` で変えられます。`note=outside` のとき、高さの下限は 620 です。`height=auto` は flow だけで使え、省略した高さも内容に合わせて伸びます。
 
-`@panel` や `@column` の中の ring / radial は、`width` も `height` も無いとき 640×512 で置き、格子の枠に合わせて表示します。全画面用の横長フレームのままだと、円形の図が短辺だけで小さく見えるためです。文字も図の幅に合わせて縮みます。大きさを固定したいときは `width` と `height` を書きます。flow と field はこの自動サイズを使いません。
+`@panel` や `@column` の中の寸法は [図式の配置](diagram.md) です。
 
 各 `@item` には ID と `title` が必要です。タイトルのあとの行は説明です。
 
@@ -223,7 +223,7 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 ### flow
 
-`@canvas` の flow と同じ高さ指定と `route` を使います。`height` の省略と `height=auto` は内容に合わせて伸びます。`height=auto` は flow だけで使えます。関係は `@link` で書きます。`inset=28` は線の両端をカードから離し、間に短い矢印を置きます。
+高さ指定と `route` は [キャンバス](#キャンバス) の flow と同じです。関係は `@link` で書きます。`inset=28` は線の両端をカードから離し、間に短い矢印を置きます。
 
 ```markdown
 @diagram layout=flow direction=right route=auto
@@ -244,7 +244,7 @@ Markdown の見出し、段落、箇条書き、引用、コード、リンク�
 
 ### radial
 
-最初の `@item` が中心です。`center=id` で変えられます。周囲の項目に `side`（`top` / `right` / `bottom` / `left`）と `distance`（`near` / `mid` / `far`）を付けると、中心からの方向と距離を宣言できます。どちらかを1つでも書くと、その宣言で周囲を置きます。書かなかった周囲の項目は、`start` と `order` に沿ってリング上に並びます。どちらも書かないときは、カード同士が重ならない半径に置き、領域に収まらないときは全体を縮小します。縮尺が読めないときは「文字が小さくて読めません」、同じ方向に収まらないときは「同じ方向のカードが重なっています」と出します。`connect` の既定は `none` です。`connect=cycle` は中心を除いた周囲を結びます。
+最初の `@item` が中心です。`center=id` で変えられます。周囲の項目に `side`（`top` / `right` / `bottom` / `left`）と `distance`（`near` / `mid` / `far`）を付けられます。置き方と、読めない・重なるときの警告は [図式の配置](diagram.md#radial) です。`connect` の既定は `none` です。
 
 ```markdown
 @diagram layout=radial

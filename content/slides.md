@@ -20,18 +20,8 @@ description: 原稿・数式・画像・編集道具を内蔵する、自己編�
 
 ### どんなMarkdownかけますか? @align=center
 
-通常のMarkdownを書けます。通常のMarkdownを書けます。
-通常のMarkdownを書けます。
-通常のMarkdownを書けます。
-通常のMarkdownを書けます。
-通常のMarkdownを書けます。
-通常のMarkdownを書けます。
-通常のMarkdownを書けます。
-通常のMarkdownを書けます。
-通常のMarkdownを書けます。
-通常のMarkdownを書けます。
-通常のMarkdownを書けます。
-通常のMarkdownを書けます。
+見出し、段落、引用をそのまま書けます。
+列の中でも、改行と余白は本文と同じです。
 
 @column
 
@@ -144,7 +134,7 @@ miloが並べて揃える
 
 <!-- milo: layout=lab -->
 
-# HTML-in-Canvas
+# 書いて、測って、置く
 
 @canvas direction=right route=straight
 
@@ -192,8 +182,6 @@ $$
 f(t) = A e^{-\gamma t} \cos(\omega t)
 $$
 
-図やグラフは画像として貼り付けられます。
-
 ---
 
 <!-- milo: layout=media -->
@@ -204,8 +192,6 @@ GIFも、画像も、ひとつのHTMLの中へ。
 「素材」から画像を差し替えると、そのまま文書に埋め込まれます。
 
 ![粒子の動きを描いたループアニメーション](./assets/flow.gif 'EMBEDDED GIF · オフラインでも再生できます')
-
-説明用の数式も書けます。たとえば $E = \frac{1}{2}mv^2$。
 
 ---
 
@@ -243,8 +229,6 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @item speed title="速く引ける" badge=2 level=high
 @item history title="遡って引ける" badge=3 level=low
 @enddiagram
-
-`level` は評価。色はテーマが決める。
 
 ---
 
@@ -289,8 +273,6 @@ GIFも、画像も、ひとつのHTMLの中へ。
 独自の洞察がある。他の人が置いていない切り口を一つ足す。
 @enddiagram
 
-`note=outside` は正多角形を崩さず、説明を外向きの矢印でつなぐ。
-
 ---
 
 <!-- milo: layout=lab -->
@@ -306,8 +288,6 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @link analyze -> judge
 @link judge -> run
 @enddiagram
-
-4ノードでも文字が極端に折り返されず、均等に配置される。
 
 ---
 
@@ -326,8 +306,6 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @link pathB -> join
 @enddiagram
 
-分岐・合流の階層が揃い、線の交差が最小限になる。
-
 ---
 
 <!-- milo: layout=lab -->
@@ -341,8 +319,6 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @link find -> cause
 @link cause -> act
 @enddiagram
-
-横に収まらない構成でも、縦方向を選べる。
 
 ---
 
@@ -362,8 +338,6 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @edge see --> plan dashed=true tone=accent label=フィードバック
 @endcanvas
 
-循環があってもノードを不規則に並べず、戻り線で示す。
-
 ---
 
 <!-- milo: layout=lab -->
@@ -381,8 +355,6 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @link problem -- quality
 @link problem -- support
 @enddiagram
-
-同じ `@item` と `@link` で、放射状の図にもできる。
 
 ---
 
@@ -402,8 +374,6 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @link problem -- support
 @enddiagram
 
-`side` と `distance` は中心からの意味。位置を直接は動かさない。
-
 ---
 
 <!-- milo: layout=lab -->
@@ -415,8 +385,6 @@ GIFも、画像も、ひとつのHTMLの中へ。
 @item b title="施策B" x=0.5 y=0.4
 @item c title="施策C" x=0.8 y=-0.6
 @enddiagram
-
-Field は指定した座標を保ったまま、ラベルだけ避ける。
 
 ---
 
@@ -434,8 +402,6 @@ Field は指定した座標を保ったまま、ラベルだけ避ける。
 @item c title="品質" x=0.55 y=0.65 cluster=product
 @item d title="サポート" x=0.7 y=-0.25 cluster=product
 @enddiagram
-
-Zone は空間の区分。Cluster は項目の所属。
 
 ---
 
@@ -457,5 +423,3 @@ Zone は空間の区分。Cluster は項目の所属。
 @item price title="価格" x=0.82 y=0.22 cluster=product
 @item support title="サポート" x=0.7 y=-0.38 cluster=product
 @enddiagram
-
-`cluster-region=halo` は同じ所属を一つの囲みにする。箱ではなく、点をまとめて包む。

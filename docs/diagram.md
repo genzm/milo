@@ -9,7 +9,7 @@
 | `field` | `layout-field.ts` | 1280×580 |
 | `flow` | キャンバスと同じ [流れ図](flow.md) | 1280×560 |
 
-`@panel` や `@column` の中で `width` / `height` の無い ring / radial は 640×512 です。全画面用の横長のままだと、円が短辺だけで小さく見えるためです。
+`@panel` や `@column` の中で `width` / `height` の無い ring / radial は 640×512 です。全画面用の横長のままだと、円が短辺だけで小さく見えるためです。文字も図の幅に合わせて縮みます。大きさを固定するときは `width` と `height` を書きます。flow と field はこのサイズを使いません。
 
 辺の解決は `src/diagram/links.ts` です。`connect=cycle` は、まだ無い隣同士に無方向の辺を足します。radial では中心を除きます。すでに方向付きの辺がある組には足しません。
 

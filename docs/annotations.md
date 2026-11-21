@@ -96,7 +96,7 @@ node cli/milo.mjs test/fixtures/annotation-arrows.md -o dist/annotation-arrows.h
 | `top` / `bottom` | 始点と終点が決める左右の幅 | その幅に重なるノードを避けた、一番近い平行位置 |
 | `right` / `left` | 始点と終点が決める上下の高さ | 図の右端 / 左端 |
 
-`side` は top / right / bottom / left。top / bottom の既定方向は右、right / left は下です。`direction=left` / `up` で反転できます。`size` は太さの上限（既定64）です。短い矢印は長さに比例して同じ形のまま縮小し、両向きでも菱形にはしません。`offset` は対象からの距離（既定20）です。`direction` には `side` が必要で、`side` と平行な向きだけ書けます。
+`side` は top / right / bottom / left。top / bottom の既定方向は右、right / left は下です。`direction=left` / `up` で反転できます。`size` は太さの上限（既定64）です。短いときの形は [両向きの矢印](#両向きの矢印) と同じです。`offset` は対象からの距離（既定20）です。`direction` には `side` が必要で、`side` と平行な向きだけ書けます。
 
 対象の名前は、その `@compose` の中で解決します。
 
@@ -121,7 +121,7 @@ node cli/milo.mjs test/fixtures/annotation-arrows.md -o dist/annotation-arrows.h
 
 ## 表示の確認
 
-編集画面、発表モード、PDFで同じ描画処理を使います。位置はDOMの実測から計算し、画面の拡縮・フォントや画像の読み込み・対象の寸法変更に追従します。
+編集画面、発表モード、PDFで同じ描画処理を使います。位置はDOMの実測から計算します。
 
 内容が多くてスライドから出る場合は、図の間隔、ノード幅、part の幅を調整するか、スライドを分けます。文字を自動で小さくはしません。存在しない対象や、矢印を置く余白がない指定は画面にエラーを表示します。
 
@@ -136,4 +136,4 @@ node cli/milo.mjs test/fixtures/annotation-arrows.md -o dist/annotation-arrows.h
 | `besideSpan` | `from` と `to` と `side`。2つの枠が決める幅または高さの層の外側に、平行な矢印 |
 | `arrowGeometry` | 長さに比例したブロック矢印。`size` は太さの上限。`arrows=both` のとき両端が矢じり |
 
-余白が足りないときはエラーにします。拡縮は実測のたびにやり直すので、発表モードの拡大にも追従します。流れ図の接続線とは別物です。配置の本体は [流れ図](flow.md) と [図式](diagram.md) です。
+余白が足りないときはエラーにします。配置の本体は [流れ図](flow.md) と [図式](diagram.md) です。

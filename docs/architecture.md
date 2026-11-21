@@ -12,7 +12,7 @@ milo は原稿を単一 HTML にコンパイルし、その HTML が自分の原
 
 各ブロックの本文は `amp-lt-v1` です。`&` を `&amp;`、`<` を `&lt;`、NUL を `&#0;` にします。実装は `src/source-format.mjs` です。`src/source.ts` の `SourceStore` が HTML からブロックを読み、ID 重複や区画の欠損を拒否します。
 
-`manifest` は JSONC で、文書の `title` を持ちます。frontmatter の `present: true` があるときは `present` も入り、HTML は発表の1枚目から開きます。スライドの順序は HTML 内の slide ブロックの物理順序です。スライド本文は、区切り前の Markdown そのものです。画像は `mime:` 行と本体を持つ asset ブロックで、GIF / PNG / JPEG / WebP は Base64、SVG はテキストです。
+`manifest` は JSONC で、文書の `title` を持ちます。`present` の意味は [原稿の frontmatter](authoring.md#frontmatter) です。スライドの順序は HTML 内の slide ブロックの物理順序です。スライド本文は、区切り前の Markdown そのものです。画像は `mime:` 行と本体を持つ asset ブロックで、GIF / PNG / JPEG / WebP は Base64、SVG はテキストです。
 
 実行時は `meta name="milo" content="1"` と、設定・スライド・素材それぞれの終端コメント、`<!-- END MILO SOURCES -->` が揃ったファイルだけを milo 形式として開きます。
 
@@ -26,7 +26,7 @@ milo は原稿を単一 HTML にコンパイルし、その HTML が自分の原
 4. esbuild が `src/app.ts` を IIFE にまとめ、KaTeX と Noto Sans JP（400 / 600 / 700）を CSS へ埋めます。
 5. HTML を書き出します。`--pdf` のときは、そのあと `cli/pdf.mjs` が別ランタイムで PDF を作ります。
 
-PDF 用 HTML は編集 UI を含みません。`src/pdf-entry.ts` が全スライドを描き、Playwright の Chromium が `src/slide-size.json` の寸法で印刷します。外部リクエストは中断します。
+PDF 用 HTML は編集 UI を含みません。出力の決まりは [README](../README.md#pdfを同時出力) です。`src/pdf-entry.ts` が全スライドを描き、Playwright の Chromium が印刷します。外部リクエストは中断します。
 
 `npm run build` は `cli/build.mjs` が `content` を `dist/milo.html` にし、同時に `marp/milo.css` を生成します。CSS は `cli/styles.mjs` が `src/style.css` から1つにまとめ、フォントは `cli/fonts.mjs`、テーマの変換は `cli/marp-theme.mjs` です。Marp テーマはスライドのタイポグラフィと `cover` / `section` / `media` / `essay` です。`lab` は通常スライドのスタイルそのものとして入ります。キャンバス、ダイアグラム、ステップ、カード、列、`@impact`、チェック項目は含めません。`marp/milo.css` は生成物です。
 
@@ -34,7 +34,7 @@ PDF 用 HTML は編集 UI を含みません。`src/pdf-entry.ts` が全スラ�
 
 `src/app.ts` が編集・保存・表示の操作をつなぎます。画面の骨組みは `src/app/shell.ts` です。`src/app/session.ts` が原稿・選択・比較基準を持ち、編集失敗時には原稿と選択を戻します。一覧は `src/app/navigation.ts`、原稿・素材・設定は `src/app/inspector.ts` です。
 
-編集のあと、`src/app/updates.ts` はプレビューを約 220ms、ブラウザ内の下書きを約 150ms で予約します。ファイルへの自動保存は、その場で `src/save.ts` の `Autosaver` に渡します。停止して約 500ms、入力が続くときは最初の変更から約 2 秒です。
+編集のあと、`src/app/updates.ts` がプレビューとブラウザ内の下書きを予約し、ファイルへの自動保存は `src/save.ts` の `Autosaver` に渡します。間隔は [編集と発表](editor.md#保存) です。
 
 `src/render.ts` の `renderSlide` は、`src/markdown/slide.ts` で表示用 Markdown を準備し、`src/render/blocks.ts` でブロックを DOM に配置します。共通のブロック解析は `src/markdown/blocks.mjs`、属性は `src/markdown/attributes.mjs` です。入れ子の展開順序を維持し、再配置と後片付けは `src/render/lifecycle.ts` に登録します。
 

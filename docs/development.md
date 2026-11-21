@@ -67,8 +67,8 @@ npm run check
 | `src/app/session.ts` | 原稿、選択、開いたときとの比較 |
 | `src/app/navigation.ts` | 一覧とページ送り |
 | `src/app/inspector.ts` | 原稿、素材、設定 |
-| `src/app/updates.ts` | プレビュー（約 220ms）と下書き（約 150ms）の予約 |
-| `src/save.ts` | 自動保存。停止約 500ms、継続時は約 2 秒 |
+| `src/app/updates.ts` | プレビューと下書きの予約。間隔は [編集と発表](editor.md#保存) |
+| `src/save.ts` | 自動保存。間隔は [編集と発表](editor.md#保存) |
 | `src/drafts.ts` | ブラウザ内の下書き |
 | `src/source.ts` | HTML 内ソースの読み書き |
 | `src/styles/` | 見た目。入口は `src/style.css` |
