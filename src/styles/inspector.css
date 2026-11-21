@@ -133,9 +133,11 @@
     font-size: var(--ui-text-tiny);
     padding-right: 5px;
   }
-  .cm-activeLineGutter,
-  .cm-activeLine {
+  .cm-activeLineGutter {
     background: #f2f2f299;
+  }
+  .cm-activeLine {
+    background: transparent;
   }
   &.cm-focused {
     outline: none;
