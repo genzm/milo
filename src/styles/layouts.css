@@ -24,7 +24,7 @@
   h1 {
     font-size: var(--slide-text-cover-title);
     line-height: 1.15;
-    letter-spacing: -0.055em;
+    letter-spacing: -0.03em;
     color: var(--white);
     max-width: 86%;
     margin: 0 0 2.2%;

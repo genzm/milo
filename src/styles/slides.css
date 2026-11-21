@@ -67,7 +67,7 @@
     font-size: var(--slide-text-title);
     font-weight: var(--slide-weight-title);
     line-height: var(--slide-leading-title);
-    letter-spacing: -0.055em;
+    letter-spacing: -0.03em;
     color: var(--accent);
     margin: 0 0 3.1%;
     text-wrap: balance;
@@ -216,6 +216,10 @@
   p + p {
     margin-top: var(--slide-space-paragraph-following);
   }
+  /* 見出し代わりの1行と箇条書きは、段落どうしの空きより詰める。幅の % だと本文だけ広がる。 */
+  p:has(+ :is(ul, ol)) {
+    margin-bottom: 0.4em;
+  }
   em {
     color: var(--slide-muted);
   }
@@ -225,6 +229,8 @@
   }
   ul,
   ol {
+    /* ブラウザ既定の 1em だと、段落のあいだより箇条書きの前が広くなる。 */
+    margin: 0;
     padding-left: 1em;
 
     li::marker {

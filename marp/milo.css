@@ -7024,7 +7024,7 @@ section {
     font-size: var(--slide-text-title);
     font-weight: var(--slide-weight-title);
     line-height: var(--slide-leading-title);
-    letter-spacing: -0.055em;
+    letter-spacing: -0.03em;
     color: var(--accent);
     margin: 0 0 3.1%;
     text-wrap: balance;
@@ -7140,6 +7140,9 @@ section {
   p + p {
     margin-top: var(--slide-space-paragraph-following);
   }
+  p:has(+ :is(ul, ol)) {
+    margin-bottom: 0.4em;
+  }
   em {
     color: var(--slide-muted);
   }
@@ -7149,6 +7152,7 @@ section {
   }
   ul,
   ol {
+    margin: 0;
     padding-left: 1em;
     li::marker {
       color: currentColor;
@@ -7319,7 +7323,7 @@ section.cover {
   h1 {
     font-size: var(--slide-text-cover-title);
     line-height: 1.15;
-    letter-spacing: -0.055em;
+    letter-spacing: -0.03em;
     color: var(--white);
     max-width: 86%;
     margin: 0 0 2.2%;
